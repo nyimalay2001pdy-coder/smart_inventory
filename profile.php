@@ -1,0 +1,229 @@
+<?php
+include "includes/auth_check.php";
+include "config/database.php";
+$page_title = "My Profile";
+
+$success = '';
+$error = '';
+
+// Ensure profile_picture column exists
+$col_check = $conn->query("SHOW COLUMNS FROM users LIKE 'profile_picture'");
+if ($col_check && $col_check->num_rows === 0) {
+    $conn->query("ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) DEFAULT NULL AFTER email");
+}
+
+// Fetch current user data
+$stmt = $conn->prepare("SELECT id, name, username, email, profile_picture, role, created_at FROM users WHERE id = ? LIMIT 1");
+$stmt->bind_param("i", $_SESSION['user_id']);
+$stmt->execute();
+$user = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if (!$user) {
+    header("Location: dashboard/index.php");
+    exit;
+}
+
+// Handle profile update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+    $name = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $errors = [];
+
+    if (empty($name)) {
+        $errors[] = 'Full name is required.';
+    }
+    if (empty($email)) {
+        $errors[] = 'Email is required.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Invalid email format.';
+    }
+
+    // Check email uniqueness (exclude current user)
+    if (empty($errors) && $email !== $user['email']) {
+        $check = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1");
+        $check->bind_param("si", $email, $_SESSION['user_id']);
+        $check->execute();
+        if ($check->get_result()->num_rows > 0) {
+            $errors[] = 'Email is already in use by another account.';
+        }
+        $check->close();
+    }
+
+    // Handle profile picture upload
+    $profile_pic = $user['profile_picture'];
+    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $file_ext = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
+        if (!in_array($file_ext, $allowed)) {
+            $errors[] = 'Profile picture must be JPG, PNG, GIF, or WebP.';
+        } elseif ($_FILES['profile_picture']['size'] > 2 * 1024 * 1024) {
+            $errors[] = 'Profile picture must be under 2MB.';
+        } else {
+            $upload_dir = 'uploads/profile_pictures/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $filename = 'user_' . $_SESSION['user_id'] . '_' . time() . '.' . $file_ext;
+            $dest = $upload_dir . $filename;
+            if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $dest)) {
+                // Delete old picture if exists
+                if ($profile_pic && file_exists($profile_pic)) {
+                    unlink($profile_pic);
+                }
+                $profile_pic = $dest;
+            } else {
+                $errors[] = 'Failed to upload profile picture.';
+            }
+        }
+    }
+
+    if (empty($errors)) {
+        $update = $conn->prepare("UPDATE users SET name = ?, email = ?, profile_picture = ? WHERE id = ?");
+        $update->bind_param("sssi", $name, $email, $profile_pic, $_SESSION['user_id']);
+        if ($update->execute()) {
+            $_SESSION['name'] = $name;
+            $_SESSION['email'] = $email;
+            $user['name'] = $name;
+            $user['email'] = $email;
+            $user['profile_picture'] = $profile_pic;
+            $success = 'Profile updated successfully.';
+        } else {
+            $error = 'Failed to update profile.';
+        }
+        $update->close();
+    } else {
+        $error = implode(' ', $errors);
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Smart Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="bg-gray-50">
+    <div class="flex min-h-screen">
+        <?php include "includes/sidebar.php"; ?>
+        <div class="flex-1 flex flex-col min-w-0">
+            <?php include "includes/header.php"; ?>
+            <main class="p-4 lg:p-6">
+                <div class="max-w-3xl mx-auto">
+                    <h1 class="text-2xl font-bold text-gray-900 mb-6">My Profile</h1>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="text-base font-bold text-gray-900">Profile Information</h2>
+                            <p class="text-xs text-gray-500 mt-0.5">Manage your personal details</p>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                                <!-- Profile Picture -->
+                                <div class="flex items-center gap-6">
+                                    <div class="relative">
+                                        <?php if ($user['profile_picture'] && file_exists($user['profile_picture'])): ?>
+                                            <img src="<?= htmlspecialchars($user['profile_picture']) ?>" alt="Profile"
+                                                class="w-20 h-20 rounded-full object-cover border-2 border-gray-200">
+                                        <?php else: ?>
+                                            <div class="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                                                <?= strtoupper(substr($user['name'], 0, 1)) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Profile Picture</label>
+                                        <input type="file" name="profile_picture" accept="image/jpeg,image/png,image/gif,image/webp"
+                                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition">
+                                        <p class="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WebP. Max 2MB.</p>
+                                    </div>
+                                </div>
+
+                                <hr class="border-gray-100">
+
+                                <!-- Full Name -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Full Name</label>
+                                    <input type="text" name="name" value="<?= htmlspecialchars($user['name']) ?>" required
+                                        class="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+
+                                <!-- Email -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+                                    <input type="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" required
+                                        class="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+
+                                <!-- Username (read-only) -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Username</label>
+                                    <input type="text" value="<?= htmlspecialchars($user['username']) ?>" readonly
+                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 cursor-not-allowed">
+                                </div>
+
+                                <!-- Role (read-only) -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Role</label>
+                                    <input type="text" value="<?= ucfirst($user['role']) ?>" readonly
+                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 cursor-not-allowed">
+                                </div>
+
+                                <!-- Account Created -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Account Created</label>
+                                    <input type="text" value="<?= date('F d, Y', strtotime($user['created_at'])) ?>" readonly
+                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 cursor-not-allowed">
+                                </div>
+
+                                <div class="flex items-center gap-3 pt-2">
+                                    <button type="submit" name="update_profile"
+                                        class="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition">
+                                        Save Changes
+                                    </button>
+                                    <a href="dashboard/index.php"
+                                        class="px-6 py-2.5 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition">
+                                        Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Account Details Card -->
+                    <div class="card mt-6">
+                        <div class="card-header">
+                            <h2 class="text-base font-bold text-gray-900">Account Details</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Status</p>
+                                    <p class="text-sm font-medium text-gray-900 mt-1">Active</p>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Member Since</p>
+                                    <p class="text-sm font-medium text-gray-900 mt-1"><?= date('F d, Y', strtotime($user['created_at'])) ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <?php if ($success): ?>
+    <script>showToast('success', '<?= htmlspecialchars($success, ENT_QUOTES) ?>');</script>
+    <?php endif; ?>
+    <?php if ($error): ?>
+    <script>showToast('error', '<?= htmlspecialchars($error, ENT_QUOTES) ?>');</script>
+    <?php endif; ?>
+
+    <?php include "includes/toast.php"; ?>
+    <?php include "includes/footer.php"; ?>
+</body>
+</html>

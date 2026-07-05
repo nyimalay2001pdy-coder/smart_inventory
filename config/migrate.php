@@ -1,24 +1,32 @@
 <?php
-require_once 'db.php';
+require_once 'database.php';
 
-echo "<h2>Running Migration...</h2>";
+echo "<h2 style='color:#4f46e5;'>Smart Inventory - Database Migration</h2>";
 
-$queries = [
-    "ALTER TABLE products ADD COLUMN sku VARCHAR(50) AFTER product_name",
-    "ALTER TABLE products ADD COLUMN purchase_price DECIMAL(10,2) AFTER sku",
-    "ALTER TABLE products CHANGE price selling_price DECIMAL(10,2)",
-    "ALTER TABLE products ADD COLUMN status ENUM('Active','Inactive','Hidden') DEFAULT 'Active' AFTER reorder_level",
-];
+$sql = file_get_contents(__DIR__ . '/migration.sql');
+$queries = explode(';', $sql);
+$count = 0;
 
-foreach ($queries as $q) {
-    echo "<p>Running: <code>$q</code> ... ";
-    if ($conn->query($q)) {
-        echo "<span style='color:green'>✅ OK</span></p>";
+foreach ($queries as $query) {
+    $query = trim($query);
+    if (empty($query)) continue;
+    if (mysqli_query($conn, $query)) {
+        $count++;
     } else {
-        echo "<span style='color:orange'>⚠ " . $conn->error . "</span></p>";
+        echo "<p style='color:orange;'>⚠ " . mysqli_error($conn) . "</p>";
     }
 }
 
-echo "<br><h3 style='color:green'>✅ Migration Complete!</h3>";
-echo "<p><a href='../product/index.php'>← Back to Products</a></p>";
+echo "<p style='color:green;'>✅ Migration complete! $count queries executed.</p>";
+echo "<p><a href='../login.php' style='color:#4f46e5;'>→ Go to Login</a></p>";
+
+// Create default admin user if not exists
+$check = mysqli_query($conn, "SELECT id FROM users WHERE username='admin'");
+if (mysqli_num_rows($check) == 0) {
+    $password = password_hash('admin123', PASSWORD_DEFAULT);
+    mysqli_query($conn, "INSERT INTO users (name, username, email, password, role, status) VALUES ('System Admin', 'admin', 'admin@smartinventory.com', '$password', 'admin', 'Active')");
+    mysqli_query($conn, "INSERT INTO users (name, username, email, password, role, status) VALUES ('Staff User', 'staff', 'staff@smartinventory.com', '$password', 'staff', 'Active')");
+    mysqli_query($conn, "INSERT INTO users (name, username, email, password, role, status) VALUES ('Cashier User', 'cashier', 'cashier@smartinventory.com', '$password', 'cashier', 'Active')");
+    echo "<p style='color:green;'>✅ Default users created (admin/admin123, staff/admin123, cashier/admin123)</p>";
+}
 ?>
