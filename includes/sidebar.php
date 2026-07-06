@@ -15,7 +15,7 @@ function isActive($dirs, $file = null)
     return false;
 }
 ?>
-<aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed lg:sticky top-0 z-40 -translate-x-full lg:translate-x-0 sidebar-transition">
+<aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed lg:sticky top-0 z-40 -translate-x-full lg:translate-x-0 sidebar-transition text-gray-400 font-sm">
     <div class="h-16 flex items-center gap-3 px-5 border-b border-gray-100">
         <div class="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,58 +42,125 @@ function isActive($dirs, $file = null)
         <?php endif; ?>
 
         <?php if ($role === 'admin' || $role === 'staff'): ?>
-            <a href="../product/index.php"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= isActive('product') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                Products
-            </a>
+            <?php
+            $inv_active = isActive(['product', 'category', 'categories', 'supplier', 'suppliers']);
+            $inv_file = basename($_SERVER['PHP_SELF']);
+            $inv_dir = basename(dirname($_SERVER['PHP_SELF']));
+            $inv_open = $inv_active || ($inv_file === 'index.php' && in_array($inv_dir, ['product', 'categories', 'supplier']));
+            ?>
+            <div class="sidebar-group">
+                <button onclick="toggleGroup('inventoryGroup')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= $inv_open ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        Inventory
+                    </span>
+                    <svg id="inventoryGroupIcon" class="w-4 h-4 transition-transform <?= $inv_open ? 'rotate-90' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+                <div id="inventoryGroup" class="ml-4 mt-0.5 space-y-0.5 <?= $inv_open ? '' : 'hidden' ?>">
+                    <a href="../product/index.php"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('product') ? 'hover:bg-indigo-50 hover:text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= isActive('product') ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        Products
+                    </a>
+                    <?php if ($role === 'admin'): ?>
+                        <a href="../categories/index.php"
+                            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive(['category', 'categories']) ? 'hover:bg-indigo-50 hover:text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                            <span class="w-1.5 h-1.5 rounded-full <?= isActive(['category', 'categories']) ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                            Categories
+                        </a>
+                        <a href="../supplier/index.php"
+                            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('supplier') ? 'hover:bg-indigo-50 hover:text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                            <span class="w-1.5 h-1.5 rounded-full <?= isActive('supplier') ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                            Suppliers
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
         <?php endif; ?>
 
         <?php if ($role === 'admin'): ?>
-            <a href="../categories/index.php"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= isActive(['category', 'categories']) ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                Categories
-            </a>
-        <?php endif; ?>
-
-        <?php if ($role === 'admin'): ?>
-            <a href="../supplier/index.php"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= isActive('supplier') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Suppliers
-            </a>
-        <?php endif; ?>
-
-        <?php if ($role === 'admin'): ?>
-            <a href="../purchase/index.php"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= isActive(['purchase', 'stock-in']) ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                Purchases
-            </a>
+            <?php
+            $purchase_active = isActive(['purchase', 'stock-in']);
+            $purchase_file = basename($_SERVER['PHP_SELF']);
+            $purchase_open = $purchase_active || in_array($purchase_file, ['add.php', 'reports.php']);
+            ?>
+            <div class="sidebar-group">
+                <button onclick="toggleGroup('purchaseGroup')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= $purchase_open ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        Purchases
+                    </span>
+                    <svg id="purchaseGroupIcon" class="w-4 h-4 transition-transform <?= $purchase_open ? 'rotate-90' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+                <div id="purchaseGroup" class="ml-4 mt-0.5 space-y-0.5 <?= $purchase_open ? '' : 'hidden' ?>">
+                    <a href="../purchase/add.php"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $purchase_file === 'add.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= $purchase_file === 'add.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        New Purchase
+                    </a>
+                    <a href="../purchase/index.php"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $purchase_file === 'index.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= $purchase_file === 'index.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        History
+                    </a>
+                    <a href="../purchase/reports.php"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $purchase_file === 'reports.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= $purchase_file === 'reports.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        Reports
+                    </a>
+                </div>
+            </div>
         <?php endif; ?>
 
         <?php if ($role === 'admin' || $role === 'staff'): ?>
-            <a href="../sale/index.php"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= isActive('sale') && $file !== 'invoice.php' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-                </svg>
-                Sales
-            </a>
+            <?php
+            $sale_active = isActive('sale');
+            $sale_file = basename($_SERVER['PHP_SELF']);
+            $sale_open = $sale_active || in_array($sale_file, ['pos.php', 'history.php', 'reports.php']);
+            ?>
+            <div class="sidebar-group">
+                <button onclick="toggleGroup('saleGroup')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= $sale_open ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+                        </svg>
+                        Sales
+                    </span>
+                    <svg id="saleGroupIcon" class="w-4 h-4 transition-transform <?= $sale_open ? 'rotate-90' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+                <div id="saleGroup" class="ml-4 mt-0.5 space-y-0.5 <?= $sale_open ? '' : 'hidden' ?>">
+                    <a href="../sale/pos.php"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $sale_file === 'pos.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= $sale_file === 'pos.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        New Sale
+                    </a>
+                    <a href="../sale/history.php"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $sale_file === 'history.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= $sale_file === 'history.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        History
+                    </a>
+                    <a href="../sale/reports.php"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $sale_file === 'reports.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= $sale_file === 'reports.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        Reports
+                    </a>
+                </div>
+            </div>
         <?php endif; ?>
 
         <?php if ($role === 'cashier'): ?>
-            <a href="../pos/index.php"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= isActive('pos') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+            <a href="../sale/pos.php"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= isActive('sale') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
                 </svg>
@@ -155,3 +222,14 @@ function isActive($dirs, $file = null)
         </a>
     </div>
 </aside>
+
+<script>
+    function toggleGroup(id) {
+        const group = document.getElementById(id);
+        const icon = document.getElementById(id + 'Icon');
+        if (group) {
+            group.classList.toggle('hidden');
+            if (icon) icon.classList.toggle('rotate-90');
+        }
+    }
+</script>

@@ -235,8 +235,7 @@ $page_title = "New Purchase";
                                             <div>
                                                 <label class="form-label">Paid Amount</label>
                                                 <div class="relative">
-                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
-                                                    <input type="number" name="paid_amount" value="0" min="0" step="0.01" class="form-input pl-7 text-sm">
+                                                     <input type="number" name="paid_amount" value="0" min="0" step="0.01" class="form-input text-sm">
                                                 </div>
                                             </div>
                                         </div>
@@ -271,8 +270,7 @@ $page_title = "New Purchase";
                                             <div class="col-span-6 sm:col-span-3">
                                                 <label class="text-xs font-semibold text-gray-600 mb-1 block">Unit Cost <span class="text-red-500">*</span></label>
                                                 <div class="relative">
-                                                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
-                                                    <input type="number" name="purchase_price" id="add_price" value="0" min="0" step="0.01" class="form-input pl-7 text-sm">
+                                                     <input type="number" name="purchase_price" id="add_price" value="0" min="0" step="0.01" class="form-input text-sm">
                                                 </div>
                                             </div>
                                             <div class="col-span-12 sm:col-span-2 flex items-end">
@@ -303,8 +301,8 @@ $page_title = "New Purchase";
                                                                 <td class="text-gray-400 font-mono"><?= sprintf('%02d', $i++) ?></td>
                                                                 <td class="font-medium text-gray-800"><?= htmlspecialchars($item['product_name']) ?></td>
                                                                 <td class="text-center"><?= $item['quantity'] ?></td>
-                                                                <td class="text-center">$<?= number_format($item['price'], 2) ?></td>
-                                                                <td class="text-center font-semibold text-indigo-600">$<?= number_format($item['subtotal'], 2) ?></td>
+                                                                 <td class="text-center"><?= number_format($item['price'], 2) ?></td>
+                                                                 <td class="text-center font-semibold text-indigo-600"><?= number_format($item['subtotal'], 2) ?></td>
                                                                 <td class="text-center">
                                                                     <button type="button" onclick="removeCartItem(<?= $key ?>)" class="text-red-400 hover:text-red-600 transition p-1" title="Remove">
                                                                         <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -344,23 +342,21 @@ $page_title = "New Purchase";
                                                 <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Subtotal</label>
                                                 <div class="mt-1 flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5">
                                                     <span class="text-sm text-gray-500">Items total</span>
-                                                    <span class="text-lg font-bold text-gray-800" id="summarySubtotal">$<?= number_format($cart_subtotal, 2) ?></span>
+                                                     <span class="text-lg font-bold text-gray-800" id="summarySubtotal"><?= number_format($cart_subtotal, 2) ?></span>
                                                 </div>
                                             </div>
                                             <div>
                                                 <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Discount</label>
                                                 <div class="relative mt-1">
-                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
-                                                    <input type="number" name="discount" id="discount" value="0" min="0" step="0.01"
-                                                        class="form-input pl-7 text-sm" oninput="recalcTotals()">
+                                                     <input type="number" name="discount" id="discount" value="0" min="0" step="0.01"
+                                                         class="form-input text-sm" oninput="recalcTotals()">
                                                 </div>
                                             </div>
                                             <div>
                                                 <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax</label>
                                                 <div class="relative mt-1">
-                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
-                                                    <input type="number" name="tax" id="tax" value="0" min="0" step="0.01"
-                                                        class="form-input pl-7 text-sm" oninput="recalcTotals()">
+                                                     <input type="number" name="tax" id="tax" value="0" min="0" step="0.01"
+                                                         class="form-input text-sm" oninput="recalcTotals()">
                                                 </div>
                                             </div>
                                             <div class="border-t border-gray-200"></div>
@@ -370,7 +366,7 @@ $page_title = "New Purchase";
                                                 </div>
                                                 <div class="flex items-center justify-between bg-indigo-50 rounded-xl px-4 py-3 border border-indigo-100">
                                                     <span class="text-sm font-medium text-indigo-600">Total amount</span>
-                                                    <span class="text-2xl font-extrabold text-indigo-700" id="grandTotal">$<?= number_format($cart_subtotal, 2) ?></span>
+                                                     <span class="text-2xl font-extrabold text-indigo-700" id="grandTotal"><?= number_format($cart_subtotal, 2) ?></span>
                                                 </div>
                                             </div>
 
@@ -405,10 +401,10 @@ $page_title = "New Purchase";
             </div>
             <div class="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm mb-5">
                 <div class="flex justify-between"><span class="text-gray-500">Items</span><span class="font-semibold" id="confirmItems">0</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span class="font-semibold" id="confirmSubtotal">$0.00</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Discount</span><span class="font-semibold text-red-500" id="confirmDiscount">$0.00</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Tax</span><span class="font-semibold text-green-600" id="confirmTax">$0.00</span></div>
-                <div class="border-t border-gray-200 pt-2.5 flex justify-between"><span class="font-bold text-gray-800">Grand Total</span><span class="font-bold text-indigo-600" id="confirmTotal">$0.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span class="font-semibold" id="confirmSubtotal">0.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Discount</span><span class="font-semibold text-red-500" id="confirmDiscount">0.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Tax</span><span class="font-semibold text-green-600" id="confirmTax">0.00</span></div>
+                <div class="border-t border-gray-200 pt-2.5 flex justify-between"><span class="font-bold text-gray-800">Grand Total</span><span class="font-bold text-indigo-600" id="confirmTotal">0.00</span></div>
             </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeConfirmModal()" class="btn btn-secondary flex-1 justify-center">Cancel</button>
@@ -463,12 +459,12 @@ $page_title = "New Purchase";
         }
 
         function recalcTotals() {
-            const subtotalTxt = document.getElementById('summarySubtotal').textContent.replace(/[$,]/g, '');
+            const subtotalTxt = document.getElementById('summarySubtotal').textContent.replace(/,/g, '');
             const subtotal = parseFloat(subtotalTxt) || 0;
             const discount = parseFloat(document.getElementById('discount').value) || 0;
             const tax = parseFloat(document.getElementById('tax').value) || 0;
             const grand = Math.max(0, subtotal - discount + tax);
-            document.getElementById('grandTotal').textContent = '$' + grand.toFixed(2);
+            document.getElementById('grandTotal').textContent = grand.toFixed(2);
         }
 
         let removeKey = null;
@@ -501,15 +497,15 @@ $page_title = "New Purchase";
             const items = document.querySelectorAll('.product-table tbody tr:not(:has(td[colspan]))');
             document.getElementById('confirmItems').textContent = items.length;
 
-            const subtotalTxt = document.getElementById('summarySubtotal').textContent.replace(/[$,]/g, '');
+            const subtotalTxt = document.getElementById('summarySubtotal').textContent.replace(/,/g, '');
             const discount = document.getElementById('discount').value || '0';
             const tax = document.getElementById('tax').value || '0';
-            const grandTxt = document.getElementById('grandTotal').textContent.replace('$', '');
+            const grandTxt = document.getElementById('grandTotal').textContent;
 
-            document.getElementById('confirmSubtotal').textContent = '$' + Math.max(0, parseFloat(subtotalTxt) || 0).toFixed(2);
-            document.getElementById('confirmDiscount').textContent = '$' + Math.max(0, parseFloat(discount)).toFixed(2);
-            document.getElementById('confirmTax').textContent = '$' + Math.max(0, parseFloat(tax)).toFixed(2);
-            document.getElementById('confirmTotal').textContent = '$' + grandTxt;
+            document.getElementById('confirmSubtotal').textContent = Math.max(0, parseFloat(subtotalTxt) || 0).toFixed(2);
+            document.getElementById('confirmDiscount').textContent = Math.max(0, parseFloat(discount)).toFixed(2);
+            document.getElementById('confirmTax').textContent = Math.max(0, parseFloat(tax)).toFixed(2);
+            document.getElementById('confirmTotal').textContent = grandTxt;
 
             document.getElementById('confirmModal').classList.remove('hidden');
         }

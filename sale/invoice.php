@@ -166,7 +166,7 @@ $change = max(0, $total_paid - $grand_total);
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 w-[280px] no-print">
+        <div class="grid grid-cols-3 gap-3 w-[400px] no-print">
             <button type="button" onclick="window.print()"
                 class="bg-[#1d4ed8] text-white text-sm font-semibold py-2.5 px-4 rounded-md shadow-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.98] transition-all">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -176,8 +176,12 @@ $change = max(0, $total_paid - $grand_total);
                 </svg>
                 Print
             </button>
-            <a href="../pos/index.php"
+            <a href="history.php"
                 class="bg-[#e5e7eb] border border-gray-300/70 text-gray-900 text-sm font-semibold py-2.5 px-4 rounded-md shadow-sm text-center hover:bg-gray-200 active:scale-[0.98] transition-all block">
+                History
+            </a>
+            <a href="pos.php"
+                class="bg-[#10b981] text-white text-sm font-semibold py-2.5 px-4 rounded-md shadow-sm text-center hover:bg-[#059669] active:scale-[0.98] transition-all block">
                 New Sale
             </a>
         </div>

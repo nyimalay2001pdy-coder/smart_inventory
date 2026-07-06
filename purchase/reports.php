@@ -1,0 +1,374 @@
+<?php
+include "../includes/auth_check.php";
+requireAdmin();
+include "../config/database.php";
+include "../config/helpers.php";
+
+$date_from = $_GET['date_from'] ?? date('Y-m-01');
+$date_to = $_GET['date_to'] ?? date('Y-m-t');
+$safe_from = mysqli_real_escape_string($conn, $date_from);
+$safe_to = mysqli_real_escape_string($conn, $date_to);
+
+// Total purchases in range
+$purchase_summary = mysqli_fetch_assoc(mysqli_query($conn, "
+    SELECT COUNT(*) AS total_purchases, COALESCE(SUM(total_amount), 0) AS total_amount
+    FROM purchases WHERE purchase_date BETWEEN '$safe_from' AND '$safe_to'
+"));
+
+// Paid vs Unpaid
+$paid_summary = mysqli_query($conn, "
+    SELECT payment_status, COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS amount
+    FROM purchases WHERE purchase_date BETWEEN '$safe_from' AND '$safe_to'
+    GROUP BY payment_status
+");
+$paid_stats = ['Paid' => ['count' => 0, 'amount' => 0], 'Unpaid' => ['count' => 0, 'amount' => 0]];
+while ($ps = mysqli_fetch_assoc($paid_summary)) {
+    $paid_stats[$ps['payment_status']]['count'] = (int)$ps['count'];
+    $paid_stats[$ps['payment_status']]['amount'] = (float)$ps['amount'];
+}
+
+// Top suppliers
+$top_suppliers = mysqli_query($conn, "
+    SELECT s.supplier_name, COUNT(*) AS purchase_count, SUM(p.total_amount) AS total_spent
+    FROM purchases p
+    JOIN suppliers s ON p.supplier_id = s.id
+    WHERE p.purchase_date BETWEEN '$safe_from' AND '$safe_to'
+    GROUP BY p.supplier_id
+    ORDER BY total_spent DESC LIMIT 10
+");
+
+// Top purchased products
+$top_products = mysqli_query($conn, "
+    SELECT pr.product_name, SUM(pd.quantity) AS total_qty, SUM(pd.subtotal) AS total_cost
+    FROM purchase_details pd
+    JOIN products pr ON pd.product_id = pr.id
+    JOIN purchases p ON pd.purchase_id = p.id
+    WHERE p.purchase_date BETWEEN '$safe_from' AND '$safe_to'
+    GROUP BY pd.product_id
+    ORDER BY total_qty DESC LIMIT 10
+");
+
+// Daily purchases
+$daily_purchases = mysqli_query($conn, "
+    SELECT DATE(purchase_date) AS day, COUNT(*) AS count, SUM(total_amount) AS total
+    FROM purchases WHERE purchase_date BETWEEN '$safe_from' AND '$safe_to'
+    GROUP BY DATE(purchase_date) ORDER BY day DESC
+");
+
+// Monthly trend
+$monthly_trend = mysqli_query($conn, "
+    SELECT DATE_FORMAT(purchase_date, '%Y-%m') AS month, COUNT(*) AS count, SUM(total_amount) AS total
+    FROM purchases WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+    GROUP BY DATE_FORMAT(purchase_date, '%Y-%m') ORDER BY month ASC
+");
+
+$page_title = "Purchase Reports";
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Reports - Smart Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex min-h-screen">
+        <?php include "../includes/sidebar.php"; ?>
+        <div class="flex-1 flex flex-col">
+            <?php include "../includes/header.php"; ?>
+            <main class="p-4 lg:p-6">
+                <div class="max-w-7xl mx-auto">
+                    <!-- Header -->
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                        <div>
+                            <nav class="flex items-center gap-1.5 text-sm text-gray-400 mb-1">
+                                <a href="../dashboard/index.php" class="hover:text-indigo-600 transition-colors">Dashboard</a>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                <span class="text-gray-700 font-medium">Purchase Reports</span>
+                            </nav>
+                            <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Purchase Reports</h1>
+                            <p class="text-sm text-gray-500 mt-0.5">Analyze purchasing activity and supplier performance</p>
+                        </div>
+                        <button onclick="window.print()" class="btn btn-outline gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            Print
+                        </button>
+                    </div>
+
+                    <!-- Date Filter -->
+                    <form method="GET" class="filter-bar mb-6">
+                        <div class="min-w-[160px]">
+                            <label class="text-xs font-semibold text-gray-500 mb-1 block">From Date</label>
+                            <input type="date" name="date_from" value="<?= $date_from ?>" class="form-input text-sm">
+                        </div>
+                        <div class="min-w-[160px]">
+                            <label class="text-xs font-semibold text-gray-500 mb-1 block">To Date</label>
+                            <input type="date" name="date_to" value="<?= $date_to ?>" class="form-input text-sm">
+                        </div>
+                        <div class="flex gap-2 items-end">
+                            <button class="btn btn-primary text-sm">Generate Report</button>
+                            <a href="reports.php" class="btn btn-outline text-sm">Reset</a>
+                        </div>
+                    </form>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 font-medium">Total Purchases</p>
+                                    <p class="text-xl font-bold text-gray-900 mt-0.5"><?= number_format($purchase_summary['total_purchases']) ?></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 font-medium">Total Spent</p>
+                                    <p class="text-xl font-bold text-emerald-600 mt-0.5"><?= number_format($purchase_summary['total_amount']) ?> Ks</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 font-medium">Paid</p>
+                                    <p class="text-xl font-bold text-green-600 mt-0.5"><?= number_format($paid_stats['Paid']['amount']) ?> Ks</p>
+                                    <p class="text-[11px] text-gray-400"><?= $paid_stats['Paid']['count'] ?> purchases</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 font-medium">Unpaid</p>
+                                    <p class="text-xl font-bold text-red-600 mt-0.5"><?= number_format($paid_stats['Unpaid']['amount']) ?> Ks</p>
+                                    <p class="text-[11px] text-gray-400"><?= $paid_stats['Unpaid']['count'] ?> purchases</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                                    Monthly Purchase Trend
+                                </h2>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="monthlyChart" height="140"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                    Top Suppliers
+                                </h2>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="supplierChart" height="140"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Purchased Products -->
+                    <div class="card mb-6">
+                        <div class="card-header">
+                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                Top Purchased Products
+                            </h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Product</th>
+                                        <th class="text-center">Qty Purchased</th>
+                                        <th class="text-right">Total Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $tp_count = 1; while ($tp = mysqli_fetch_assoc($top_products)): ?>
+                                    <tr>
+                                        <td class="text-gray-400 font-mono"><?= $tp_count++ ?></td>
+                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($tp['product_name']) ?></td>
+                                        <td class="text-center font-semibold"><?= number_format($tp['total_qty']) ?></td>
+                                        <td class="text-right font-bold text-emerald-600"><?= number_format($tp['total_cost']) ?> Ks</td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top Suppliers Table -->
+                    <div class="card mb-6">
+                        <div class="card-header">
+                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                Supplier Performance
+                            </h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Supplier</th>
+                                        <th class="text-center">Purchases</th>
+                                        <th class="text-right">Total Spent</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $ts_count = 1; while ($ts = mysqli_fetch_assoc($top_suppliers)): ?>
+                                    <tr>
+                                        <td class="text-gray-400 font-mono"><?= $ts_count++ ?></td>
+                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($ts['supplier_name']) ?></td>
+                                        <td class="text-center"><?= $ts['purchase_count'] ?></td>
+                                        <td class="text-right font-bold text-emerald-600"><?= number_format($ts['total_spent']) ?> Ks</td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Daily Purchases -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                Daily Purchases
+                            </h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th class="text-center">Purchases</th>
+                                        <th class="text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php while ($dp = mysqli_fetch_assoc($daily_purchases)): ?>
+                                    <tr>
+                                        <td class="font-semibold"><?= date('d M Y (D)', strtotime($dp['day'])) ?></td>
+                                        <td class="text-center"><?= $dp['count'] ?></td>
+                                        <td class="text-right font-bold text-emerald-600"><?= number_format($dp['total']) ?> Ks</td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <?php include "../includes/toast.php"; ?>
+    <?php include "../includes/footer.php"; ?>
+
+    <script>
+    <?php
+    $m_labels = [];
+    $m_values = [];
+    mysqli_data_seek($monthly_trend, 0);
+    while ($m = mysqli_fetch_assoc($monthly_trend)) {
+        $m_labels[] = date('M Y', strtotime($m['month'] . '-01'));
+        $m_values[] = (float)$m['total'];
+    }
+    ?>
+    // Monthly Trend Chart
+    const mCtx = document.getElementById('monthlyChart');
+    if (mCtx) {
+        new Chart(mCtx, {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($m_labels) ?>,
+                datasets: [{
+                    label: 'Purchase Amount (Ks)',
+                    data: <?= json_encode($m_values) ?>,
+                    backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                    borderColor: '#6366f1',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    maxBarThickness: 40,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (ctx) => ctx.parsed.y.toLocaleString() + ' Ks' } }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString() }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    <?php
+    $s_labels = [];
+    $s_values = [];
+    mysqli_data_seek($top_suppliers, 0);
+    while ($s = mysqli_fetch_assoc($top_suppliers)) {
+        $s_labels[] = $s['supplier_name'];
+        $s_values[] = (float)$s['total_spent'];
+    }
+    ?>
+    // Supplier Chart
+    const sCtx = document.getElementById('supplierChart');
+    if (sCtx) {
+        new Chart(sCtx, {
+            type: 'doughnut',
+            data: {
+                labels: <?= json_encode($s_labels) ?>,
+                datasets: [{
+                    data: <?= json_encode($s_values) ?>,
+                    backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#14b8a6', '#64748b'],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } },
+                    tooltip: { callbacks: { label: (ctx) => ctx.label + ': ' + ctx.parsed.toLocaleString() + ' Ks' } }
+                }
+            }
+        });
+    }
+    </script>
+</body>
+</html>

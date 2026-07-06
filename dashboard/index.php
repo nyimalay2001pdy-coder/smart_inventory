@@ -43,7 +43,7 @@ if ($role === 'admin') {
     $top_labels = []; $top_qty = [];
     while ($tp = mysqli_fetch_assoc($top_products)) { $top_labels[] = $tp['product_name']; $top_qty[] = (int)$tp['qty']; }
 
-    $recent_sales = mysqli_query($conn, "SELECT s.*, u.name AS cashier FROM sales s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC LIMIT 10");
+    $recent_sales = mysqli_query($conn, "SELECT s.*, u.name AS cashier FROM sales s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC LIMIT 5");
 
     // Purchase chart (monthly)
     $purchase_monthly = mysqli_query($conn, "SELECT DATE_FORMAT(purchase_date, '%Y-%m') AS month, COALESCE(SUM(total_amount), 0) AS total FROM purchases WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) GROUP BY DATE_FORMAT(purchase_date, '%Y-%m') ORDER BY month ASC");
@@ -206,7 +206,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '') {
     <div class="lg:col-span-2 card fade-in stagger-1">
         <div class="card-header">
             <h2 class="text-base font-bold text-gray-900">Recent Sales</h2>
-            <a href="../sale/index.php?tab=history" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">View All →</a>
+            <a href="../sale/history.php" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">View All →</a>
         </div>
         <div class="card-body p-0">
             <?php if (mysqli_num_rows($recent_sales) > 0): ?>
@@ -349,7 +349,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '') {
         <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg></div>
         <div><p class="font-semibold text-gray-900 text-sm">New Purchase</p><p class="text-xs text-gray-500">Stock in products</p></div>
     </a>
-    <a href="../sale/index.php" class="card fade-in stagger-2 p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
+    <a href="../sale/pos.php" class="card fade-in stagger-2 p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
         <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg></div>
         <div><p class="font-semibold text-gray-900 text-sm">New Sale</p><p class="text-xs text-gray-500">Create transaction</p></div>
     </a>
@@ -510,7 +510,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '') {
             <h2 class="text-lg font-bold text-gray-900">Point of Sale</h2>
             <p class="text-sm text-gray-500">Start a new sale or view transaction history</p>
         </div>
-        <a href="../pos/index.php" class="btn btn-primary btn-lg px-8">
+        <a href="../sale/pos.php" class="btn btn-primary btn-lg px-8">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
             Open POS
         </a>
@@ -521,7 +521,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '') {
 <div class="card fade-in">
     <div class="card-header">
         <h2 class="text-base font-bold text-gray-900">Recent Sales</h2>
-        <a href="../sale/index.php?tab=history" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">View All →</a>
+        <a href="../sale/history.php" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">View All →</a>
     </div>
     <div class="card-body p-0">
         <?php if (mysqli_num_rows($recent_sales) > 0): ?>
