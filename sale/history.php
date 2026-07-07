@@ -2,8 +2,6 @@
 include "../includes/auth_check.php";
 include "../config/database.php";
 include "../config/helpers.php";
-include "../includes/header.php";
-
 if (!isAdmin() && !isStaff()) {
     header("Location: ../dashboard/index.php");
     exit;
@@ -96,10 +94,16 @@ $page_title = "Sales History";
                             <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Sales History</h1>
                             <p class="text-sm text-gray-500 mt-0.5">View and manage all completed sales</p>
                         </div>
-                        <a href="pos.php" class="btn btn-primary gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                            New Sale
-                        </a>
+                        <div class="flex gap-2">
+                            <button onclick="exportExcel()" class="btn btn-outline gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Export Excel
+                            </button>
+                            <a href="pos.php" class="btn btn-primary gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                New Sale
+                            </a>
+                        </div>
                     </div>
 
                     <?php if (isset($_GET['success'])): ?>
@@ -303,6 +307,32 @@ $page_title = "Sales History";
     }
     function closeDeleteModal() {
         document.getElementById('deleteModal').classList.add('hidden');
+    }
+
+    function exportExcel() {
+        const rows = [];
+        rows.push(['Sales History Report']);
+        rows.push([]);
+        rows.push(['Summary']);
+        rows.push(['Total Sales', <?= $stats['total_sales'] ?>]);
+        rows.push(['Total Revenue', <?= $stats['total_revenue'] ?>]);
+        rows.push(['Average Sale', <?= $stats['total_sales'] > 0 ? round($stats['total_revenue'] / $stats['total_sales']) : 0 ?>]);
+        rows.push([]);
+        rows.push(['#', 'Invoice No', 'Date', 'Customer', 'Cashier', 'Amount', 'Payment Method']);
+        <?php
+        mysqli_data_seek($result, 0);
+        $row_num = 1;
+        while ($row = mysqli_fetch_assoc($result)):
+        ?>
+        rows.push([<?= $row_num++ ?>, '<?= addslashes($row['invoice_no']) ?>', '<?= date('d M Y', strtotime($row['sale_date'])) ?>', '<?= addslashes($row['customer_name'] ?? 'Walk-in') ?>', '<?= addslashes($row['cashier_name'] ?? 'Admin') ?>', <?= $row['grand_total'] ?>, '<?= $row['payment_method'] ?? 'Cash' ?>']);
+        <?php endwhile; ?>
+
+        const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'sales_history_<?= date('Y-m-d') ?>.csv';
+        link.click();
     }
     </script>
 </body>

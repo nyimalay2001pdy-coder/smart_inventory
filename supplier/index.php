@@ -56,6 +56,7 @@ VALUES
 
 
 
+
 // DELETE SUPPLIER
 
 
@@ -71,12 +72,16 @@ if (isset($_GET['delete'])) {
 
         "DELETE FROM suppliers WHERE id='$id'"
 
+
+
     );
 
 
 
     header("Location:index.php");
 }
+
+
 
 
 
@@ -137,6 +142,7 @@ WHERE id='$id'
 
 
 
+
 // SEARCH FILTER
 
 
@@ -156,7 +162,6 @@ if (isset($_GET['status'])) {
 
     $status = $_GET['status'];
 }
-
 
 
 
@@ -229,16 +234,33 @@ $result = mysqli_query($conn, $sql);
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-6">
-            <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center">
 
 
 
-                <div>
-                    <p class="text-gray-500">
+                    <div>
+                        <p class="text-gray-500">
 
-                        Manage your suppliers
+                            Manage your suppliers
 
-                    </p>
+                        </p>
+
+
+                    </div>
+
+
+
+
+                    <a href="add.php"
+
+                        class="bg-indigo-600 text-white px-6 py-3 rounded-xl">
+
+
+                        + Add Supplier
+
+
+                    </a>
+
 
 
                 </div>
@@ -246,733 +268,333 @@ $result = mysqli_query($conn, $sql);
 
 
 
-                <button
 
-                    onclick="openAdd()"
 
-                    class="bg-indigo-600 text-white px-6 py-3 rounded-xl">
 
 
-                    + Add Supplier
+                <!-- Search -->
 
 
-                </button>
+                <form method="GET"
 
+                    class="bg-white p-5 rounded-2xl shadow mt-8 flex gap-4">
 
 
-            </div>
 
+                    <input
 
+                        name="search"
 
+                        value="<?= $search ?>"
 
+                        placeholder="Search supplier..."
 
+                        class="flex-1 border rounded-xl p-3">
 
 
-            <!-- Search -->
 
 
-            <form method="GET"
 
-                class="bg-white p-5 rounded-2xl shadow mt-8 flex gap-4">
+                    <select
 
+                        name="status"
 
+                        class="border rounded-xl px-5">
 
-                <input
 
-                    name="search"
+                        <option value="">
 
-                    value="<?= $search ?>"
+                            All Status
 
-                    placeholder="Search supplier..."
+                        </option>
 
-                    class="flex-1 border rounded-xl p-3">
 
+                        <option value="Active">
 
+                            Active
 
+                        </option>
 
 
-                <select
+                        <option value="Inactive">
 
-                    name="status"
+                            Inactive
 
-                    class="border rounded-xl px-5">
+                        </option>
 
 
-                    <option value="">
+                    </select>
 
-                        All Status
 
-                    </option>
 
 
-                    <option value="Active">
 
-                        Active
+                    <button
 
-                    </option>
+                        class="bg-indigo-600 text-white px-6 rounded-xl">
 
 
-                    <option value="Inactive">
+                        Search
 
-                        Inactive
 
-                    </option>
+                    </button>
 
 
-                </select>
 
+                    <a href="index.php"
 
+                        class="border px-6 py-3 rounded-xl">
 
 
-                <button
+                        Reset
 
-                    class="bg-indigo-600 text-white px-6 rounded-xl">
 
+                    </a>
 
-                    Search
 
 
-                </button>
+                </form>
 
 
 
-                <a href="index.php"
 
-                    class="border px-6 py-3 rounded-xl">
 
 
-                    Reset
 
 
-                </a>
 
 
+                <!-- Table -->
 
-            </form>
 
+                <div class="bg-white rounded-2xl shadow mt-8 p-6 overflow-x-auto">
 
 
 
+                    <table class="w-full">
 
 
 
+                        <thead>
 
-            <!-- Table -->
 
+                            <tr class="border-b text-gray-500">
 
-            <div class="bg-white rounded-2xl shadow mt-8 p-6 overflow-x-auto">
 
+                                <th class="p-4 text-left">
+                                    #
+                                </th>
 
 
-                <table class="w-full">
+                                <th class="p-4 text-left">
+                                    Supplier
+                                </th>
 
 
+                                <th class="text-left">
+                                    Contact Person
+                                </th>
 
-                    <thead>
 
+                                <th class="p-4 text-left">
+                                    Phone
+                                </th>
 
-                        <tr class="border-b text-gray-500">
 
+                                <th class="p-4 text-left">
+                                    Email
+                                </th>
 
-                            <th class="p-4 text-left">
-                                #
-                            </th>
 
+                                <th class=" text-left">
+                                    Address
+                                </th>
 
-                            <th>
-                                Supplier
-                            </th>
 
+                                <th class="p-2 text-left">
+                                    Status
+                                </th>
 
-                            <th>
-                                Phone
-                            </th>
 
-
-                            <th>
-                                Email
-                            </th>
-
-
-                            <th>
-                                Address
-                            </th>
-
-
-                            <th>
-                                Status
-                            </th>
-
-
-                            <th>
-                                Action
-                            </th>
-
-
-                        </tr>
-
-
-                    </thead>
-
-
-
-
-                    <tbody>
-
-
-
-                        <?php
-
-                        $count = 1;
-
-
-                        while ($row = mysqli_fetch_assoc($result)) {
-
-
-                        ?>
-
-
-
-                            <tr class="border-b">
-
-
-
-                                <td class="p-4">
-
-                                    <?= $count++ ?>
-
-                                </td>
-
-
-
-
-                                <td class="font-semibold">
-
-                                    🚚 <?= $row['supplier_name'] ?>
-
-                                </td>
-
-
-
-
-
-                                <td>
-
-                                    <?= $row['phone'] ?>
-
-                                </td>
-
-
-
-
-
-                                <td>
-
-                                    <?= $row['email'] ?>
-
-                                </td>
-
-
-
-
-
-                                <td>
-
-                                    <?= $row['address'] ?>
-
-                                </td>
-
-
-
-
-
-
-                                <td>
-
-
-                                    <?php if ($row['status'] == "Active") { ?>
-
-
-                                        <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full">
-
-                                            Active
-
-                                        </span>
-
-
-                                    <?php } else { ?>
-
-
-                                        <span class="bg-red-100 text-red-600 px-3 py-1 rounded-full">
-
-                                            Inactive
-
-                                        </span>
-
-
-                                    <?php } ?>
-
-
-                                </td>
-
-
-
-
-
-
-                                <td>
-
-
-                                    <button
-
-                                        onclick="openEdit(
-
-'<?= $row['id'] ?>',
-
-'<?= $row['supplier_name'] ?>',
-
-'<?= $row['phone'] ?>',
-
-'<?= $row['email'] ?>',
-
-'<?= $row['address'] ?>',
-
-'<?= $row['status'] ?>'
-
-)"
-
-                                        class="bg-blue-100 text-blue-600 px-3 py-2 rounded">
-
-
-                                        ✏
-
-                                    </button>
-
-
-
-
-
-                                    <a href="?delete=<?= $row['id'] ?>"
-
-                                        onclick="return confirm('Delete supplier?')"
-
-                                        class="bg-red-100 text-red-600 px-3 py-2 rounded ml-2">
-
-
-                                        🗑
-
-
-                                    </a>
-
-
-
-
-                                </td>
-
-
+                                <th class="p-8 text-left">
+                                    Action
+                                </th>
 
 
                             </tr>
 
 
+                        </thead>
 
-                        <?php } ?>
 
 
 
-                    </tbody>
+                        <tbody>
 
 
 
-                </table>
+                            <?php
 
+                            $count = 1;
 
 
-            </div>
+                            while ($row = mysqli_fetch_assoc($result)) {
 
-            <!-- Add Supplier Modal -->
 
-            <div id="addModal"
+                            ?>
 
-                class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
 
 
-                <div class="bg-white w-full max-w-lg p-8 rounded-2xl shadow-xl">
+                                <tr class=" border-b">
 
 
-                    <h2 class="text-2xl font-bold mb-6">
 
-                        Add Supplier
+                                    <td class="p-4">
 
-                    </h2>
+                                        <?= $count++ ?>
 
+                                    </td>
 
 
-                    <form method="POST">
 
 
-                        <input
+                                    <td class="font-semibold">
 
-                            type="text"
+                                        🚚 <?= $row['supplier_name'] ?>
 
-                            name="supplier_name"
+                                    </td>
 
-                            placeholder="Supplier Name"
 
-                            class="w-full border p-3 rounded-lg mb-4"
 
-                            required>
 
+                                    <td>
 
+                                        <?= $row['contact_person'] ?? '' ?>
 
+                                    </td>
 
-                        <input
 
-                            type="text"
 
-                            name="phone"
 
-                            placeholder="Phone Number"
+                                    <td>
 
-                            class="w-full border p-3 rounded-lg mb-4">
+                                        <?= $row['phone'] ?>
 
+                                    </td>
 
 
 
 
-                        <input
+                                    <td>
 
-                            type="email"
+                                        <?= $row['email'] ?>
 
-                            name="email"
+                                    </td>
 
-                            placeholder="Email"
 
-                            class="w-full border p-3 rounded-lg mb-4">
 
 
+                                    <td>
 
+                                        <?= $row['address'] ?>
 
+                                    </td>
 
-                        <textarea
 
-                            name="address"
 
-                            placeholder="Address"
 
-                            class="w-full border p-3 rounded-lg mb-4"></textarea>
+                                    <td>
 
 
+                                        <?php if ($row['status'] == "Active") { ?>
 
 
+                                            <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full">
 
-                        <select
+                                                Active
 
-                            name="status"
+                                            </span>
 
-                            class="w-full border p-3 rounded-lg mb-5">
 
+                                        <?php } else { ?>
 
-                            <option value="Active">
 
-                                Active
+                                            <span class="bg-red-100 text-red-600 px-3 py-1 rounded-full">
 
-                            </option>
+                                                Inactive
 
+                                            </span>
 
-                            <option value="Inactive">
 
-                                Inactive
+                                        <?php } ?>
 
-                            </option>
 
+                                    </td>
 
-                        </select>
 
 
 
+                                    <td>
 
 
+                                        <a href="edit.php?id=<?= $row['id'] ?>"
 
-                        <div class="flex justify-end gap-3">
+                                            class="bg-blue-100 text-blue-600 px-3 py-2 rounded">
 
 
-                            <button
+                                            ✏️Edit
 
-                                type="button"
 
-                                onclick="closeAdd()"
+                                        </a>
 
-                                class="bg-gray-200 px-5 py-3 rounded-lg">
 
-                                Cancel
 
-                            </button>
 
+                                        <a href="?delete=<?= $row['id'] ?>"
 
+                                            onclick="return confirm('Delete supplier?')"
 
+                                            class="bg-red-100 text-red-600 px-3 py-2 rounded ml-2">
 
-                            <button
 
-                                name="add_supplier"
+                                            🗑 Delete
 
-                                class="bg-indigo-600 text-white px-5 py-3 rounded-lg">
 
-                                Save
+                                        </a>
 
-                            </button>
 
 
+                                    </td>
 
-                        </div>
 
 
+                                </tr>
 
-                    </form>
+
+
+                            <?php } ?>
+
+
+
+                        </tbody>
+
+
+
+                    </table>
 
 
 
                 </div>
 
 
-            </div>
-            <!-- Edit Supplier Modal -->
 
+            </main>
 
-            <div id="editModal"
-
-                class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-
-
-                <div class="bg-white w-full max-w-lg p-8 rounded-2xl">
-
-
-
-                    <h2 class="text-2xl font-bold mb-6">
-
-                        Edit Supplier
-
-                    </h2>
-
-
-
-
-
-                    <form method="POST">
-
-
-
-                        <input type="hidden"
-
-                            id="edit_id"
-
-                            name="id">
-
-
-
-
-
-                        <input
-
-                            id="edit_name"
-
-                            name="supplier_name"
-
-                            class="w-full border p-3 rounded-lg mb-4">
-
-
-
-
-
-
-                        <input
-
-                            id="edit_phone"
-
-                            name="phone"
-
-                            class="w-full border p-3 rounded-lg mb-4">
-
-
-
-
-
-
-                        <input
-
-                            id="edit_email"
-
-                            name="email"
-
-                            class="w-full border p-3 rounded-lg mb-4">
-
-
-
-
-
-                        <textarea
-
-                            id="edit_address"
-
-                            name="address"
-
-                            class="w-full border p-3 rounded-lg mb-4"></textarea>
-
-
-
-
-
-
-                        <select
-
-                            id="edit_status"
-
-                            name="status"
-
-                            class="w-full border p-3 rounded-lg mb-5">
-
-
-                            <option value="Active">
-
-                                Active
-
-                            </option>
-
-
-                            <option value="Inactive">
-
-                                Inactive
-
-                            </option>
-
-
-                        </select>
-
-
-
-
-
-
-
-                        <div class="flex justify-end gap-3">
-
-
-                            <button
-
-                                type="button"
-
-                                onclick="closeEdit()"
-
-                                class="bg-gray-200 px-5 py-3 rounded-lg">
-
-                                Cancel
-
-                            </button>
-
-
-
-
-                            <button
-
-                                name="update_supplier"
-
-                                class="bg-indigo-600 text-white px-5 py-3 rounded-lg">
-
-                                Update
-
-                            </button>
-
-
-
-                        </div>
-
-
-
-
-                    </form>
-
-
-                </div>
-
-
-            </div>
-
-
-
-
-        </main>
-        <script>
-            function openAdd() {
-
-                document.getElementById("addModal")
-                    .classList.remove("hidden");
-
-            }
-
-
-
-            function closeAdd() {
-
-                document.getElementById("addModal")
-                    .classList.add("hidden");
-
-            }
-
-
-
-
-
-
-            function openEdit(id, name, phone, email, address, status) {
-
-
-                document.getElementById("editModal")
-                    .classList.remove("hidden");
-
-
-
-                document.getElementById("edit_id").value = id;
-
-
-                document.getElementById("edit_name").value = name;
-
-
-                document.getElementById("edit_phone").value = phone;
-
-
-                document.getElementById("edit_email").value = email;
-
-
-                document.getElementById("edit_address").value = address;
-
-
-                document.getElementById("edit_status").value = status;
-
-
-
-            }
-
-
-
-
-
-
-            function closeEdit() {
-
-
-                document.getElementById("editModal")
-                    .classList.add("hidden");
-
-
-            }
-        </script>
-
-
+        </div>
     </div>
-</div>
-<?php include "../includes/toast.php"; ?>
-<?php include "../includes/modal.php"; ?>
-<?php include "../includes/footer.php"; ?>
+    <?php include "../includes/toast.php"; ?>
+    <?php include "../includes/modal.php"; ?>
+    <?php include "../includes/footer.php"; ?>
 </body>
 
 </html>

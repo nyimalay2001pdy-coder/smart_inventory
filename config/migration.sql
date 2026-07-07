@@ -179,6 +179,9 @@ CREATE TABLE IF NOT EXISTS payments (
     FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Add contact_person to suppliers
+ALTER TABLE suppliers ADD COLUMN contact_person VARCHAR(150) DEFAULT NULL AFTER supplier_name;
+
 -- Legacy tables for backward compatibility
 CREATE TABLE IF NOT EXISTS stock_in LIKE purchases;
 CREATE TABLE IF NOT EXISTS stock_in_details LIKE purchase_details;

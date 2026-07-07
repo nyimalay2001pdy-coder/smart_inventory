@@ -443,49 +443,9 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                             </div>
                         </div>
                     </div>
-                    <!-- Quick Actions -->
-                    <!-- <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <a href="../product/index.php" class="card fade-in p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
-                            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg></div>
-                            <div>
-                                <p class="font-semibold text-gray-900 text-sm">Add Product</p>
-                                <p class="text-xs text-gray-500">New inventory item</p>
-                            </div>
-                        </a>
-                        <a href="../purchase/index.php" class="card fade-in stagger-1 p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
-                            <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg></div>
-                            <div>
-                                <p class="font-semibold text-gray-900 text-sm">New Purchase</p>
-                                <p class="text-xs text-gray-500">Stock in products</p>
-                            </div>
-                        </a>
-                        <a href="../sale/pos.php" class="card fade-in stagger-2 p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
-                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg></div>
-                            <div>
-                                <p class="font-semibold text-gray-900 text-sm">New Sale</p>
-                                <p class="text-xs text-gray-500">Create transaction</p>
-                            </div>
-                        </a>
-                        <a href="../reports/index.php" class="card fade-in stagger-3 p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
-                            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg></div>
-                            <div>
-                                <p class="font-semibold text-gray-900 text-sm">Reports</p>
-                                <p class="text-xs text-gray-500">View analytics</p>
-                            </div>
-                        </a>
-                    </div> -->
-
                 <?php elseif ($role === 'staff'): ?>
                     <!-- ═══════════════════════ STAFF DASHBOARD ═════════════════════════ -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>',
                             'bg-indigo-100',
