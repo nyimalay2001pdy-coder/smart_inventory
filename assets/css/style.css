@@ -336,10 +336,13 @@ textarea.form-input {
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     z-index: 80;
+    padding: 1rem;
+}
+
+.modal-overlay:not(.hidden) {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
 }
 
 .modal-content {

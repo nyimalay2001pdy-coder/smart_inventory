@@ -6,13 +6,19 @@ $role = $_SESSION['role'] ?? 'staff';
 $current_dir = basename(dirname($_SERVER['PHP_SELF']));
 $file = basename($_SERVER['PHP_SELF']);
 
-function isActive($dirs, $file = null)
+/**
+ * Check if the current page matches a menu item.
+ * - isActive('sale')                   → true when current_dir is 'sale'
+ * - isActive('purchase', 'add.php')    → true ONLY when dir is 'purchase' AND file is 'add.php'
+ */
+function isActive($dirs, $check_file = null)
 {
     global $current_dir, $file;
     $dirs = (array)$dirs;
-    if (in_array($current_dir, $dirs)) return true;
-    if ($file && in_array($file, (array)$file)) return true;
-    return false;
+    if ($check_file) {
+        return in_array($current_dir, $dirs) && $file === $check_file;
+    }
+    return in_array($current_dir, $dirs);
 }
 ?>
 <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed lg:sticky top-0 z-40 -translate-x-full lg:translate-x-0 sidebar-transition text-gray-400 font-sm">
@@ -42,12 +48,7 @@ function isActive($dirs, $file = null)
         <?php endif; ?>
 
         <?php if ($role === 'admin' || $role === 'staff'): ?>
-            <?php
-            $inv_active = isActive(['product', 'category', 'categories', 'supplier', 'suppliers']);
-            $inv_file = basename($_SERVER['PHP_SELF']);
-            $inv_dir = basename(dirname($_SERVER['PHP_SELF']));
-            $inv_open = $inv_active || ($inv_file === 'index.php' && in_array($inv_dir, ['product', 'categories', 'supplier']));
-            ?>
+            <?php $inv_open = isActive(['product', 'category', 'categories', 'supplier', 'suppliers']); ?>
             <div class="sidebar-group">
                 <button onclick="toggleGroup('inventoryGroup')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= $inv_open ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
                     <span class="flex items-center gap-3">
@@ -83,11 +84,7 @@ function isActive($dirs, $file = null)
         <?php endif; ?>
 
         <?php if ($role === 'admin'): ?>
-            <?php
-            $purchase_active = isActive(['purchase', 'stock-in']);
-            $purchase_file = basename($_SERVER['PHP_SELF']);
-            $purchase_open = $purchase_active || in_array($purchase_file, ['add.php', 'reports.php']);
-            ?>
+            <?php $purchase_open = isActive(['purchase', 'stock-in']); ?>
             <div class="sidebar-group">
                 <button onclick="toggleGroup('purchaseGroup')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= $purchase_open ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
                     <span class="flex items-center gap-3">
@@ -102,18 +99,18 @@ function isActive($dirs, $file = null)
                 </button>
                 <div id="purchaseGroup" class="ml-4 mt-0.5 space-y-0.5 <?= $purchase_open ? '' : 'hidden' ?>">
                     <a href="../purchase/add.php"
-                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $purchase_file === 'add.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                        <span class="w-1.5 h-1.5 rounded-full <?= $purchase_file === 'add.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('purchase', 'add.php') ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= isActive('purchase', 'add.php') ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
                         New Purchase
                     </a>
                     <a href="../purchase/index.php"
-                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $purchase_file === 'index.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                        <span class="w-1.5 h-1.5 rounded-full <?= $purchase_file === 'index.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('purchase', 'index.php') ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= isActive('purchase', 'index.php') ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
                         History
                     </a>
                     <a href="../purchase/reports.php"
-                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $purchase_file === 'reports.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                        <span class="w-1.5 h-1.5 rounded-full <?= $purchase_file === 'reports.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('purchase', 'reports.php') ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= isActive('purchase', 'reports.php') ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
                         Reports
                     </a>
                 </div>
@@ -121,11 +118,7 @@ function isActive($dirs, $file = null)
         <?php endif; ?>
 
         <?php if ($role === 'admin' || $role === 'staff'): ?>
-            <?php
-            $sale_active = isActive('sale');
-            $sale_file = basename($_SERVER['PHP_SELF']);
-            $sale_open = $sale_active || in_array($sale_file, ['pos.php', 'history.php', 'reports.php']);
-            ?>
+            <?php $sale_open = isActive('sale'); ?>
             <div class="sidebar-group">
                 <button onclick="toggleGroup('saleGroup')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all <?= $sale_open ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
                     <span class="flex items-center gap-3">
@@ -140,18 +133,18 @@ function isActive($dirs, $file = null)
                 </button>
                 <div id="saleGroup" class="ml-4 mt-0.5 space-y-0.5 <?= $sale_open ? '' : 'hidden' ?>">
                     <a href="../sale/pos.php"
-                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $sale_file === 'pos.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                        <span class="w-1.5 h-1.5 rounded-full <?= $sale_file === 'pos.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('sale', 'pos.php') ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= isActive('sale', 'pos.php') ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
                         New Sale
                     </a>
                     <a href="../sale/history.php"
-                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $sale_file === 'history.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                        <span class="w-1.5 h-1.5 rounded-full <?= $sale_file === 'history.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('sale', 'history.php') ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= isActive('sale', 'history.php') ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
                         History
                     </a>
                     <a href="../sale/reports.php"
-                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= $sale_file === 'reports.php' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
-                        <span class="w-1.5 h-1.5 rounded-full <?= $sale_file === 'reports.php' ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('sale', 'reports.php') ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full <?= isActive('sale', 'reports.php') ? 'bg-indigo-500' : 'bg-gray-400' ?>"></span>
                         Reports
                     </a>
                 </div>

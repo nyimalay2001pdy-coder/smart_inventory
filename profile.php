@@ -27,16 +27,33 @@ if (!$user) {
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $name = trim($_POST['name'] ?? '');
+    $username = trim($_POST['username'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $errors = [];
 
     if (empty($name)) {
         $errors[] = 'Full name is required.';
     }
+    if (empty($username)) {
+        $errors[] = 'Username is required.';
+    } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
+        $errors[] = 'Username can only contain letters, numbers, and underscores.';
+    }
     if (empty($email)) {
         $errors[] = 'Email is required.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Invalid email format.';
+    }
+
+    // Check username uniqueness (exclude current user)
+    if (empty($errors) && $username !== $user['username']) {
+        $check = $conn->prepare("SELECT id FROM users WHERE username = ? AND id != ? LIMIT 1");
+        $check->bind_param("si", $username, $_SESSION['user_id']);
+        $check->execute();
+        if ($check->get_result()->num_rows > 0) {
+            $errors[] = 'Username is already taken.';
+        }
+        $check->close();
     }
 
     // Check email uniqueness (exclude current user)
@@ -79,13 +96,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     }
 
     if (empty($errors)) {
-        $update = $conn->prepare("UPDATE users SET name = ?, email = ?, profile_picture = ? WHERE id = ?");
-        $update->bind_param("sssi", $name, $email, $profile_pic, $_SESSION['user_id']);
+        $update = $conn->prepare("UPDATE users SET name = ?,  username = ?, profile_picture = ? WHERE id = ?");
+        $update->bind_param("sssi", $name, $username, $profile_pic, $_SESSION['user_id']);
         if ($update->execute()) {
             $_SESSION['name'] = $name;
-            $_SESSION['email'] = $email;
+            $_SESSION['username'] = $username;
             $user['name'] = $name;
-            $user['email'] = $email;
+            $user['username'] = $username;
             $user['profile_picture'] = $profile_pic;
             $success = 'Profile updated successfully.';
         } else {
@@ -99,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -106,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
+
 <body class="bg-gray-50">
     <div class="flex min-h-screen">
         <?php include "includes/sidebar.php"; ?>
@@ -151,17 +170,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                                         class="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 </div>
 
-                                <!-- Email -->
+                                <!-- Username -->
                                 <div>
-                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
-                                    <input type="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" required
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Username</label>
+                                    <input type="text" name="username" value="<?= htmlspecialchars($user['username']) ?>" required
                                         class="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 </div>
 
-                                <!-- Username (read-only) -->
+                                <!--Email-->
                                 <div>
-                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Username</label>
-                                    <input type="text" value="<?= htmlspecialchars($user['username']) ?>" readonly
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+                                    <input type="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" readonly
                                         class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 cursor-not-allowed">
                                 </div>
 
@@ -217,13 +236,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     </div>
 
     <?php if ($success): ?>
-    <script>showToast('success', '<?= htmlspecialchars($success, ENT_QUOTES) ?>');</script>
+        <script>
+            showToast('success', '<?= htmlspecialchars($success, ENT_QUOTES) ?>');
+        </script>
     <?php endif; ?>
     <?php if ($error): ?>
-    <script>showToast('error', '<?= htmlspecialchars($error, ENT_QUOTES) ?>');</script>
+        <script>
+            showToast('error', '<?= htmlspecialchars($error, ENT_QUOTES) ?>');
+        </script>
     <?php endif; ?>
 
     <?php include "includes/toast.php"; ?>
     <?php include "includes/footer.php"; ?>
 </body>
+
 </html>
