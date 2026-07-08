@@ -122,25 +122,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "includes/theme-init.php"; ?>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col min-w-0">
             <?php include "includes/header.php"; ?>
             <main class="p-4 lg:p-6">
                 <div class="max-w-3xl mx-auto">
-                    <h1 class="text-2xl font-bold text-gray-900 mb-6">My Profile</h1>
-
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-900">Profile Information</h2>
-                            <p class="text-xs text-gray-500 mt-0.5">Manage your personal details</p>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Profile Information</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Manage your personal details</p>
                         </div>
                         <div class="card-body">
-                            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                            <form method="POST" enctype="multipart/form-data" class="space-y-6" data-form-guard="true">
                                 <!-- Profile Picture -->
                                 <div class="flex items-center gap-6">
                                     <div class="relative">
@@ -156,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Profile Picture</label>
                                         <input type="file" name="profile_picture" accept="image/jpeg,image/png,image/gif,image/webp"
-                                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition">
+                                            class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition">
                                         <p class="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WebP. Max 2MB.</p>
                                     </div>
                                 </div>
@@ -181,21 +180,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
                                     <input type="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" readonly
-                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 cursor-not-allowed">
+                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 dark:text-gray-400 cursor-not-allowed">
                                 </div>
 
                                 <!-- Role (read-only) -->
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-1.5">Role</label>
                                     <input type="text" value="<?= ucfirst($user['role']) ?>" readonly
-                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 cursor-not-allowed">
+                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 dark:text-gray-400 cursor-not-allowed">
                                 </div>
 
                                 <!-- Account Created -->
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-1.5">Account Created</label>
                                     <input type="text" value="<?= date('F d, Y', strtotime($user['created_at'])) ?>" readonly
-                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 cursor-not-allowed">
+                                        class="w-full border rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500 dark:text-gray-400 cursor-not-allowed">
                                 </div>
 
                                 <div class="flex items-center gap-3 pt-2">
@@ -215,17 +214,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     <!-- Account Details Card -->
                     <div class="card mt-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-900">Account Details</h2>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Account Details</h2>
                         </div>
                         <div class="card-body">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="bg-gray-50 rounded-lg p-4">
-                                    <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Status</p>
-                                    <p class="text-sm font-medium text-gray-900 mt-1">Active</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">Status</p>
+                                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">Active</p>
                                 </div>
                                 <div class="bg-gray-50 rounded-lg p-4">
-                                    <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Member Since</p>
-                                    <p class="text-sm font-medium text-gray-900 mt-1"><?= date('F d, Y', strtotime($user['created_at'])) ?></p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">Member Since</p>
+                                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1"><?= date('F d, Y', strtotime($user['created_at'])) ?></p>
                                 </div>
                             </div>
                         </div>
@@ -247,6 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     <?php endif; ?>
 
     <?php include "includes/toast.php"; ?>
+    <?php include "includes/form_guard.php"; ?>
     <?php include "includes/footer.php"; ?>
 </body>
 

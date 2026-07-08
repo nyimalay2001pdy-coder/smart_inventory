@@ -45,10 +45,11 @@ if (isset($_POST['save'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
@@ -56,15 +57,12 @@ if (isset($_POST['save'])) {
             <main class="p-6">
 
                 <div class="max-w-3xl mx-auto">
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Settings</h1>
-                    <p class="text-blue-600 mb-8">Dashboard / Settings</p>
-
                     <?php if (isset($success)): ?>
                         <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6"><?= $success ?></div>
                     <?php endif; ?>
 
-                    <form method="POST" enctype="multipart/form-data" class="bg-white shadow-xl rounded-2xl p-8">
-                        <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Shop Information</h2>
+                    <form method="POST" enctype="multipart/form-data" class="bg-white shadow-xl rounded-2xl p-8" data-form-guard="true">
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 border-b pb-2">Shop Information</h2>
                         <div class="grid grid-cols-2 gap-5">
                             <div>
                                 <label class="font-semibold">Shop Name</label>
@@ -82,7 +80,7 @@ if (isset($_POST['save'])) {
                             </div>
                         </div>
 
-                        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-8 border-b pb-2">Contact</h2>
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 mt-8 border-b pb-2">Contact</h2>
                         <div class="grid grid-cols-2 gap-5">
                             <div>
                                 <label class="font-semibold">Phone</label>
@@ -98,7 +96,7 @@ if (isset($_POST['save'])) {
                             <textarea name="address" rows="3" class="w-full border rounded-lg p-3 mt-2" placeholder="Address"><?= $setting['address'] ?? '' ?></textarea>
                         </div>
 
-                        <h2 class="text-lg font-bold text-gray-800 mb-4 mt-8 border-b pb-2">Regional</h2>
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 mt-8 border-b pb-2">Regional</h2>
                         <div class="grid grid-cols-2 gap-5">
                             <div>
                                 <label class="font-semibold">Currency</label>
@@ -122,6 +120,7 @@ if (isset($_POST['save'])) {
     </div>
     <?php include "../includes/toast.php"; ?>
     <?php include "../includes/modal.php"; ?>
+    <?php include "../includes/form_guard.php"; ?>
     <?php include "../includes/footer.php"; ?>
 </body>
 

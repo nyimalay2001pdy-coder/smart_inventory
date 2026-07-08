@@ -22,27 +22,22 @@ if (!$category) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col min-w-0">
             <?php include "../includes/header.php"; ?>
             <main class="p-4 lg:p-6">
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title"><?= htmlspecialchars($category['name']) ?></h1>
-                        <p class="page-subtitle">Category Details</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <a href="edit.php?id=<?= $category['id'] ?>" class="btn btn-primary">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            Edit
-                        </a>
-                        <a href="index.php" class="btn btn-secondary">Back to List</a>
-                    </div>
+                <div class="flex justify-end gap-3 mb-6">
+                    <a href="edit.php?id=<?= $category['id'] ?>" class="btn btn-primary">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        Edit
+                    </a>
+                    <a href="index.php" class="btn btn-secondary">Back to List</a>
                 </div>
 
                 <div class="card">

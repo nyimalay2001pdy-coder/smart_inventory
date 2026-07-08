@@ -1,6 +1,102 @@
 let deleteUrl = '';
 let deleteModalCallback = null;
 
+// ============ Theme Toggle ============
+var currentTheme = localStorage.getItem('theme') || 'dark';
+
+function updateThemeIcon() {
+    var iconLight = document.getElementById('iconLight');
+    var iconDark = document.getElementById('iconDark');
+    var iconSystem = document.getElementById('iconSystem');
+    var btn = document.getElementById('themeToggleBtn');
+
+    if (!iconLight || !iconDark || !iconSystem) return;
+
+    // Hide all icons first
+    iconLight.style.opacity = '0';
+    iconLight.style.transform = 'rotate(-90deg) scale(0.5)';
+    iconDark.style.opacity = '0';
+    iconDark.style.transform = 'rotate(-90deg) scale(0.5)';
+    iconSystem.style.opacity = '0';
+    iconSystem.style.transform = 'rotate(-90deg) scale(0.5)';
+
+    // Show the active icon with animation
+    setTimeout(function() {
+        if (currentTheme === 'light') {
+            iconLight.style.opacity = '1';
+            iconLight.style.transform = 'rotate(0) scale(1)';
+            btn.title = 'Theme: Light (click for Dark)';
+        } else if (currentTheme === 'dark') {
+            iconDark.style.opacity = '1';
+            iconDark.style.transform = 'rotate(0) scale(1)';
+            btn.title = 'Theme: Dark (click for System)';
+        } else {
+            iconSystem.style.opacity = '1';
+            iconSystem.style.transform = 'rotate(0) scale(1)';
+            btn.title = 'Theme: System (click for Light)';
+        }
+    }, 150);
+}
+
+function toggleTheme() {
+    // Cycle: dark -> light -> system -> dark
+    if (currentTheme === 'dark') {
+        currentTheme = 'light';
+    } else if (currentTheme === 'light') {
+        currentTheme = 'system';
+    } else {
+        currentTheme = 'dark';
+    }
+
+    applyTheme(currentTheme);
+    updateThemeIcon();
+
+    // Save to localStorage (persists across all pages)
+    localStorage.setItem('theme', currentTheme);
+}
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+    } else if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+    } else {
+        // System: follow OS preference
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }
+}
+
+// Initialize icon on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateThemeIcon();
+});
+
+// ============ Form Guard (Unsaved Changes) ============
+function showUnsavedModal(callback) {
+    const modal = document.getElementById('unsavedModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal._callback = callback || null;
+}
+
+function hideUnsavedModal() {
+    const modal = document.getElementById('unsavedModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function confirmLeavePage() {
+    const modal = document.getElementById('unsavedModal');
+    if (modal && modal._callback) {
+        const cb = modal._callback;
+        hideUnsavedModal();
+        cb();
+    }
+}
+
 function toggleDropdown(id) {
     const dropdown = document.getElementById(id);
     if (!dropdown) return;
@@ -59,7 +155,7 @@ function showToast(type, message) {
     };
 
     const toast = document.createElement('div');
-    toast.className = 'toast fixed top-4 right-4 z-[100] flex items-start gap-3 bg-white rounded-lg shadow-lg border px-4 py-3 min-w-[320px] max-w-md';
+    toast.className = 'toast fixed top-4 right-4 z-[100] flex items-start gap-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 px-4 py-3 min-w-[320px] max-w-md';
     toast.innerHTML = `
         <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5 ${colorMap[type]}">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,10 +163,10 @@ function showToast(type, message) {
             </svg>
         </div>
         <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-800">${titleMap[type]}</p>
-            <p class="text-xs text-gray-600 mt-0.5">${message}</p>
+            <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">${titleMap[type]}</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">${message}</p>
         </div>
-        <button onclick="closeToast(this)" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition">
+        <button onclick="closeToast(this)" class="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>

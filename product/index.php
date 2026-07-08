@@ -1,10 +1,17 @@
 <?php
 include "../includes/auth_check.php";
 include "../config/database.php";
-$page_title = "Products";
-
 $action = $_GET['action'] ?? 'list';
 $is_admin = isAdmin();
+
+$page_title = "Products";
+if ($action === 'add') {
+    $page_title = "Add Product";
+} elseif ($action === 'edit') {
+    $page_title = "Edit Product";
+} elseif ($action === 'view') {
+    $page_title = "Product Details";
+}
 
 if (!$is_admin && in_array($action, ['add', 'edit', 'delete'])) {
     header("Location: index.php");
@@ -97,10 +104,11 @@ if ($action === 'edit' && isset($_GET['id'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Product Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
@@ -129,8 +137,6 @@ if ($action === 'edit' && isset($_GET['id'])) {
                     ?>
                         <div class="min-h-screen flex items-center justify-center">
                             <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-3xl">
-                                <h1 class="text-3xl font-bold mb-2">Product Details</h1>
-                                <p class="text-gray-500 mb-8">View-only product information</p>
 
                                 <div class="grid grid-cols-2 gap-6">
                                     <div class="col-span-2 flex items-center gap-6">
@@ -140,45 +146,45 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                             <div class="w-24 h-24 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400">No Image</div>
                                         <?php endif; ?>
                                         <div>
-                                            <h2 class="text-2xl font-bold text-gray-900"><?= htmlspecialchars($view_product['product_name']) ?></h2>
-                                            <p class="text-gray-500"><?= htmlspecialchars($view_product['brand'] ?? '') ?> · <?= htmlspecialchars($view_product['unit']) ?></p>
+                                            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($view_product['product_name']) ?></h2>
+                                            <p class="text-gray-500 dark:text-gray-400"><?= htmlspecialchars($view_product['brand'] ?? '') ?> · <?= htmlspecialchars($view_product['unit']) ?></p>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">SKU</label>
-                                        <p class="text-gray-900 font-mono mt-1"><?= htmlspecialchars($view_product['sku']) ?></p>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">SKU</label>
+                                        <p class="text-gray-900 dark:text-gray-100 font-mono mt-1"><?= htmlspecialchars($view_product['sku']) ?></p>
                                     </div>
 
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Category</label>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Category</label>
                                         <p class="mt-1"><span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm"><?= htmlspecialchars($view_product['category_name'] ?? '—') ?></span></p>
                                     </div>
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Supplier</label>
-                                        <p class="text-gray-900 mt-1"><?= htmlspecialchars($view_product['supplier_id'] ? 'ID: ' . $view_product['supplier_id'] : '—') ?></p>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Supplier</label>
+                                        <p class="text-gray-900 dark:text-gray-100 mt-1"><?= htmlspecialchars($view_product['supplier_id'] ? 'ID: ' . $view_product['supplier_id'] : '—') ?></p>
                                     </div>
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Purchase Price</label>
-                                        <p class="text-gray-900 mt-1"><?= number_format($view_product['purchase_price']) ?> Ks</p>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Purchase Price</label>
+                                        <p class="text-gray-900 dark:text-gray-100 mt-1"><?= number_format($view_product['purchase_price']) ?> Ks</p>
                                     </div>
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Selling Price</label>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Selling Price</label>
                                         <p class="text-green-600 font-bold mt-1"><?= number_format($view_product['selling_price']) ?> Ks</p>
                                     </div>
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Stock Quantity</label>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Stock Quantity</label>
                                         <p class="mt-1">
                                             <span class="<?= $vstockClass ?> px-3 py-1 rounded-full text-sm font-semibold"><?= $vstockLabel ?></span>
-                                            <span class="text-gray-500 ml-2">(<?= $vqty ?> <?= htmlspecialchars($view_product['unit']) ?>)</span>
+                                            <span class="text-gray-500 dark:text-gray-400 ml-2">(<?= $vqty ?> <?= htmlspecialchars($view_product['unit']) ?>)</span>
                                         </p>
                                     </div>
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Minimum Stock</label>
-                                        <p class="text-gray-900 mt-1"><?= $view_product['minimum_stock'] ?></p>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Minimum Stock</label>
+                                        <p class="text-gray-900 dark:text-gray-100 mt-1"><?= $view_product['minimum_stock'] ?></p>
                                     </div>
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Status</label>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Status</label>
                                         <p class="mt-1">
                                             <?php if ($view_product['status'] === 'Active'): ?>
                                                 <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">Active</span>
@@ -188,12 +194,12 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                         </p>
                                     </div>
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Created Date</label>
-                                        <p class="text-gray-900 mt-1"><?= date('d M Y', strtotime($view_product['created_at'])) ?></p>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Created Date</label>
+                                        <p class="text-gray-900 dark:text-gray-100 mt-1"><?= date('d M Y', strtotime($view_product['created_at'])) ?></p>
                                     </div>
                                     <div>
-                                        <label class="text-sm font-semibold text-gray-500">Description</label>
-                                        <p class="text-gray-900 mt-1 whitespace-pre-wrap"><?= htmlspecialchars($view_product['description'] ?? '—') ?></p>
+                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Description</label>
+                                        <p class="text-gray-900 dark:text-gray-100 mt-1 whitespace-pre-wrap"><?= htmlspecialchars($view_product['description'] ?? '—') ?></p>
                                     </div>
                                 </div>
 
@@ -212,15 +218,9 @@ if ($action === 'edit' && isset($_GET['id'])) {
                     <?php $is_edit = ($action === 'edit' && $product); ?>
                     <div class="min-h-screen flex items-center justify-center">
                         <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-3xl">
-                            <h1 class="text-3xl font-bold mb-2">
-                                <?= $is_edit ? 'Edit Product' : 'Add New Product' ?>
-                            </h1>
-                            <p class="text-gray-500 mb-8">
-                                <?= $is_edit ? 'Update product information' : 'Create product information' ?>
-                            </p>
-                            <form method="POST" enctype="multipart/form-data">
+                                <form method="POST" enctype="multipart/form-data" data-form-guard="true">
 
-                                <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Product Information</h2>
+                                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 border-b pb-2">Product Information</h2>
                                 <div class="grid grid-cols-2 gap-5">
                                     <div>
                                         <label class="font-semibold">Image</label>
@@ -275,7 +275,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                     </div>
                                 </div>
 
-                                <h2 class="text-lg font-bold text-gray-800 mb-4 mt-8 border-b pb-2">Pricing</h2>
+                                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 mt-8 border-b pb-2">Pricing</h2>
                                 <div class="grid grid-cols-3 gap-5">
                                     <div>
                                         <label class="font-semibold">Purchase Price</label>
@@ -291,7 +291,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                     </div>
                                 </div>
 
-                                <h2 class="text-lg font-bold text-gray-800 mb-4 mt-8 border-b pb-2">Inventory</h2>
+                                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 mt-8 border-b pb-2">Inventory</h2>
                                 <div class="grid grid-cols-2 gap-5">
                                     <div>
                                         <label class="font-semibold">Supplier</label>
@@ -322,7 +322,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                     <?php endif; ?>
                                 </div>
 
-                                <h2 class="text-lg font-bold text-gray-800 mb-4 mt-8 border-b pb-2">Description</h2>
+                                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 mt-8 border-b pb-2">Description</h2>
                                 <textarea name="description" rows="4" class="w-full border rounded-lg p-3 mt-2" placeholder="Enter product description..."><?= $is_edit ? $product['description'] : '' ?></textarea>
 
                                 <div class="flex justify-end gap-4 mt-8">
@@ -335,16 +335,16 @@ if ($action === 'edit' && isset($_GET['id'])) {
                         </div>
                     </div>
 
-                    <script>
-                        function calcProfit() {
-                            var purchase = parseFloat(document.getElementById('purchase_price').value) || 0;
-                            var selling = parseFloat(document.getElementById('selling_price').value) || 0;
-                            document.getElementById('profit').value = (selling - purchase).toFixed(2);
-                        }
-                        <?php if ($is_edit): ?>
-                            calcProfit();
-                        <?php endif; ?>
-                    </script>
+    <script>
+        function calcProfit() {
+            var purchase = parseFloat(document.getElementById('purchase_price').value) || 0;
+            var selling = parseFloat(document.getElementById('selling_price').value) || 0;
+            document.getElementById('profit').value = (selling - purchase).toFixed(2);
+        }
+        <?php if ($is_edit): ?>
+            calcProfit();
+        <?php endif; ?>
+    </script>
 
                 <?php else: ?>
 
@@ -377,17 +377,13 @@ WHERE 1=1
                     $total_quantity = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(quantity) AS total FROM products"));
                     ?>
 
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <h1 class="text-4xl font-bold text-gray-800">Product Management</h1>
-                            <p class="text-blue-600 mt-2">Dashboard / Products</p>
-                        </div>
+                    <div class="flex justify-end mb-6">
                         <?php if ($is_admin) { ?>
                             <a href="?action=add" class="bg-indigo-600 text-white px-6 py-3 rounded-xl">＋ Add Product</a>
                         <?php } ?>
                     </div>
 
-                    <form method="GET" class="bg-white p-5 rounded-2xl shadow mt-8 flex gap-4">
+                    <form method="GET" class="bg-white p-5 rounded-2xl shadow mb-6 flex gap-4">
                         <input type="text" name="search" value="<?= $_GET['search'] ?? '' ?>" class="border rounded-xl px-5 py-3 flex-1" placeholder="Search product name, SKU...">
                         <select name="category" class="border rounded-xl px-5 py-3">
                             <option value="">All Categories</option>
@@ -409,22 +405,22 @@ WHERE 1=1
 
                     <div class="grid grid-cols-4 gap-6 mt-8">
                         <div class="bg-white p-6 rounded-2xl shadow">
-                            <p class="text-gray-500">Total Products</p>
+                            <p class="text-gray-500 dark:text-gray-400">Total Products</p>
                             <h2 class="text-3xl font-bold mt-2"><?= $total_product['total']; ?></h2>
                             <p class="text-sm text-gray-400">All product items</p>
                         </div>
                         <div class="bg-white p-6 rounded-2xl shadow">
-                            <p class="text-gray-500">Active Products</p>
+                            <p class="text-gray-500 dark:text-gray-400">Active Products</p>
                             <h2 class="text-3xl font-bold text-green-600 mt-2"><?= $active_product['total']; ?></h2>
                             <p class="text-sm text-gray-400">Currently active</p>
                         </div>
                         <div class="bg-white p-6 rounded-2xl shadow">
-                            <p class="text-gray-500">Inactive Products</p>
+                            <p class="text-gray-500 dark:text-gray-400">Inactive Products</p>
                             <h2 class="text-3xl font-bold text-red-500 mt-2"><?= $inactive_product['total']; ?></h2>
                             <p class="text-sm text-gray-400">Currently inactive</p>
                         </div>
                         <div class="bg-white p-6 rounded-2xl shadow">
-                            <p class="text-gray-500">Total Quantity</p>
+                            <p class="text-gray-500 dark:text-gray-400">Total Quantity</p>
                             <h2 class="text-3xl font-bold text-blue-600 mt-2"><?= $total_quantity['total'] ?? 0; ?></h2>
                             <p class="text-sm text-gray-400">In stock</p>
                         </div>
@@ -434,7 +430,7 @@ WHERE 1=1
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead>
-                                    <tr class="bg-gray-50 border-b text-left text-gray-500 uppercase text-xs tracking-wider">
+                                    <tr class="bg-gray-50 border-b text-left text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wider">
                                         <th class="px-4 py-3 w-12">#</th>
                                         <th class="px-4 py-3 w-16">Image</th>
                                         <th class="px-4 py-3">Product Name</th>
@@ -462,7 +458,7 @@ WHERE 1=1
                                         }
                                     ?>
                                         <tr class="border-b hover:bg-gray-50 transition-colors">
-                                            <td class="px-4 py-3 text-gray-500"><?= $count++ ?></td>
+                                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400"><?= $count++ ?></td>
                                             <td class="px-4 py-3">
                                                 <?php if ($row['image']): ?>
                                                     <img src="../img/<?= htmlspecialchars($row['image']) ?>" class="w-10 h-10 rounded-lg object-cover" alt="Product">
@@ -471,19 +467,19 @@ WHERE 1=1
                                                 <?php endif; ?>
                                             </td>
                                             <td class="px-4 py-3">
-                                                <div class="font-semibold text-gray-900"><?= htmlspecialchars($row['product_name']) ?></div>
+                                                <div class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['product_name']) ?></div>
                                                 <p class="text-xs text-gray-400"><?= htmlspecialchars($row['unit']) ?></p>
                                             </td>
-                                            <td class="px-4 py-3 text-gray-600 font-mono text-xs"><?= htmlspecialchars($row['sku']) ?></td>
+                                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400 font-mono text-xs"><?= htmlspecialchars($row['sku']) ?></td>
                                             <td class="px-4 py-3">
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"><?= htmlspecialchars($row['name']) ?></span>
                                             </td>
-                                            <td class="px-4 py-3 text-right text-gray-700"><?= number_format($row['purchase_price']) ?> Ks</td>
+                                            <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300"><?= number_format($row['purchase_price']) ?> Ks</td>
                                             <td class="px-4 py-3 text-right font-bold text-green-600"><?= number_format($row['selling_price']) ?> Ks</td>
                                             <td class="px-4 py-3 text-center">
                                                 <div class="flex flex-col items-center gap-1">
                                                     <?= $stockBadge ?>
-                                                    <span class="text-xs text-gray-500"><?= $qty ?> <?= htmlspecialchars($row['unit']) ?></span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400"><?= $qty ?> <?= htmlspecialchars($row['unit']) ?></span>
                                                 </div>
                                             </td>
                                             <td class="px-4 py-3 text-center">
@@ -493,7 +489,7 @@ WHERE 1=1
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td class="px-4 py-3 text-center text-gray-500 text-xs">
+                                            <td class="px-4 py-3 text-center text-gray-500 dark:text-gray-400 text-xs">
                                                 <?= date('d M Y', strtotime($row['created_at'])) ?>
                                             </td>
                                             <td class="px-4 py-3 text-center sticky right-0 bg-white z-10">
@@ -532,5 +528,6 @@ WHERE 1=1
     </div>
     <?php include "../includes/toast.php"; ?>
     <?php include "../includes/modal.php"; ?>
+    <?php include "../includes/form_guard.php"; ?>
     <?php include "../includes/footer.php"; ?>
 </body>

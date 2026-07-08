@@ -71,6 +71,7 @@ $page_title = "Purchase Reports";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Purchase Reports - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
@@ -78,7 +79,7 @@ $page_title = "Purchase Reports";
         .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
@@ -91,25 +92,31 @@ $page_title = "Purchase Reports";
                             <nav class="flex items-center gap-1.5 text-sm text-gray-400 mb-1">
                                 <a href="../dashboard/index.php" class="hover:text-indigo-600 transition-colors">Dashboard</a>
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                <span class="text-gray-700 font-medium">Purchase Reports</span>
+                                <span class="text-gray-700 dark:text-gray-300 font-medium">Purchase Reports</span>
                             </nav>
-                            <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Purchase Reports</h1>
-                            <p class="text-sm text-gray-500 mt-0.5">Analyze purchasing activity and supplier performance</p>
+                            <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Purchase Reports</h1>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Analyze purchasing activity and supplier performance</p>
                         </div>
-                        <button onclick="window.print()" class="btn btn-outline gap-2 text-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                            Print
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="window.print()" class="btn btn-outline gap-2 text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                Print
+                            </button>
+                            <button onclick="exportExcel()" class="btn btn-outline gap-2 text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Export Excel
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Date Filter -->
                     <form method="GET" class="filter-bar mb-6">
                         <div class="min-w-[160px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">From Date</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">From Date</label>
                             <input type="date" name="date_from" value="<?= $date_from ?>" class="form-input text-sm">
                         </div>
                         <div class="min-w-[160px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">To Date</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">To Date</label>
                             <input type="date" name="date_to" value="<?= $date_to ?>" class="form-input text-sm">
                         </div>
                         <div class="flex gap-2 items-end">
@@ -126,8 +133,8 @@ $page_title = "Purchase Reports";
                                     <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Total Purchases</p>
-                                    <p class="text-xl font-bold text-gray-900 mt-0.5"><?= number_format($purchase_summary['total_purchases']) ?></p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Purchases</p>
+                                    <p class="text-xl font-bold text-gray-900 dark:text-gray-100 mt-0.5"><?= number_format($purchase_summary['total_purchases']) ?></p>
                                 </div>
                             </div>
                         </div>
@@ -137,7 +144,7 @@ $page_title = "Purchase Reports";
                                     <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Total Spent</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Spent</p>
                                     <p class="text-xl font-bold text-emerald-600 mt-0.5"><?= number_format($purchase_summary['total_amount']) ?> Ks</p>
                                 </div>
                             </div>
@@ -148,7 +155,7 @@ $page_title = "Purchase Reports";
                                     <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Paid</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Paid</p>
                                     <p class="text-xl font-bold text-green-600 mt-0.5"><?= number_format($paid_stats['Paid']['amount']) ?> Ks</p>
                                     <p class="text-[11px] text-gray-400"><?= $paid_stats['Paid']['count'] ?> purchases</p>
                                 </div>
@@ -160,7 +167,7 @@ $page_title = "Purchase Reports";
                                     <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Unpaid</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Unpaid</p>
                                     <p class="text-xl font-bold text-red-600 mt-0.5"><?= number_format($paid_stats['Unpaid']['amount']) ?> Ks</p>
                                     <p class="text-[11px] text-gray-400"><?= $paid_stats['Unpaid']['count'] ?> purchases</p>
                                 </div>
@@ -172,7 +179,7 @@ $page_title = "Purchase Reports";
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <div class="card">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                     <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                                     Monthly Purchase Trend
                                 </h2>
@@ -183,7 +190,7 @@ $page_title = "Purchase Reports";
                         </div>
                         <div class="card">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                     <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                                     Top Suppliers
                                 </h2>
@@ -197,7 +204,7 @@ $page_title = "Purchase Reports";
                     <!-- Top Purchased Products -->
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                 Top Purchased Products
                             </h2>
@@ -216,7 +223,7 @@ $page_title = "Purchase Reports";
                                     <?php $tp_count = 1; while ($tp = mysqli_fetch_assoc($top_products)): ?>
                                     <tr>
                                         <td class="text-gray-400 font-mono"><?= $tp_count++ ?></td>
-                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($tp['product_name']) ?></td>
+                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($tp['product_name']) ?></td>
                                         <td class="text-center font-semibold"><?= number_format($tp['total_qty']) ?></td>
                                         <td class="text-right font-bold text-emerald-600"><?= number_format($tp['total_cost']) ?> Ks</td>
                                     </tr>
@@ -229,7 +236,7 @@ $page_title = "Purchase Reports";
                     <!-- Top Suppliers Table -->
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                                 Supplier Performance
                             </h2>
@@ -248,7 +255,7 @@ $page_title = "Purchase Reports";
                                     <?php $ts_count = 1; while ($ts = mysqli_fetch_assoc($top_suppliers)): ?>
                                     <tr>
                                         <td class="text-gray-400 font-mono"><?= $ts_count++ ?></td>
-                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($ts['supplier_name']) ?></td>
+                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($ts['supplier_name']) ?></td>
                                         <td class="text-center"><?= $ts['purchase_count'] ?></td>
                                         <td class="text-right font-bold text-emerald-600"><?= number_format($ts['total_spent']) ?> Ks</td>
                                     </tr>
@@ -261,7 +268,7 @@ $page_title = "Purchase Reports";
                     <!-- Daily Purchases -->
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 Daily Purchases
                             </h2>
@@ -368,6 +375,55 @@ $page_title = "Purchase Reports";
                 }
             }
         });
+    }
+
+
+    // Export Excel
+    function exportExcel() {
+        const rows = [];
+        rows.push(['Purchase Report - <?= $date_from ?> to <?= $date_to ?>']);
+        rows.push([]);
+        rows.push(['Summary']);
+        rows.push(['Total Purchases', <?= $purchase_summary['total_purchases'] ?>]);
+        rows.push(['Total Spent', <?= $purchase_summary['total_amount'] ?>]);
+        rows.push(['Paid', <?= $paid_stats['Paid']['amount'] ?>]);
+        rows.push(['Unpaid', <?= $paid_stats['Unpaid']['amount'] ?>]);
+        rows.push([]);
+        rows.push(['Top Purchased Products']);
+        rows.push(['#', 'Product', 'Qty Purchased', 'Total Cost']);
+        <?php
+        mysqli_data_seek($top_products, 0);
+        $tp_idx = 1;
+        while ($tp = mysqli_fetch_assoc($top_products)):
+        ?>
+        rows.push([<?= $tp_idx++ ?>, '<?= addslashes($tp['product_name']) ?>', <?= $tp['total_qty'] ?>, <?= $tp['total_cost'] ?>]);
+        <?php endwhile; ?>
+        rows.push([]);
+        rows.push(['Supplier Performance']);
+        rows.push(['#', 'Supplier', 'Purchases', 'Total Spent']);
+        <?php
+        mysqli_data_seek($top_suppliers, 0);
+        $ts_idx = 1;
+        while ($ts = mysqli_fetch_assoc($top_suppliers)):
+        ?>
+        rows.push([<?= $ts_idx++ ?>, '<?= addslashes($ts['supplier_name']) ?>', <?= $ts['purchase_count'] ?>, <?= $ts['total_spent'] ?>]);
+        <?php endwhile; ?>
+        rows.push([]);
+        rows.push(['Daily Purchases']);
+        rows.push(['Date', 'Purchases', 'Total']);
+        <?php
+        mysqli_data_seek($daily_purchases, 0);
+        while ($dp = mysqli_fetch_assoc($daily_purchases)):
+        ?>
+        rows.push(['<?= date('d M Y', strtotime($dp['day'])) ?>', <?= $dp['count'] ?>, <?= $dp['total'] ?>]);
+        <?php endwhile; ?>
+
+        const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'purchase_report_<?= $date_from ?>_to_<?= $date_to ?>.csv';
+        link.click();
     }
     </script>
 </body>

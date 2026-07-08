@@ -69,29 +69,18 @@ $page_title = "Purchase History";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Purchase History - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-4 lg:p-6">
                 <div class="max-w-7xl mx-auto">
-                    <!-- Header -->
                     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                        <div>
-                            <nav class="flex items-center gap-1.5 text-sm text-gray-400 mb-1">
-                                <a href="../dashboard/index.php" class="hover:text-indigo-600 transition-colors">Dashboard</a>
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                                <span class="text-gray-700 font-medium">Purchase History</span>
-                            </nav>
-                            <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Purchase History</h1>
-                            <p class="text-sm text-gray-500 mt-0.5">View and manage all completed purchases</p>
-                        </div>
                         <div class="flex gap-2">
                             <button onclick="exportExcel()" class="btn btn-outline gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -125,8 +114,8 @@ $page_title = "Purchase History";
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Total Purchases</p>
-                                    <p class="text-xl font-bold text-gray-900"><?= number_format($stats['total_purchases']) ?></p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Purchases</p>
+                                    <p class="text-xl font-bold text-gray-900 dark:text-gray-100"><?= number_format($stats['total_purchases']) ?></p>
                                 </div>
                             </div>
                         </div>
@@ -138,7 +127,7 @@ $page_title = "Purchase History";
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Total Spent</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Spent</p>
                                     <p class="text-xl font-bold text-emerald-600"><?= number_format($stats['total_spent']) ?> Ks</p>
                                 </div>
                             </div>
@@ -151,7 +140,7 @@ $page_title = "Purchase History";
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Average Purchase</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Average Purchase</p>
                                     <p class="text-xl font-bold text-blue-600">
                                         <?= $stats['total_purchases'] > 0 ? number_format($stats['total_spent'] / $stats['total_purchases']) : '0' ?> Ks
                                     </p>
@@ -166,7 +155,7 @@ $page_title = "Purchase History";
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Today's Purchases</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Today's Purchases</p>
                                     <p class="text-xl font-bold text-amber-600">
                                         <?php
                                         $today = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM purchases WHERE DATE(purchase_date) = CURDATE()"));
@@ -181,15 +170,15 @@ $page_title = "Purchase History";
                     <!-- Search & Filter -->
                     <form method="GET" class="filter-bar mb-6">
                         <div class="flex-1 min-w-[200px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">Invoice No</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Invoice No</label>
                             <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search invoice..." class="form-input text-sm">
                         </div>
                         <div class="min-w-[160px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">Supplier</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Supplier</label>
                             <input type="text" name="supplier" value="<?= htmlspecialchars($supplier) ?>" placeholder="Supplier name..." class="form-input text-sm">
                         </div>
                         <div class="min-w-[150px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">Payment</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Payment</label>
                             <select name="payment_status" class="form-input text-sm">
                                 <option value="">All Status</option>
                                 <option value="Paid" <?= $payment_status === 'Paid' ? 'selected' : '' ?>>Paid</option>
@@ -197,11 +186,11 @@ $page_title = "Purchase History";
                             </select>
                         </div>
                         <div class="min-w-[150px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">From Date</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">From Date</label>
                             <input type="date" name="date_from" value="<?= $date_from ?>" class="form-input text-sm">
                         </div>
                         <div class="min-w-[150px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">To Date</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">To Date</label>
                             <input type="date" name="date_to" value="<?= $date_to ?>" class="form-input text-sm">
                         </div>
                         <div class="flex gap-2 items-end">
@@ -230,9 +219,9 @@ $page_title = "Purchase History";
                                         while ($row = mysqli_fetch_assoc($result)): ?>
                                             <tr>
                                                 <td class="text-gray-400 font-mono"><?= $count++ ?></td>
-                                                <td class="font-semibold text-gray-900"><?= htmlspecialchars($row['invoice_no'] ?? '#' . $row['id']) ?></td>
-                                                <td class="text-gray-600"><?= date('d M Y, h:i A', strtotime($row['purchase_date'])) ?></td>
-                                                <td class="text-gray-700"><?= htmlspecialchars($row['supplier_name'] ?? '-') ?></td>
+                                                <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['invoice_no'] ?? '#' . $row['id']) ?></td>
+                                                <td class="text-gray-600 dark:text-gray-400"><?= date('d M Y, h:i A', strtotime($row['purchase_date'])) ?></td>
+                                                <td class="text-gray-700 dark:text-gray-300"><?= htmlspecialchars($row['supplier_name'] ?? '-') ?></td>
                                                 <td class="text-right font-bold text-emerald-600"><?= number_format($row['total_amount'], 2) ?> Ks</td>
                                                 <td>
                                                     <?php
@@ -296,12 +285,12 @@ $page_title = "Purchase History";
     ?>
             <div id="viewModal" class="modal-overlay">
                 <div class="bg-white rounded-2xl p-6 lg:p-8 w-full max-w-3xl relative mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-                    <button onclick="window.location.href='history.php'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+                    <button onclick="window.location.href='history.php'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:text-gray-300 text-2xl leading-none">&times;</button>
 
                     <div class="flex justify-between items-start mb-6">
                         <div>
-                            <h2 class="text-2xl font-bold text-gray-900">Purchase Invoice</h2>
-                            <p class="text-sm text-gray-500">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Purchase Invoice</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
                         </div>
                         <span class="badge <?= $view_purchase['payment_status'] === 'Paid' ? 'badge-success' : 'badge-danger' ?>">
                             <span class="badge-dot"></span><?= $view_purchase['payment_status'] ?>
@@ -312,19 +301,19 @@ $page_title = "Purchase History";
 
                     <div class="grid grid-cols-2 gap-6 mb-6">
                         <div>
-                            <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Supplier</h4>
+                            <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Supplier</h4>
                             <p class="font-medium"><?= htmlspecialchars($view_purchase['supplier_name']) ?></p>
-                            <?php if ($view_purchase['phone']): ?><p class="text-sm text-gray-500"><?= htmlspecialchars($view_purchase['phone']) ?></p><?php endif; ?>
-                            <?php if ($view_purchase['address']): ?><p class="text-sm text-gray-500"><?= htmlspecialchars($view_purchase['address']) ?></p><?php endif; ?>
+                            <?php if ($view_purchase['phone']): ?><p class="text-sm text-gray-500 dark:text-gray-400"><?= htmlspecialchars($view_purchase['phone']) ?></p><?php endif; ?>
+                            <?php if ($view_purchase['address']): ?><p class="text-sm text-gray-500 dark:text-gray-400"><?= htmlspecialchars($view_purchase['address']) ?></p><?php endif; ?>
                         </div>
                         <div>
-                            <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Details</h4>
+                            <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Details</h4>
                             <p class="text-sm">Date: <span class="font-medium"><?= $view_purchase['purchase_date'] ?></span></p>
                             <p class="text-sm">Created: <span class="font-medium"><?= $view_purchase['created_at'] ?? '-' ?></span></p>
                         </div>
                     </div>
 
-                    <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Items</h4>
+                    <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Items</h4>
                     <table class="data-table mb-6">
                         <thead>
                             <tr>
@@ -347,7 +336,7 @@ $page_title = "Purchase History";
                     </table>
 
                     <div class="text-right border-t pt-4">
-                        <p class="text-lg text-gray-500">Total Amount</p>
+                        <p class="text-lg text-gray-500 dark:text-gray-400">Total Amount</p>
                         <p class="text-3xl font-extrabold text-indigo-600"><?= number_format($view_purchase['total_amount'], 2) ?> Ks</p>
                     </div>
                 </div>
@@ -364,8 +353,8 @@ $page_title = "Purchase History";
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800">Delete Purchase</h3>
-                <p class="text-sm text-gray-500 mt-1" id="deleteInvoiceText">This purchase will be permanently deleted and stock will be rolled back.</p>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Delete Purchase</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" id="deleteInvoiceText">This purchase will be permanently deleted and stock will be rolled back.</p>
             </div>
             <div class="flex gap-3">
                 <button onclick="closeDeleteModal()" class="btn btn-secondary flex-1 justify-center">Cancel</button>

@@ -56,8 +56,9 @@ if (mysqli_num_rows($payments) > 0) {
     }
 }
 
+$discount = (float)($sale['discount'] ?? 0);
+$grand_total = (float)$sale['grand_total'];
 $tax = 0;
-$grand_total = $subtotal;
 $change = max(0, $total_paid - $grand_total);
 ?>
 <!DOCTYPE html>
@@ -67,122 +68,131 @@ $change = max(0, $total_paid - $grand_total);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice #<?= htmlspecialchars($sale['invoice_no']) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <style>
         @media print {
-            body * { visibility: hidden; }
-            #invoice-area, #invoice-area * { visibility: visible; }
-            #invoice-area { position: absolute; left: 0; top: 0; width: 100%; }
             .no-print { display: none !important; }
+            body { background: #fff !important; }
+        }
+        @media print {
+            @page { margin: 0.5in; }
         }
     </style>
 </head>
-<body class="bg-[#f4f6fc] min-h-screen flex items-center justify-center p-6 font-sans">
+<body class="bg-gray-100 dark:bg-slate-900 min-h-screen flex items-start justify-center p-4 sm:p-6 md:p-8">
 
-    <div class="w-full max-w-[440px] flex flex-col items-center">
+    <div class="w-full max-w-[480px] flex flex-col items-center">
 
-        <div id="invoice-area" class="bg-white w-full rounded-md shadow-md border border-gray-200/60 p-6 md:p-8 mb-6">
+        <!-- Invoice Card -->
+        <div id="invoice-area" class="bg-white w-full rounded-2xl shadow-lg border border-gray-200/80 overflow-hidden">
 
-            <div class="text-center mb-5">
-                <h1 class="text-lg font-bold text-gray-900 uppercase tracking-wide">Smart Inventory</h1>
-                <p class="text-xs text-gray-700 font-medium mt-0.5">Thank you for shopping with us!</p>
-                <h2 class="text-base font-bold text-gray-900 uppercase tracking-widest mt-3">Invoice</h2>
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-5 text-center">
+                <h1 class="text-lg font-bold text-white tracking-wide">Smart Inventory</h1>
+                <p class="text-indigo-200 text-xs mt-0.5">Sales Invoice</p>
             </div>
 
-            <div class="text-sm font-medium text-gray-800 space-y-1 mb-4">
-                <div class="grid grid-cols-[90px_10px_1fr]">
-                    <span>Invoice No</span><span>:</span><span class="font-semibold"><?= htmlspecialchars($sale['invoice_no']) ?></span>
-                </div>
-                <div class="grid grid-cols-[90px_10px_1fr]">
-                    <span>Date</span><span>:</span><span><?= date('d-m-Y h:i A', strtotime($sale['sale_date'])) ?></span>
-                </div>
-                <div class="grid grid-cols-[90px_10px_1fr]">
-                    <span>Cashier</span><span>:</span><span><?= htmlspecialchars($sale['cashier'] ?? 'Admin') ?></span>
-                </div>
-                <?php if (!empty($sale['customer_name'])) { ?>
-                <div class="grid grid-cols-[90px_10px_1fr]">
-                    <span>Customer</span><span>:</span><span><?= htmlspecialchars($sale['customer_name']) ?></span>
-                </div>
-                <?php } ?>
-            </div>
+            <div class="px-6 py-5">
 
-            <div class="border-t border-dashed border-gray-400 my-3"></div>
+                <!-- Info Grid -->
+                <div class="grid grid-cols-2 gap-y-2.5 gap-x-4 text-sm mb-5">
+                    <div>
+                        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Invoice No</p>
+                        <p class="font-bold text-gray-900 mt-0.5"><?= htmlspecialchars($sale['invoice_no']) ?></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Date & Time</p>
+                        <p class="font-semibold text-gray-900 mt-0.5 text-sm"><?= date('d M Y, h:i A', strtotime($sale['sale_date'])) ?></p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Cashier</p>
+                        <p class="font-semibold text-gray-900 mt-0.5"><?= htmlspecialchars($sale['cashier'] ?? 'Admin') ?></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Payment</p>
+                        <span class="inline-flex items-center gap-1.5 mt-0.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <?= htmlspecialchars($sale['payment_method'] ?? 'Cash') ?>
+                        </span>
+                    </div>
+                </div>
 
-            <div class="text-sm text-gray-800 font-medium space-y-2">
-                <div class="grid grid-cols-[1.5fr_0.5fr_1fr_1fr] text-gray-900 font-bold">
-                    <span>Item</span>
-                    <span class="text-center">Qty</span>
-                    <span class="text-right">Price</span>
-                    <span class="text-right">Total</span>
-                </div>
-                <?php foreach ($item_rows as $item) { ?>
-                <div class="grid grid-cols-[1.5fr_0.5fr_1fr_1fr]">
-                    <span><?= htmlspecialchars($item['product_name']) ?></span>
-                    <span class="text-center"><?= (int)$item['quantity'] ?></span>
-                    <span class="text-right"><?= number_format($item['selling_price'], 2) ?></span>
-                    <span class="text-right font-semibold"><?= number_format($item['subtotal'], 2) ?></span>
-                </div>
-                <?php } ?>
-            </div>
+                <!-- Divider -->
+                <div class="border-t border-dashed border-gray-300 mb-4"></div>
 
-            <div class="border-t border-dashed border-gray-400 my-4"></div>
+                <!-- Items Table -->
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            <th class="text-left pb-2.5">Product</th>
+                            <th class="text-center pb-2.5">Qty</th>
+                            <th class="text-right pb-2.5">Price</th>
+                            <th class="text-right pb-2.5">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $row_idx = 0; foreach ($item_rows as $item): $row_idx++; ?>
+                        <tr class="<?= $row_idx < count($item_rows) ? 'border-b border-gray-50' : '' ?>">
+                            <td class="py-2.5 pr-2 font-medium text-gray-800"><?= htmlspecialchars($item['product_name']) ?></td>
+                            <td class="py-2.5 text-center font-semibold text-gray-800"><?= (int)$item['quantity'] ?></td>
+                            <td class="py-2.5 text-right text-gray-600"><?= number_format((float)$item['selling_price']) ?> Ks</td>
+                            <td class="py-2.5 text-right font-semibold text-gray-800"><?= number_format((float)$item['subtotal']) ?> Ks</td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
 
-            <div class="text-sm font-medium text-gray-800 space-y-1.5 ml-auto max-w-[260px]">
-                <div class="grid grid-cols-[100px_10px_1fr] text-right">
-                    <span class="text-left">Sub Total</span><span>:</span><span class="font-semibold"><?= number_format($subtotal, 2) ?></span>
-                </div>
-                <div class="grid grid-cols-[100px_10px_1fr] text-right">
-                    <span class="text-left">Tax (0%)</span><span>:</span><span><?= number_format($tax, 2) ?></span>
-                </div>
-                <div class="border-t border-gray-300 my-1.5 col-span-3"></div>
-                <div class="grid grid-cols-[100px_10px_1fr] text-right text-gray-900 font-bold">
-                    <span class="text-left">Grand Total</span><span>:</span><span><?= number_format($grand_total, 2) ?></span>
-                </div>
-            </div>
+                <!-- Divider -->
+                <div class="border-t border-dashed border-gray-300 my-4"></div>
 
-            <?php if (count($payment_details) > 0): ?>
-            <div class="border-t border-dashed border-gray-400 my-4"></div>
-            <div class="text-sm font-medium text-gray-800 space-y-1.5 ml-auto max-w-[260px]">
-                <p class="font-bold text-gray-900 mb-1">Payment Details</p>
-                <?php foreach ($payment_details as $pmt): ?>
-                <div class="grid grid-cols-[100px_10px_1fr] text-right">
-                    <span class="text-left"><?= htmlspecialchars($pmt['payment_method']) ?></span><span>:</span><span class="font-semibold"><?= number_format($pmt['amount'], 2) ?></span>
+                <!-- Payment Summary -->
+                <div class="space-y-1.5 max-w-[260px] ml-auto">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Subtotal</span>
+                        <span class="font-semibold text-gray-800"><?= number_format($subtotal) ?> Ks</span>
+                    </div>
+                    <?php if ($discount > 0): ?>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Discount</span>
+                        <span class="font-semibold text-red-500">- <?= number_format($discount) ?> Ks</span>
+                    </div>
+                    <?php endif; ?>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Tax</span>
+                        <span class="text-gray-400">— Ks</span>
+                    </div>
+                    <div class="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
+                        <span class="text-gray-900">Grand Total</span>
+                        <span class="text-emerald-600"><?= number_format($grand_total) ?> Ks</span>
+                    </div>
+                    <div class="border-t border-dashed border-gray-300 my-2"></div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Amount Paid</span>
+                        <span class="font-semibold text-gray-800"><?= number_format($total_paid) ?> Ks</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Change</span>
+                        <span class="font-semibold <?= $change > 0 ? 'text-emerald-600' : 'text-gray-800' ?>"><?= number_format($change) ?> Ks</span>
+                    </div>
                 </div>
-                <?php endforeach; ?>
-                <div class="border-t border-gray-300 my-1.5 col-span-3"></div>
-                <div class="grid grid-cols-[100px_10px_1fr] text-right font-bold text-gray-900">
-                    <span class="text-left">Paid</span><span>:</span><span><?= number_format($total_paid, 2) ?></span>
-                </div>
-                <div class="grid grid-cols-[100px_10px_1fr] text-right font-bold">
-                    <span class="text-left">Balance</span><span>:</span><span class="<?= $change > 0 ? 'text-green-600' : 'text-gray-900' ?>"><?= number_format($change, 2) ?></span>
-                </div>
-            </div>
-            <?php endif; ?>
 
-            <div class="border-t border-dashed border-gray-400 my-4"></div>
+                <!-- Footer -->
+                <div class="border-t border-dashed border-gray-300 mt-5 pt-4 text-center">
+                    <p class="text-sm font-semibold text-gray-900">Thank you for your purchase!</p>
+                </div>
 
-            <div class="text-center text-sm font-semibold text-gray-900 flex items-center justify-center gap-1">
-                <span>Thank You!</span>
-                <span class="text-amber-500 font-normal">😊</span>
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-3 w-[400px] no-print">
-            <button type="button" onclick="window.print()"
-                class="bg-[#1d4ed8] text-white text-sm font-semibold py-2.5 px-4 rounded-md shadow-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.98] transition-all">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                    <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-                Print
+        <!-- Buttons -->
+        <div class="flex gap-3 mt-5 w-full no-print">
+            <button onclick="window.print()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-3 px-5 rounded-xl flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                Print Invoice
             </button>
-            <a href="history.php"
-                class="bg-[#e5e7eb] border border-gray-300/70 text-gray-900 text-sm font-semibold py-2.5 px-4 rounded-md shadow-sm text-center hover:bg-gray-200 active:scale-[0.98] transition-all block">
-                History
-            </a>
-            <a href="pos.php"
-                class="bg-[#10b981] text-white text-sm font-semibold py-2.5 px-4 rounded-md shadow-sm text-center hover:bg-[#059669] active:scale-[0.98] transition-all block">
-                New Sale
+            <a href="history.php" class="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold py-3 px-5 rounded-xl flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                Back
             </a>
         </div>
     </div>

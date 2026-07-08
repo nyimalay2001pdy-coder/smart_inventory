@@ -70,24 +70,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Change Password - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "includes/theme-init.php"; ?>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col min-w-0">
             <?php include "includes/header.php"; ?>
             <main class="p-4 lg:p-6">
                 <div class="max-w-2xl mx-auto">
-                    <h1 class="text-2xl font-bold text-gray-900 mb-6">Change Password</h1>
-
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-900">Update Password</h2>
-                            <p class="text-xs text-gray-500 mt-0.5">Ensure your account is using a strong password</p>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Update Password</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Ensure your account is using a strong password</p>
                         </div>
                         <div class="card-body">
-                            <form method="POST" class="space-y-5">
+                            <form method="POST" class="space-y-5" data-form-guard="true">
                                 <!-- Current Password -->
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-1.5">Current Password</label>
@@ -130,10 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                     <!-- Password Tips -->
                     <div class="card mt-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-900">Password Tips</h2>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Password Tips</h2>
                         </div>
                         <div class="card-body">
-                            <ul class="space-y-2 text-sm text-gray-600">
+                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                                 <li class="flex items-start gap-2">
                                     <svg class="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -174,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     <?php endif; ?>
 
     <?php include "includes/toast.php"; ?>
+    <?php include "includes/form_guard.php"; ?>
     <?php include "includes/footer.php"; ?>
 </body>
 </html>

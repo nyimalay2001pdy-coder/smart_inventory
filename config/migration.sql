@@ -185,3 +185,6 @@ ALTER TABLE suppliers ADD COLUMN contact_person VARCHAR(150) DEFAULT NULL AFTER 
 -- Legacy tables for backward compatibility
 CREATE TABLE IF NOT EXISTS stock_in LIKE purchases;
 CREATE TABLE IF NOT EXISTS stock_in_details LIKE purchase_details;
+
+-- Add theme preference to users
+ALTER TABLE users ADD COLUMN theme ENUM('light', 'dark', 'system') DEFAULT 'system' AFTER status;

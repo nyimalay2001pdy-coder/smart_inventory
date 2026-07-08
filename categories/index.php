@@ -48,20 +48,17 @@ if (!$result) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col min-w-0">
             <?php include "../includes/header.php"; ?>
             <main class="p-4 lg:p-6">
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title"><?= $page_title ?></h1>
-                        <p class="page-subtitle">Manage all product categories</p>
-                    </div>
+                <div class="flex justify-end mb-6">
                     <a href="add.php" class="btn btn-primary">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -101,11 +98,11 @@ if (!$result) {
                                         <?php $count = 1; ?>
                                         <?php while ($row = mysqli_fetch_assoc($result)): ?>
                                             <tr class="hover:bg-gray-50 transition-colors">
-                                                <td class="text-gray-500"><?= $count++ ?></td>
+                                                <td class="text-gray-500 dark:text-gray-400"><?= $count++ ?></td>
                                                 <td>
-                                                    <p class="font-semibold text-gray-800"><?= htmlspecialchars($row['name']) ?></p>
+                                                    <p class="font-semibold text-gray-800 dark:text-gray-200"><?= htmlspecialchars($row['name']) ?></p>
                                                 </td>
-                                                <td class="text-gray-500 text-sm max-w-xs">
+                                                <td class="text-gray-500 dark:text-gray-400 text-sm max-w-xs">
                                                     <?= !empty($row['description']) ? htmlspecialchars($row['description']) : '<span class="text-gray-300">—</span>' ?>
                                                 </td>
                                                 <td class="text-center">
@@ -115,7 +112,7 @@ if (!$result) {
                                                             <?= $pcount ?> product<?= $pcount !== 1 ? 's' : '' ?>
                                                         </span>
                                                     <?php else: ?>
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">0</span>
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 dark:text-gray-400">0</span>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="text-center">
@@ -125,7 +122,7 @@ if (!$result) {
                                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="text-center text-gray-500 text-sm">
+                                                <td class="text-center text-gray-500 dark:text-gray-400 text-sm">
                                                     <?= date('d M Y', strtotime($row['created_at'])) ?>
                                                 </td>
                                                 <td class="sticky right-0 bg-white z-10">

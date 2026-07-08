@@ -57,10 +57,11 @@ if (isset($_POST['update'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
 
@@ -70,8 +71,7 @@ if (isset($_POST['update'])) {
             <main class="p-6">
                 <div class="max-w-2xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h1 class="text-lg font-semibold text-gray-800 mb-5">Edit Supplier</h1>
-                        <form method="POST" novalidate onsubmit="return handleSave()">
+                        <form method="POST" novalidate data-form-guard="true">
 
                             <div class="mb-5">
                                 <label for="supplier_name" class="form-label">Supplier Name <span class="text-red-500">*</span></label>
@@ -126,7 +126,7 @@ if (isset($_POST['update'])) {
                                 <button type="submit" name="update" class=" btn-primary p-2 rounded-lg text-sm">
                                     Update Supplier
                                 </button>
-                                <a href="index.php" class="btn-secondary p-2 rounded-lg text-sm" onclick="return confirmCancel()">Cancel</a>
+                                <a href="index.php" class="btn-secondary p-2 rounded-lg text-sm">Cancel</a>
                             </div>
                         </form>
                     </div>
@@ -135,37 +135,7 @@ if (isset($_POST['update'])) {
         </div>
     </div>
 
-    <script>
-        let formChanged = false;
-        document.querySelectorAll('input, textarea, select').forEach(function(el) {
-            el.addEventListener('input', function() {
-                formChanged = true;
-            });
-            el.addEventListener('change', function() {
-                formChanged = true;
-            });
-        });
-
-        function confirmCancel() {
-            if (formChanged) {
-                return confirm('You have unsaved changes. Are you sure you want to leave?');
-            }
-            return true;
-        }
-
-        function handleSave() {
-            formChanged = false;
-            return true;
-        }
-
-        window.addEventListener('beforeunload', function(e) {
-            if (formChanged) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
-    </script>
-
+    <?php include "../includes/form_guard.php"; ?>
     <?php include "../includes/footer.php"; ?>
 </body>
 

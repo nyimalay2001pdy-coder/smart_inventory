@@ -118,6 +118,7 @@ $page_title = "New Purchase";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Purchase - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         .summary-sticky { position: sticky; top: 6rem; }
@@ -128,7 +129,7 @@ $page_title = "New Purchase";
         .animate-spin { animation: spin 0.8s linear infinite; }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
@@ -136,20 +137,8 @@ $page_title = "New Purchase";
 
             <main class="p-4 lg:p-6">
                 <div class="max-w-7xl mx-auto">
-                    <!-- ===== TOP HEADER WITH BREADCRUMB ===== -->
-                    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                        <div>
-                            <nav class="flex items-center gap-1.5 text-sm text-gray-400 mb-1">
-                                <a href="../dashboard/index.php" class="hover:text-indigo-600 transition-colors">Dashboard</a>
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                <a href="index.php" class="hover:text-indigo-600 transition-colors">Purchase</a>
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                <span class="text-gray-700 font-medium">New Purchase</span>
-                            </nav>
-                            <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">New Purchase</h1>
-                            <p class="text-sm text-gray-500 mt-0.5">Create a new purchase order and update stock</p>
-                        </div>
-                        <a href="index.php" class="btn btn-outline btn-sm lg:btn-sm gap-2">
+                    <div class="flex justify-end mb-6">
+                        <a href="index.php" class="btn btn-outline gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                             Back to Purchases
                         </a>
@@ -162,7 +151,7 @@ $page_title = "New Purchase";
                         </div>
                     <?php endif; ?>
 
-                    <form method="POST" id="purchaseForm" onsubmit="return handleFormSubmit(event)">
+                    <form method="POST" id="purchaseForm" onsubmit="return handleFormSubmit(event)" data-form-guard="true">
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <!-- ===== LEFT COLUMN (2/3) ===== -->
                             <div class="lg:col-span-2 space-y-6">
@@ -170,7 +159,7 @@ $page_title = "New Purchase";
                                 <!-- ===== CARD: PURCHASE INFORMATION ===== -->
                                 <div class="card">
                                     <div class="card-header">
-                                        <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                        <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                             <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                             Purchase Information
                                         </h2>
@@ -181,7 +170,7 @@ $page_title = "New Purchase";
                                             <div>
                                                 <label class="form-label">Invoice Number</label>
                                                 <input type="text" value="<?= 'INV-' . date('Ymd') . '-....' ?>" readonly
-                                                    class="form-input bg-gray-50 text-gray-500 cursor-not-allowed text-sm">
+                                                    class="form-input bg-gray-50 text-gray-500 dark:text-gray-400 cursor-not-allowed text-sm">
                                             </div>
                                             <div>
                                                 <label class="form-label">Purchase Date</label>
@@ -201,7 +190,7 @@ $page_title = "New Purchase";
                                             <div>
                                                 <label class="form-label">Staff</label>
                                                 <input type="text" value="<?= htmlspecialchars($logged_user) ?>" readonly
-                                                    class="form-input bg-gray-50 text-gray-500 cursor-not-allowed text-sm">
+                                                    class="form-input bg-gray-50 text-gray-500 dark:text-gray-400 cursor-not-allowed text-sm">
                                             </div>
                                         </div>
                                     </div>
@@ -210,7 +199,7 @@ $page_title = "New Purchase";
                                 <!-- ===== CARD: PAYMENT INFORMATION ===== -->
                                 <div class="card">
                                     <div class="card-header">
-                                        <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                        <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                             <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                                             Payment Information
                                         </h2>
@@ -245,7 +234,7 @@ $page_title = "New Purchase";
                                 <!-- ===== CARD: PRODUCT SECTION ===== -->
                                 <div class="card">
                                     <div class="card-header">
-                                        <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                        <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                             <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                             Product Items
                                         </h2>
@@ -255,7 +244,7 @@ $page_title = "New Purchase";
                                         <!-- Add Product Row -->
                                         <div class="grid grid-cols-12 gap-3 mb-5">
                                             <div class="col-span-12 sm:col-span-4">
-                                                <label class="text-xs font-semibold text-gray-600 mb-1 block">Product <span class="text-red-500">*</span></label>
+                                                <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1 block">Product <span class="text-red-500">*</span></label>
                                                 <select name="product_id" id="add_product" class="form-input text-sm" required onchange="autoFillPrice(this)">
                                                     <option value="">-- Select Product --</option>
                                                     <?php mysqli_data_seek($products, 0); while ($p = mysqli_fetch_assoc($products)) { ?>
@@ -264,11 +253,11 @@ $page_title = "New Purchase";
                                                 </select>
                                             </div>
                                             <div class="col-span-6 sm:col-span-3">
-                                                <label class="text-xs font-semibold text-gray-600 mb-1 block">Quantity <span class="text-red-500">*</span></label>
+                                                <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1 block">Quantity <span class="text-red-500">*</span></label>
                                                 <input type="number" name="quantity" id="add_qty" value="1" min="1" class="form-input text-sm">
                                             </div>
                                             <div class="col-span-6 sm:col-span-3">
-                                                <label class="text-xs font-semibold text-gray-600 mb-1 block">Unit Cost <span class="text-red-500">*</span></label>
+                                                <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1 block">Unit Cost <span class="text-red-500">*</span></label>
                                                 <div class="relative">
                                                      <input type="number" name="purchase_price" id="add_price" value="0" min="0" step="0.01" class="form-input text-sm">
                                                 </div>
@@ -285,7 +274,7 @@ $page_title = "New Purchase";
                                         <div class="overflow-x-auto -mx-1">
                                             <table class="w-full product-table">
                                                 <thead>
-                                                    <tr class="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                    <tr class="border-b border-gray-200 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                                         <th class="text-left">#</th>
                                                         <th class="text-left">Product</th>
                                                         <th class="text-center">Qty</th>
@@ -299,7 +288,7 @@ $page_title = "New Purchase";
                                                         <?php foreach ($_SESSION['cart'] as $key => $item): ?>
                                                             <tr class="border-b border-gray-100 text-sm">
                                                                 <td class="text-gray-400 font-mono"><?= sprintf('%02d', $i++) ?></td>
-                                                                <td class="font-medium text-gray-800"><?= htmlspecialchars($item['product_name']) ?></td>
+                                                                <td class="font-medium text-gray-800 dark:text-gray-200"><?= htmlspecialchars($item['product_name']) ?></td>
                                                                 <td class="text-center"><?= $item['quantity'] ?></td>
                                                                  <td class="text-center"><?= number_format($item['price'], 2) ?></td>
                                                                  <td class="text-center font-semibold text-indigo-600"><?= number_format($item['subtotal'], 2) ?></td>
@@ -332,28 +321,28 @@ $page_title = "New Purchase";
                                 <div class="summary-sticky">
                                     <div class="card">
                                         <div class="card-header">
-                                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                                 <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                                                 Purchase Summary
                                             </h2>
                                         </div>
                                         <div class="card-body space-y-4">
                                             <div>
-                                                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Subtotal</label>
+                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subtotal</label>
                                                 <div class="mt-1 flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5">
-                                                    <span class="text-sm text-gray-500">Items total</span>
-                                                     <span class="text-lg font-bold text-gray-800" id="summarySubtotal"><?= number_format($cart_subtotal, 2) ?></span>
+                                                    <span class="text-sm text-gray-500 dark:text-gray-400">Items total</span>
+                                                     <span class="text-lg font-bold text-gray-800 dark:text-gray-200" id="summarySubtotal"><?= number_format($cart_subtotal, 2) ?></span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Discount</label>
+                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Discount</label>
                                                 <div class="relative mt-1">
                                                      <input type="number" name="discount" id="discount" value="0" min="0" step="0.01"
                                                          class="form-input text-sm" oninput="recalcTotals()">
                                                 </div>
                                             </div>
                                             <div>
-                                                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax</label>
+                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tax</label>
                                                 <div class="relative mt-1">
                                                      <input type="number" name="tax" id="tax" value="0" min="0" step="0.01"
                                                          class="form-input text-sm" oninput="recalcTotals()">
@@ -362,7 +351,7 @@ $page_title = "New Purchase";
                                             <div class="border-t border-gray-200"></div>
                                             <div>
                                                 <div class="flex items-center justify-between mb-1">
-                                                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Grand Total</label>
+                                                    <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grand Total</label>
                                                 </div>
                                                 <div class="flex items-center justify-between bg-indigo-50 rounded-xl px-4 py-3 border border-indigo-100">
                                                     <span class="text-sm font-medium text-indigo-600">Total amount</span>
@@ -396,15 +385,15 @@ $page_title = "New Purchase";
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800">Confirm Purchase</h3>
-                <p class="text-sm text-gray-500 mt-1">Please review the summary before saving.</p>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Confirm Purchase</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Please review the summary before saving.</p>
             </div>
             <div class="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm mb-5">
-                <div class="flex justify-between"><span class="text-gray-500">Items</span><span class="font-semibold" id="confirmItems">0</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span class="font-semibold" id="confirmSubtotal">0.00</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Discount</span><span class="font-semibold text-red-500" id="confirmDiscount">0.00</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Tax</span><span class="font-semibold text-green-600" id="confirmTax">0.00</span></div>
-                <div class="border-t border-gray-200 pt-2.5 flex justify-between"><span class="font-bold text-gray-800">Grand Total</span><span class="font-bold text-indigo-600" id="confirmTotal">0.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Items</span><span class="font-semibold" id="confirmItems">0</span></div>
+                <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Subtotal</span><span class="font-semibold" id="confirmSubtotal">0.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Discount</span><span class="font-semibold text-red-500" id="confirmDiscount">0.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Tax</span><span class="font-semibold text-green-600" id="confirmTax">0.00</span></div>
+                <div class="border-t border-gray-200 pt-2.5 flex justify-between"><span class="font-bold text-gray-800 dark:text-gray-200">Grand Total</span><span class="font-bold text-indigo-600" id="confirmTotal">0.00</span></div>
             </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeConfirmModal()" class="btn btn-secondary flex-1 justify-center">Cancel</button>
@@ -425,8 +414,8 @@ $page_title = "New Purchase";
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800">Remove Item</h3>
-                <p class="text-sm text-gray-500 mt-1">This item will be removed from the cart.</p>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Remove Item</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">This item will be removed from the cart.</p>
             </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeRemoveModal()" class="btn btn-secondary flex-1 justify-center">Keep</button>
@@ -439,6 +428,7 @@ $page_title = "New Purchase";
     </div>
 
     <?php include "../includes/toast.php"; ?>
+    <?php include "../includes/form_guard.php"; ?>
     <?php include "../includes/footer.php"; ?>
 
     <script>

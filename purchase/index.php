@@ -124,22 +124,29 @@ $page_title = "Purchase Management";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Purchase Management - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-4 lg:p-6">
                 <div class="max-w-7xl mx-auto">
-                    <!-- Header -->
                     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                        <div>
-                            <h1 class="text-2xl lg:text-3xl font-bold text-gray-900">Purchase Management</h1>
-                            <p class="text-sm text-gray-500 mt-1">Manage supplier purchases and stock</p>
-                        </div>
+                        <form method="GET" class="flex flex-wrap items-center gap-3 flex-1">
+                            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>"
+                                placeholder="Search supplier or invoice..." class="form-input flex-1 min-w-[200px]">
+                            <select name="status" class="form-input w-auto">
+                                <option value="">All Status</option>
+                                <option value="Paid" <?= $status_filter === 'Paid' ? 'selected' : '' ?>>Paid</option>
+                                <option value="Unpaid" <?= $status_filter === 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
+                            </select>
+                            <button class="btn btn-primary">Search</button>
+                            <a href="index.php" class="btn btn-outline">Reset</a>
+                        </form>
                         <a href="add.php" class="btn btn-primary">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -147,19 +154,6 @@ $page_title = "Purchase Management";
                             New Purchase
                         </a>
                     </div>
-
-                    <!-- Search / Filter -->
-                    <form method="GET" class="filter-bar mb-6">
-                        <input type="text" name="search" value="<?= htmlspecialchars($search) ?>"
-                            placeholder="Search supplier or invoice..." class="form-input flex-1 min-w-[200px]">
-                        <select name="status" class="form-input w-auto">
-                            <option value="">All Status</option>
-                            <option value="Paid" <?= $status_filter === 'Paid' ? 'selected' : '' ?>>Paid</option>
-                            <option value="Unpaid" <?= $status_filter === 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
-                        </select>
-                        <button class="btn btn-primary">Search</button>
-                        <a href="index.php" class="btn btn-outline">Reset</a>
-                    </form>
 
                     <!-- Table -->
                     <div class="card overflow-hidden">
@@ -233,8 +227,8 @@ $page_title = "Purchase Management";
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800">Delete Purchase</h3>
-                <p class="text-sm text-gray-500 mt-1">Stock will be rolled back. This cannot be undone.</p>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Delete Purchase</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Stock will be rolled back. This cannot be undone.</p>
             </div>
             <div class="flex gap-3">
                 <button onclick="closeDeleteModal()" class="btn btn-secondary flex-1 justify-center">Cancel</button>
@@ -252,12 +246,12 @@ $page_title = "Purchase Management";
     <?php if ($view_purchase): ?>
         <div id="viewModal" class="modal-overlay">
             <div class="bg-white rounded-2xl p-6 lg:p-8 w-full max-w-3xl relative mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-                <button onclick="window.location.href='index.php'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+                <button onclick="window.location.href='index.php'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:text-gray-300 text-2xl leading-none">&times;</button>
 
                 <div class="flex justify-between items-start mb-6">
                     <div>
-                        <h2 class="text-2xl font-bold text-gray-900">Purchase Invoice</h2>
-                        <p class="text-sm text-gray-500">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Purchase Invoice</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
                     </div>
                     <span class="badge <?= $view_purchase['payment_status'] === 'Paid' ? 'badge-success' : 'badge-danger' ?>">
                         <span class="badge-dot"></span><?= $view_purchase['payment_status'] ?>
@@ -268,19 +262,19 @@ $page_title = "Purchase Management";
 
                 <div class="grid grid-cols-2 gap-6 mb-6">
                     <div>
-                        <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Supplier</h4>
+                        <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Supplier</h4>
                         <p class="font-medium"><?= htmlspecialchars($view_purchase['supplier_name']) ?></p>
-                        <?php if ($view_purchase['phone']): ?><p class="text-sm text-gray-500"><?= htmlspecialchars($view_purchase['phone']) ?></p><?php endif; ?>
-                        <?php if ($view_purchase['address']): ?><p class="text-sm text-gray-500"><?= htmlspecialchars($view_purchase['address']) ?></p><?php endif; ?>
+                        <?php if ($view_purchase['phone']): ?><p class="text-sm text-gray-500 dark:text-gray-400"><?= htmlspecialchars($view_purchase['phone']) ?></p><?php endif; ?>
+                        <?php if ($view_purchase['address']): ?><p class="text-sm text-gray-500 dark:text-gray-400"><?= htmlspecialchars($view_purchase['address']) ?></p><?php endif; ?>
                     </div>
                     <div>
-                        <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Details</h4>
+                        <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Details</h4>
                         <p class="text-sm">Date: <span class="font-medium"><?= $view_purchase['purchase_date'] ?></span></p>
                         <p class="text-sm">Created: <span class="font-medium"><?= $view_purchase['created_at'] ?></span></p>
                     </div>
                 </div>
 
-                <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Items</h4>
+                <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Items</h4>
                 <table class="data-table mb-6">
                     <thead>
                         <tr>
@@ -303,7 +297,7 @@ $page_title = "Purchase Management";
                 </table>
 
                 <div class="text-right border-t pt-4">
-                    <p class="text-lg text-gray-500">Total Amount</p>
+                    <p class="text-lg text-gray-500 dark:text-gray-400">Total Amount</p>
                     <p class="text-3xl font-extrabold text-indigo-600"><?= number_format($view_purchase['total_amount'], 2) ?></p>
                 </div>
             </div>
@@ -314,8 +308,8 @@ $page_title = "Purchase Management";
     <?php if ($edit_purchase && $edit_details): ?>
         <div id="editModal" class="modal-overlay">
             <div class="bg-white rounded-2xl p-6 lg:p-8 w-full max-w-4xl relative mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-                <a href="index.php" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</a>
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">Edit Purchase #<?= htmlspecialchars($edit_purchase['invoice_no'] ?? $edit_purchase['id']) ?></h2>
+                <a href="index.php" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:text-gray-300 text-2xl leading-none">&times;</a>
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Edit Purchase #<?= htmlspecialchars($edit_purchase['invoice_no'] ?? $edit_purchase['id']) ?></h2>
 
                 <form method="POST">
                     <input type="hidden" name="id" value="<?= $edit_purchase['id'] ?>">
@@ -341,7 +335,7 @@ $page_title = "Purchase Management";
                         </div>
                     </div>
 
-                    <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Products</h4>
+                    <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Products</h4>
                     <div class="overflow-x-auto mb-6">
                         <table class="data-table">
                             <thead>
@@ -377,7 +371,7 @@ $page_title = "Purchase Management";
                     </div>
 
                     <div class="flex items-center justify-between mb-6">
-                        <span class="text-lg font-bold text-gray-800">Total: <span class="text-indigo-600"><?= number_format($edit_total, 2) ?></span></span>
+                        <span class="text-lg font-bold text-gray-800 dark:text-gray-200">Total: <span class="text-indigo-600"><?= number_format($edit_total, 2) ?></span></span>
                     </div>
 
                     <div class="flex justify-end gap-3">

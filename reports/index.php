@@ -121,20 +121,17 @@ $top_products = mysqli_query($conn, "
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-6">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-800">Reports</h1>
-                    <p class="text-gray-500 mt-1">Analytics and business intelligence</p>
-                </div>
+            <div class="flex justify-end mb-6">
                 <button onclick="window.print()" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                     Print Report
@@ -143,21 +140,21 @@ $top_products = mysqli_query($conn, "
 
             <div class="flex gap-1 mb-6 bg-white p-1 rounded-xl shadow-sm w-fit">
                 <a href="?tab=sales&from=<?= $from ?>&to=<?= $to ?>"
-                    class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'sales' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100' ?>">Sales Report</a>
+                    class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'sales' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100' ?>">Sales Report</a>
                 <a href="?tab=purchase&from=<?= $from ?>&to=<?= $to ?>"
-                    class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'purchase' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100' ?>">Purchase Report</a>
+                    class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'purchase' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100' ?>">Purchase Report</a>
                 <a href="?tab=profit&from=<?= $from ?>&to=<?= $to ?>"
-                    class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'profit' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100' ?>">Profit Report</a>
+                    class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'profit' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100' ?>">Profit Report</a>
             </div>
 
             <form method="GET" class="bg-white p-4 rounded-xl shadow-sm flex gap-4 items-end mb-6">
                 <input type="hidden" name="tab" value="<?= $tab ?>">
                 <div>
-                    <label class="text-xs font-semibold text-gray-500">From Date</label>
+                    <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">From Date</label>
                     <input type="date" name="from" value="<?= $from ?>" class="border rounded-lg p-2.5 mt-1">
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-500">To Date</label>
+                    <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">To Date</label>
                     <input type="date" name="to" value="<?= $to ?>" class="border rounded-lg p-2.5 mt-1">
                 </div>
                 <button class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700">Generate</button>
@@ -166,19 +163,19 @@ $top_products = mysqli_query($conn, "
             <?php if ($tab == 'sales'): ?>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Total Sales</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1"><?= $sales_summary['total_sales'] ?></p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Sales</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1"><?= $sales_summary['total_sales'] ?></p>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Total Revenue</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
                     <p class="text-2xl font-bold text-green-600 mt-1"><?= number_format($sales_summary['total_revenue']) ?> Ks</p>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Total Paid</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Paid</p>
                     <p class="text-2xl font-bold text-blue-600 mt-1"><?= number_format($sales_summary['total_paid']) ?> Ks</p>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Avg per Sale</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Avg per Sale</p>
                     <p class="text-2xl font-bold text-indigo-600 mt-1">
                         <?= $sales_summary['total_sales'] > 0 ? number_format($sales_summary['total_revenue'] / $sales_summary['total_sales']) : 0 ?> Ks
                     </p>
@@ -234,7 +231,7 @@ $top_products = mysqli_query($conn, "
                 <h2 class="text-lg font-bold mb-4">Daily Sales</h2>
                 <div class="overflow-x-auto">
                     <table class="w-full">
-                        <thead><tr class="border-b text-gray-500 text-left"><th class="p-3">Date</th><th>Sales</th><th>Revenue</th></tr></thead>
+                        <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Date</th><th>Sales</th><th>Revenue</th></tr></thead>
                         <tbody>
                             <?php while ($d = mysqli_fetch_assoc($sales_daily)): ?>
                             <tr class="border-b hover:bg-gray-50">
@@ -252,7 +249,7 @@ $top_products = mysqli_query($conn, "
                 <h2 class="text-lg font-bold mb-4">All Sales</h2>
                 <div class="overflow-x-auto">
                     <table class="w-full">
-                        <thead><tr class="border-b text-gray-500 text-left"><th class="p-3">Invoice</th><th>Date</th><th>Customer</th><th>Cashier</th><th>Method</th><th>Amount</th></tr></thead>
+                        <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Invoice</th><th>Date</th><th>Customer</th><th>Cashier</th><th>Method</th><th>Amount</th></tr></thead>
                         <tbody>
                             <?php while ($s = mysqli_fetch_assoc($sales_report)): ?>
                             <tr class="border-b hover:bg-gray-50">
@@ -272,11 +269,11 @@ $top_products = mysqli_query($conn, "
             <?php elseif ($tab == 'purchase'): ?>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Total Purchases</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1"><?= $purchase_summary['total'] ?></p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Purchases</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1"><?= $purchase_summary['total'] ?></p>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Total Amount</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
                     <p class="text-2xl font-bold text-orange-600 mt-1"><?= number_format($purchase_summary['total_amount']) ?> Ks</p>
                 </div>
             </div>
@@ -285,7 +282,7 @@ $top_products = mysqli_query($conn, "
                 <h2 class="text-lg font-bold mb-4">Purchase History</h2>
                 <div class="overflow-x-auto">
                     <table class="w-full">
-                        <thead><tr class="border-b text-gray-500 text-left"><th class="p-3">Date</th><th>Supplier</th><th>Amount</th><th>Payment</th></tr></thead>
+                        <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Date</th><th>Supplier</th><th>Amount</th><th>Payment</th></tr></thead>
                         <tbody>
                             <?php while ($p = mysqli_fetch_assoc($purchase_report)): ?>
                             <tr class="border-b hover:bg-gray-50">
@@ -307,19 +304,19 @@ $top_products = mysqli_query($conn, "
             <?php elseif ($tab == 'profit'): ?>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Total Revenue</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
                     <p class="text-2xl font-bold text-green-600 mt-1"><?= number_format($profit_summary['total_revenue']) ?> Ks</p>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Total Cost</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Cost</p>
                     <p class="text-2xl font-bold text-red-600 mt-1"><?= number_format($profit_summary['total_cost']) ?> Ks</p>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Gross Profit</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Gross Profit</p>
                     <p class="text-2xl font-bold text-indigo-600 mt-1"><?= number_format($profit_summary['total_profit']) ?> Ks</p>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500">Profit Margin</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Profit Margin</p>
                     <p class="text-2xl font-bold text-amber-600 mt-1">
                         <?= $profit_summary['total_revenue'] > 0 ? number_format(($profit_summary['total_profit'] / $profit_summary['total_revenue']) * 100, 1) : 0 ?>%
                     </p>
@@ -331,7 +328,7 @@ $top_products = mysqli_query($conn, "
                     <h2 class="text-lg font-bold mb-4">Daily Profit Breakdown</h2>
                     <div class="overflow-x-auto">
                         <table class="w-full">
-                            <thead><tr class="border-b text-gray-500 text-left"><th class="p-3">Date</th><th>Sales</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr></thead>
+                            <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Date</th><th>Sales</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr></thead>
                             <tbody>
                                 <?php while ($d = mysqli_fetch_assoc($profit_data)): ?>
                                 <tr class="border-b hover:bg-gray-50">
@@ -351,7 +348,7 @@ $top_products = mysqli_query($conn, "
                     <h2 class="text-lg font-bold mb-4">Top Selling Products</h2>
                     <div class="overflow-x-auto">
                         <table class="w-full">
-                            <thead><tr class="border-b text-gray-500 text-left"><th class="p-3">Product</th><th>Sold</th><th>Revenue</th><th>Profit</th></tr></thead>
+                            <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Product</th><th>Sold</th><th>Revenue</th><th>Profit</th></tr></thead>
                             <tbody>
                                 <?php while ($tp = mysqli_fetch_assoc($top_products)): ?>
                                 <tr class="border-b hover:bg-gray-50">

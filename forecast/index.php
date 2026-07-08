@@ -4,7 +4,7 @@ requireAdmin();
 include "../config/database.php";
 include "../config/helpers.php";
 
-$page_title = "Forecast";
+$page_title = "Demand Forecast";
 $action = $_GET['action'] ?? 'dashboard';
 
 // Calculate forecast for a product using moving average (last N days)
@@ -200,6 +200,7 @@ if ($accuracy_count > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
@@ -211,24 +212,14 @@ if ($accuracy_count > 0) {
         .fade-in { animation: fadeIn 0.4s ease-out both; }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-4 lg:p-6">
                 <div class="max-w-7xl mx-auto">
-                    <!-- Header -->
-                    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                        <div>
-                            <nav class="flex items-center gap-1.5 text-sm text-gray-400 mb-1">
-                                <a href="../dashboard/index.php" class="hover:text-indigo-600 transition-colors">Dashboard</a>
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                <span class="text-gray-700 font-medium">Forecast</span>
-                            </nav>
-                            <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Demand Forecast</h1>
-                            <p class="text-sm text-gray-500 mt-0.5">Predict future demand and plan inventory</p>
-                        </div>
+                    <div class="flex justify-end mb-6">
                         <button onclick="generateForecast()" id="generateBtn" class="btn btn-primary gap-2">
                             <svg id="btnIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             <span id="btnText">Generate Forecast</span>
@@ -249,8 +240,8 @@ if ($accuracy_count > 0) {
                             <div class="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <svg class="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                             </div>
-                            <h2 class="text-xl font-bold text-gray-800 mb-2">No Forecast Data</h2>
-                            <p class="text-gray-500 mb-6 max-w-md mx-auto">Generate a forecast to predict future demand based on your sales history. The algorithm analyzes the last 30 days of sales data.</p>
+                            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No Forecast Data</h2>
+                            <p class="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">Generate a forecast to predict future demand based on your sales history. The algorithm analyzes the last 30 days of sales data.</p>
                             <button onclick="generateForecast()" id="generateBtnEmpty" class="btn btn-primary btn-lg gap-2">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                 Generate Forecast Now
@@ -267,7 +258,7 @@ if ($accuracy_count > 0) {
                                     <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Expected Demand</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Expected Demand</p>
                                     <p class="text-xl font-bold text-indigo-600 mt-0.5"><?= number_format($total_forecast) ?></p>
                                     <p class="text-[11px] text-gray-400">units (30 days)</p>
                                 </div>
@@ -279,7 +270,7 @@ if ($accuracy_count > 0) {
                                     <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">High Demand</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">High Demand</p>
                                     <p class="text-xl font-bold text-red-600 mt-0.5"><?= $high_demand ?></p>
                                     <p class="text-[11px] text-gray-400">products</p>
                                 </div>
@@ -291,7 +282,7 @@ if ($accuracy_count > 0) {
                                     <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Need Restock</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Need Restock</p>
                                     <p class="text-xl font-bold text-amber-600 mt-0.5"><?= $need_restock ?></p>
                                     <p class="text-[11px] text-gray-400">products</p>
                                 </div>
@@ -303,7 +294,7 @@ if ($accuracy_count > 0) {
                                     <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-gray-500 font-medium">Forecast Accuracy</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Forecast Accuracy</p>
                                     <p class="text-xl font-bold <?= $accuracy_class ?> mt-0.5"><?= $accuracy_display ?></p>
                                     <p class="text-[11px] text-gray-400"><?= $accuracy !== null ? 'based on history' : 'no data yet' ?></p>
                                 </div>
@@ -315,7 +306,7 @@ if ($accuracy_count > 0) {
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <div class="card">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                     <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                                     Sales Trend (30 Days)
                                 </h2>
@@ -326,7 +317,7 @@ if ($accuracy_count > 0) {
                         </div>
                         <div class="card">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                                     Product Demand Forecast
                                 </h2>
@@ -345,7 +336,7 @@ if ($accuracy_count > 0) {
                     <?php if (mysqli_num_rows($high_demand_products) > 0): ?>
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <div class="w-2 h-2 bg-red-500 rounded-full"></div>
                                 High Demand Products
                             </h2>
@@ -367,8 +358,8 @@ if ($accuracy_count > 0) {
                                     <?php $hd_count = 1; while ($h = mysqli_fetch_assoc($high_demand_products)): ?>
                                     <tr>
                                         <td class="text-gray-400 font-mono"><?= $hd_count++ ?></td>
-                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($h['product_name']) ?></td>
-                                        <td class="text-center <?= $h['quantity'] < 10 ? 'text-red-600 font-bold' : 'text-gray-700' ?>"><?= $h['quantity'] ?></td>
+                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($h['product_name']) ?></td>
+                                        <td class="text-center <?= $h['quantity'] < 10 ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $h['quantity'] ?></td>
                                         <td class="text-center font-bold text-red-600"><?= number_format($h['forecast_quantity']) ?></td>
                                         <td class="text-center font-bold text-emerald-600"><?= number_format($h['recommended_stock']) ?></td>
                                         <td class="text-center">
@@ -386,7 +377,7 @@ if ($accuracy_count > 0) {
                     <?php if (mysqli_num_rows($need_restock_products) > 0): ?>
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                                 Products Need Restock
                             </h2>
@@ -411,9 +402,9 @@ if ($accuracy_count > 0) {
                                     ?>
                                     <tr>
                                         <td class="text-gray-400 font-mono"><?= $rs_count++ ?></td>
-                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($l['product_name']) ?></td>
-                                        <td class="text-center <?= $l['quantity'] < $l['minimum_stock'] ? 'text-red-600 font-bold' : 'text-gray-700' ?>"><?= $l['quantity'] ?></td>
-                                        <td class="text-center text-gray-500"><?= $l['minimum_stock'] ?></td>
+                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($l['product_name']) ?></td>
+                                        <td class="text-center <?= $l['quantity'] < $l['minimum_stock'] ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $l['quantity'] ?></td>
+                                        <td class="text-center text-gray-500 dark:text-gray-400"><?= $l['minimum_stock'] ?></td>
                                         <td class="text-center font-semibold text-amber-600"><?= number_format($l['forecast_quantity']) ?></td>
                                         <td class="text-center font-semibold text-emerald-600"><?= number_format($l['recommended_stock']) ?></td>
                                         <td class="text-center font-bold text-red-600"><?= number_format($shortage) ?></td>
@@ -428,7 +419,7 @@ if ($accuracy_count > 0) {
                     <!-- All Product Forecasts -->
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 All Product Forecasts
                             </h2>
@@ -459,8 +450,8 @@ if ($accuracy_count > 0) {
                                     ?>
                                     <tr>
                                         <td class="text-gray-400 font-mono"><?= $af_count++ ?></td>
-                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($f['product_name']) ?></td>
-                                        <td class="text-center <?= $f['quantity'] < 5 ? 'text-red-600 font-bold' : 'text-gray-700' ?>"><?= $f['quantity'] ?></td>
+                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($f['product_name']) ?></td>
+                                        <td class="text-center <?= $f['quantity'] < 5 ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $f['quantity'] ?></td>
                                         <td class="text-center font-semibold"><?= number_format($f['forecast_quantity']) ?></td>
                                         <td class="text-center">
                                             <?php

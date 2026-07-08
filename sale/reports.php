@@ -116,6 +116,7 @@ $page_title = "Sales Reports";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales Reports - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
@@ -129,44 +130,31 @@ $page_title = "Sales Reports";
         .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-4 lg:p-6">
                 <div class="max-w-7xl mx-auto">
-                    <!-- Header -->
-                    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                        <div>
-                            <nav class="flex items-center gap-1.5 text-sm text-gray-400 mb-1">
-                                <a href="../dashboard/index.php" class="hover:text-indigo-600 transition-colors">Dashboard</a>
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                <span class="text-gray-700 font-medium">Sales Reports</span>
-                            </nav>
-                            <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Sales Reports</h1>
-                            <p class="text-sm text-gray-500 mt-0.5">Analytics and business intelligence</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="exportPDF()" class="btn btn-outline gap-2 text-sm">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                Export PDF
-                            </button>
-                            <button onclick="exportExcel()" class="btn btn-outline gap-2 text-sm">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                Export Excel
-                            </button>
-                        </div>
+                    <div class="flex gap-2 mb-6">
+                        <button onclick="exportPDF()" class="btn btn-outline gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Export PDF
+                        </button>
+                        <button onclick="exportExcel()" class="btn btn-outline gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Export Excel
+                        </button>
                     </div>
 
-                    <!-- Date Filter -->
                     <form method="GET" class="filter-bar mb-6">
                         <div class="min-w-[160px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">From Date</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">From Date</label>
                             <input type="date" name="date_from" value="<?= $date_from ?>" class="form-input text-sm">
                         </div>
                         <div class="min-w-[160px]">
-                            <label class="text-xs font-semibold text-gray-500 mb-1 block">To Date</label>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">To Date</label>
                             <input type="date" name="date_to" value="<?= $date_to ?>" class="form-input text-sm">
                         </div>
                         <div class="flex gap-2 items-end">
@@ -185,8 +173,8 @@ $page_title = "Sales Reports";
                                 </div>
                                 <span class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Today</span>
                             </div>
-                            <p class="text-xs text-gray-500 font-medium">Today's Sales</p>
-                            <p class="text-2xl font-bold text-gray-900 mt-1"><?= number_format($today_stats['count']) ?></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Today's Sales</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1"><?= number_format($today_stats['count']) ?></p>
                             <p class="text-sm font-semibold text-emerald-600 mt-0.5"><?= number_format($today_stats['revenue']) ?> Ks</p>
                         </div>
                         <!-- This Week -->
@@ -197,8 +185,8 @@ $page_title = "Sales Reports";
                                 </div>
                                 <span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">7 Days</span>
                             </div>
-                            <p class="text-xs text-gray-500 font-medium">Weekly Sales</p>
-                            <p class="text-2xl font-bold text-gray-900 mt-1"><?= number_format($week_stats['count']) ?></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Weekly Sales</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1"><?= number_format($week_stats['count']) ?></p>
                             <p class="text-sm font-semibold text-blue-600 mt-0.5"><?= number_format($week_stats['revenue']) ?> Ks</p>
                         </div>
                         <!-- This Month -->
@@ -209,8 +197,8 @@ $page_title = "Sales Reports";
                                 </div>
                                 <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Month</span>
                             </div>
-                            <p class="text-xs text-gray-500 font-medium">Monthly Sales</p>
-                            <p class="text-2xl font-bold text-gray-900 mt-1"><?= number_format($month_stats['count']) ?></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Monthly Sales</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1"><?= number_format($month_stats['count']) ?></p>
                             <p class="text-sm font-semibold text-indigo-600 mt-0.5"><?= number_format($month_stats['revenue']) ?> Ks</p>
                         </div>
                         <!-- Revenue -->
@@ -221,7 +209,7 @@ $page_title = "Sales Reports";
                                 </div>
                                 <span class="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Range</span>
                             </div>
-                            <p class="text-xs text-gray-500 font-medium">Period Revenue</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Period Revenue</p>
                             <p class="text-2xl font-bold text-amber-600 mt-1"><?= number_format($revenue_stats['total_revenue']) ?> Ks</p>
                             <p class="text-xs text-gray-400 mt-0.5"><?= $revenue_stats['total_sales'] ?> sales</p>
                         </div>
@@ -232,7 +220,7 @@ $page_title = "Sales Reports";
                         <!-- Profit Card -->
                         <div class="card">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                     <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                                     Profit Overview
                                 </h2>
@@ -240,15 +228,15 @@ $page_title = "Sales Reports";
                             <div class="card-body">
                                 <div class="grid grid-cols-3 gap-4 mb-4">
                                     <div class="text-center p-3 bg-emerald-50 rounded-xl">
-                                        <p class="text-xs text-gray-500 font-medium">Revenue</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Revenue</p>
                                         <p class="text-lg font-bold text-emerald-600 mt-1"><?= number_format($profit_stats['revenue']) ?></p>
                                     </div>
                                     <div class="text-center p-3 bg-red-50 rounded-xl">
-                                        <p class="text-xs text-gray-500 font-medium">Cost</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Cost</p>
                                         <p class="text-lg font-bold text-red-600 mt-1"><?= number_format($profit_stats['cost']) ?></p>
                                     </div>
                                     <div class="text-center p-3 bg-indigo-50 rounded-xl">
-                                        <p class="text-xs text-gray-500 font-medium">Profit</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Profit</p>
                                         <p class="text-lg font-bold text-indigo-600 mt-1"><?= number_format($profit_stats['profit']) ?></p>
                                     </div>
                                 </div>
@@ -257,7 +245,7 @@ $page_title = "Sales Reports";
                                 ?>
                                 <div>
                                     <div class="flex justify-between text-sm mb-1">
-                                        <span class="text-gray-500">Profit Margin</span>
+                                        <span class="text-gray-500 dark:text-gray-400">Profit Margin</span>
                                         <span class="font-bold <?= $margin >= 20 ? 'text-emerald-600' : ($margin >= 10 ? 'text-amber-600' : 'text-red-600') ?>"><?= number_format($margin, 1) ?>%</span>
                                     </div>
                                     <div class="progress-bar">
@@ -270,7 +258,7 @@ $page_title = "Sales Reports";
                         <!-- Payment Methods -->
                         <div class="card">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                     <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                                     Payment Methods
                                 </h2>
@@ -293,7 +281,7 @@ $page_title = "Sales Reports";
                                         </div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex justify-between items-center mb-1">
-                                                <span class="text-sm font-semibold text-gray-700"><?= $method ?></span>
+                                                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300"><?= $method ?></span>
                                                 <span class="text-sm font-bold <?= $colors['text'] ?>"><?= number_format($amount) ?> Ks</span>
                                             </div>
                                             <div class="progress-bar">
@@ -311,7 +299,7 @@ $page_title = "Sales Reports";
                     <!-- Best Selling Products -->
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                                 Best Selling Products
                             </h2>
@@ -344,8 +332,8 @@ $page_title = "Sales Reports";
                                     ?>
                                     <tr>
                                         <td class="font-mono text-gray-400"><?= $rank++ ?></td>
-                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($tp['product_name']) ?></td>
-                                        <td class="text-gray-500 text-sm"><?= htmlspecialchars($tp['sku'] ?? 'N/A') ?></td>
+                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($tp['product_name']) ?></td>
+                                        <td class="text-gray-500 dark:text-gray-400 text-sm"><?= htmlspecialchars($tp['sku'] ?? 'N/A') ?></td>
                                         <td class="text-center font-semibold"><?= number_format($tp['total_qty']) ?></td>
                                         <td class="text-right font-bold text-emerald-600"><?= number_format($tp['total_revenue']) ?> Ks</td>
                                         <td class="text-right font-bold text-indigo-600"><?= number_format($tp['total_profit']) ?> Ks</td>
@@ -354,7 +342,7 @@ $page_title = "Sales Reports";
                                                 <div class="progress-bar flex-1">
                                                     <div class="progress-fill bg-indigo-500" style="width: <?= $share ?>%"></div>
                                                 </div>
-                                                <span class="text-xs text-gray-500 w-10 text-right"><?= number_format($share, 1) ?>%</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400 w-10 text-right"><?= number_format($share, 1) ?>%</span>
                                             </div>
                                         </td>
                                     </tr>
@@ -370,7 +358,7 @@ $page_title = "Sales Reports";
                     <!-- Sales by Category -->
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                                 Sales by Category
                             </h2>
@@ -399,7 +387,7 @@ $page_title = "Sales Reports";
                                         $ci++;
                                     ?>
                                     <tr>
-                                        <td class="font-semibold text-gray-900"><?= htmlspecialchars($cs['category_name']) ?></td>
+                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($cs['category_name']) ?></td>
                                         <td class="text-center"><?= number_format($cs['sale_count']) ?></td>
                                         <td class="text-center font-semibold"><?= number_format($cs['total_qty']) ?></td>
                                         <td class="text-right font-bold text-emerald-600"><?= number_format($cs['total_revenue']) ?> Ks</td>
@@ -408,7 +396,7 @@ $page_title = "Sales Reports";
                                                 <div class="progress-bar flex-1">
                                                     <div class="progress-fill <?= $color ?>" style="width: <?= $share ?>%"></div>
                                                 </div>
-                                                <span class="text-xs text-gray-500 w-10 text-right"><?= number_format($share, 1) ?>%</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400 w-10 text-right"><?= number_format($share, 1) ?>%</span>
                                             </div>
                                         </td>
                                     </tr>
@@ -424,7 +412,7 @@ $page_title = "Sales Reports";
                     <!-- Daily Sales Breakdown -->
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 Daily Sales
                             </h2>

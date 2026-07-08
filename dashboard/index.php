@@ -125,9 +125,9 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                 <div class="w-9 h-9 ' . $bg . ' rounded-lg flex items-center justify-center flex-shrink-0">
                     ' . $icon . '
                 </div>
-                <span class="text-l font-bold text-gray-900">' . $value . '</span>
+                <span class="text-l font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">' . $value . '</span>
             </div>
-            <p class="text-xs text-gray-500">' . $label . '</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-400">' . $label . '</p>
         </div>';
 }
 
@@ -141,11 +141,12 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col min-w-0">
@@ -224,13 +225,13 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <div class="card fade-in">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Daily Sales (30 Days)</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">Daily Sales (30 Days)</h2>
                             </div>
                             <div class="card-body"><canvas id="dailySalesChart" height="120"></canvas></div>
                         </div>
                         <div class="card fade-in stagger-1">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Monthly Sales</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Monthly Sales</h2>
                             </div>
                             <div class="card-body"><canvas id="monthlySalesChart" height="120"></canvas></div>
                         </div>
@@ -240,13 +241,13 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <div class="card fade-in">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Profit Trend (30 Days)</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Profit Trend (30 Days)</h2>
                             </div>
                             <div class="card-body"><canvas id="profitChart" height="120"></canvas></div>
                         </div>
                         <div class="card fade-in stagger-1">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Top Selling Products</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Top Selling Products</h2>
                             </div>
                             <div class="card-body"><canvas id="topProductsChart" height="120"></canvas></div>
                         </div>
@@ -256,15 +257,15 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         <div class="card fade-in">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Low Stock Alert</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Low Stock Alert</h2>
                                 <?php if ($low_stock_count > 0): ?><span class="badge badge-danger"><?= $low_stock_count ?> items</span><?php endif; ?>
                             </div>
                             <div class="card-body">
                                 <?php if ($low_stock_result && mysqli_num_rows($low_stock_result) > 0): while ($p = mysqli_fetch_assoc($low_stock_result)): ?>
-                                        <div class="flex items-center justify-between p-3 rounded-lg mb-2 <?= $p['quantity'] == 0 ? 'bg-red-50' : 'bg-amber-50' ?>">
+                                        <div class="flex items-center justify-between p-3 rounded-lg mb-2 <?= $p['quantity'] == 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20' ?>">
                                             <div>
-                                                <p class="font-semibold text-gray-800 text-sm"><?= htmlspecialchars($p['product_name']) ?></p>
-                                                <p class="text-xs text-gray-500"><?= htmlspecialchars($p['category_name'] ?? 'Uncategorized') ?></p>
+                                                <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm"><?= htmlspecialchars($p['product_name']) ?></p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400"><?= htmlspecialchars($p['category_name'] ?? 'Uncategorized') ?></p>
                                             </div>
                                             <span class="font-bold text-sm <?= $p['quantity'] == 0 ? 'text-red-600' : 'text-amber-600' ?>"><?= $p['quantity'] ?></span>
                                         </div>
@@ -282,7 +283,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
 
                         <div class="lg:col-span-2 card fade-in stagger-1">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Recent Sales</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Recent Sales</h2>
                                 <a href="../sale/history.php" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">View All →</a>
                             </div>
                             <div class="card-body p-0">
@@ -302,7 +303,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                                 <?php while ($s = mysqli_fetch_assoc($recent_sales)): ?>
                                                     <tr>
                                                         <td class="font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
-                                                        <td class="text-gray-500"><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
+                                                        <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
                                                         <td><?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?></td>
                                                         <td><?= htmlspecialchars($s['cashier'] ?? 'Admin') ?></td>
                                                         <td class="text-right font-bold text-green-600"><?= number_format($s['grand_total']) ?> Ks</td>
@@ -327,7 +328,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         <div class="lg:col-span-2 card fade-in">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Recent Purchases</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Recent Purchases</h2>
                                 <a href="../purchase/index.php" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">View All →</a>
                             </div>
                             <div class="card-body p-0">
@@ -348,7 +349,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                                     <tr>
                                                         <td class="font-semibold"><?= htmlspecialchars($p['invoice_no'] ?? 'N/A') ?></td>
                                                         <td><?= htmlspecialchars($p['supplier_name'] ?? 'N/A') ?></td>
-                                                        <td class="text-gray-500"><?= date('d-m-Y', strtotime($p['purchase_date'])) ?></td>
+                                                        <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y', strtotime($p['purchase_date'])) ?></td>
                                                         <td class="text-right font-bold"><?= number_format($p['total_amount']) ?> Ks</td>
                                                         <td><span class="badge <?= $p['payment_status'] === 'Paid' ? 'badge-success' : 'badge-warning' ?>"><?= $p['payment_status'] ?></span></td>
                                                     </tr>
@@ -368,7 +369,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                         </div>
                         <div class="card fade-in stagger-1">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Monthly Purchases</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Monthly Purchases</h2>
                             </div>
                             <div class="card-body"><canvas id="purchaseChart" height="140"></canvas></div>
                         </div>
@@ -378,20 +379,20 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
                         <div class="card fade-in">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Forecast Summary</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Forecast Summary</h2>
                             </div>
                             <div class="card-body">
                                 <div class="space-y-4">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Products with Forecast</span>
-                                        <span class="font-bold text-gray-900"><?= $forecast_total ?></span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Products with Forecast</span>
+                                        <span class="font-bold text-gray-900 dark:text-gray-100"><?= $forecast_total ?></span>
                                     </div>
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">High Demand</span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">High Demand</span>
                                         <span class="font-bold text-green-600"><?= $forecast_high ?></span>
                                     </div>
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Low Demand</span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Low Demand</span>
                                         <span class="font-bold text-amber-600"><?= $forecast_low ?></span>
                                     </div>
                                 </div>
@@ -399,7 +400,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                         </div>
                         <div class="lg:col-span-3 card fade-in stagger-1">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Forecast Details</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Forecast Details</h2>
                                 <a href="../forecast/index.php" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">Manage →</a>
                             </div>
                             <div class="card-body p-0">
@@ -419,7 +420,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                                 <?php while ($f = mysqli_fetch_assoc($forecast_items)): ?>
                                                     <tr>
                                                         <td class="font-semibold"><?= htmlspecialchars($f['product_name']) ?></td>
-                                                        <td class="text-gray-500"><?= date('d-m-Y', strtotime($f['forecast_date'])) ?></td>
+                                                        <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y', strtotime($f['forecast_date'])) ?></td>
                                                         <td><?= $f['forecast_quantity'] ?></td>
                                                         <td>
                                                             <span class="badge <?= $f['demand_level'] === 'High' ? 'badge-success' : ($f['demand_level'] === 'Low' ? 'badge-warning' : 'badge-info') ?>">
@@ -491,16 +492,16 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         <div class="card fade-in">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Low Stock Alert</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Low Stock Alert</h2>
                                 <?php if ($low_stock_count > 0): ?><span class="badge badge-danger"><?= $low_stock_count ?> items</span><?php endif; ?>
                             </div>
                             <div class="card-body">
                                 <?php mysqli_data_seek($low_stock_result, 0);
                                 if ($low_stock_result && mysqli_num_rows($low_stock_result) > 0): while ($p = mysqli_fetch_assoc($low_stock_result)): ?>
-                                        <div class="flex items-center justify-between p-3 rounded-lg mb-2 <?= $p['quantity'] == 0 ? 'bg-red-50' : 'bg-amber-50' ?>">
+                                        <div class="flex items-center justify-between p-3 rounded-lg mb-2 <?= $p['quantity'] == 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20' ?>">
                                             <div>
-                                                <p class="font-semibold text-gray-800 text-sm"><?= htmlspecialchars($p['product_name']) ?></p>
-                                                <p class="text-xs text-gray-500"><?= htmlspecialchars($p['category_name'] ?? 'Uncategorized') ?></p>
+                                                <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm"><?= htmlspecialchars($p['product_name']) ?></p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400"><?= htmlspecialchars($p['category_name'] ?? 'Uncategorized') ?></p>
                                             </div>
                                             <span class="font-bold text-sm <?= $p['quantity'] == 0 ? 'text-red-600' : 'text-amber-600' ?>"><?= $p['quantity'] ?></span>
                                         </div>
@@ -519,20 +520,20 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                         <!-- Stock Summary -->
                         <div class="card fade-in stagger-1">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Stock Summary</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Stock Summary</h2>
                             </div>
                             <div class="card-body">
                                 <div class="space-y-4">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Total Products</span>
-                                        <span class="font-bold text-gray-900"><?= $stock_summary['product_count'] ?></span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Products</span>
+                                        <span class="font-bold text-gray-900 dark:text-gray-100"><?= $stock_summary['product_count'] ?></span>
                                     </div>
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Total Units in Stock</span>
-                                        <span class="font-bold text-gray-900"><?= number_format($stock_summary['total_qty']) ?></span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Units in Stock</span>
+                                        <span class="font-bold text-gray-900 dark:text-gray-100"><?= number_format($stock_summary['total_qty']) ?></span>
                                     </div>
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Stock Value</span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Stock Value</span>
                                         <span class="font-bold text-green-600"><?= number_format($stock_summary['total_value']) ?> Ks</span>
                                     </div>
                                 </div>
@@ -542,16 +543,16 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                         <!-- Purchase Summary -->
                         <div class="card fade-in stagger-2">
                             <div class="card-header">
-                                <h2 class="text-base font-bold text-gray-900">Purchase Summary</h2>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Purchase Summary</h2>
                             </div>
                             <div class="card-body">
                                 <div class="space-y-4">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">This Month</span>
-                                        <span class="font-bold text-gray-900"><?= $purchase_summary_this_month['count'] ?> purchases</span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">This Month</span>
+                                        <span class="font-bold text-gray-900 dark:text-gray-100"><?= $purchase_summary_this_month['count'] ?> purchases</span>
                                     </div>
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Monthly Total</span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Monthly Total</span>
                                         <span class="font-bold text-indigo-600"><?= number_format($purchase_summary_this_month['total']) ?> Ks</span>
                                     </div>
                                 </div>
@@ -565,7 +566,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <!-- Recent Purchases -->
                     <div class="card fade-in">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-900">Recent Purchases</h2>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Recent Purchases</h2>
                             <a href="../purchase/index.php" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">View All →</a>
                         </div>
                         <div class="card-body p-0">
@@ -586,7 +587,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                                 <tr>
                                                     <td class="font-semibold"><?= htmlspecialchars($p['invoice_no'] ?? 'N/A') ?></td>
                                                     <td><?= htmlspecialchars($p['supplier_name'] ?? 'N/A') ?></td>
-                                                    <td class="text-gray-500"><?= date('d-m-Y', strtotime($p['purchase_date'])) ?></td>
+                                                    <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y', strtotime($p['purchase_date'])) ?></td>
                                                     <td class="text-right font-bold"><?= number_format($p['total_amount']) ?> Ks</td>
                                                     <td><span class="badge <?= $p['payment_status'] === 'Paid' ? 'badge-success' : 'badge-warning' ?>"><?= $p['payment_status'] ?></span></td>
                                                 </tr>
@@ -637,8 +638,8 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <div class="card fade-in mb-6">
                         <div class="card-body flex flex-col sm:flex-row items-center justify-between gap-4">
                             <div>
-                                <h2 class="text-lg font-bold text-gray-900">Point of Sale</h2>
-                                <p class="text-sm text-gray-500">Start a new sale or view transaction history</p>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">Point of Sale</h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Start a new sale or view transaction history</p>
                             </div>
                             <a href="../sale/pos.php" class="btn btn-primary btn-lg px-8">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -652,7 +653,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     <!-- Recent Sales -->
                     <div class="card fade-in">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-900">Recent Sales</h2>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Recent Sales</h2>
                             <a href="../sale/history.php" class="text-indigo-600 text-sm font-semibold hover:text-indigo-800">View All →</a>
                         </div>
                         <div class="card-body p-0">
@@ -671,7 +672,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                             <?php while ($s = mysqli_fetch_assoc($recent_sales)): ?>
                                                 <tr>
                                                     <td class="font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
-                                                    <td class="text-gray-500"><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
+                                                    <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
                                                     <td><?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?></td>
                                                     <td class="text-right font-bold text-green-600"><?= number_format($s['grand_total']) ?> Ks</td>
                                                 </tr>

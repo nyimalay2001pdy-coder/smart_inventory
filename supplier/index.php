@@ -223,245 +223,97 @@ $result = mysqli_query($conn, $sql);
     <title>Supplier Management</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 
 </head>
 
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-6">
                 <div class="flex justify-between items-center">
-
-
-
-                    <div>
-                        <p class="text-gray-500">
-
-                            Manage your suppliers
-
-                        </p>
-
-
-                    </div>
-
-
-
-
                     <a href="add.php"
-
                         class="bg-indigo-600 text-white px-6 py-3 rounded-xl">
-
-
                         + Add Supplier
-
-
                     </a>
-
-
-
                 </div>
 
-
-
-
-
-
-
-
                 <!-- Search -->
-
-
                 <form method="GET"
-
                     class="bg-white p-5 rounded-2xl shadow mt-8 flex gap-4">
-
-
-
                     <input
-
                         name="search"
-
                         value="<?= $search ?>"
-
                         placeholder="Search supplier..."
-
                         class="flex-1 border rounded-xl p-3">
-
-
-
-
-
                     <select
-
                         name="status"
-
                         class="border rounded-xl px-5">
-
-
                         <option value="">
-
                             All Status
-
                         </option>
-
-
                         <option value="Active">
-
                             Active
-
                         </option>
-
-
                         <option value="Inactive">
-
                             Inactive
-
                         </option>
-
-
                     </select>
-
-
-
-
-
                     <button
-
                         class="bg-indigo-600 text-white px-6 rounded-xl">
-
-
                         Search
-
-
                     </button>
-
-
-
                     <a href="index.php"
-
                         class="border px-6 py-3 rounded-xl">
-
-
                         Reset
-
-
                     </a>
-
-
-
                 </form>
-
-
-
-
-
-
-
-
-
-
                 <!-- Table -->
-
-
                 <div class="bg-white rounded-2xl shadow mt-8 p-6 overflow-x-auto">
-
-
-
                     <table class="w-full">
-
-
-
                         <thead>
-
-
-                            <tr class="border-b text-gray-500">
-
-
+                            <tr class="border-b text-gray-500 dark:text-gray-400">
                                 <th class="p-4 text-left">
                                     #
                                 </th>
-
-
                                 <th class="p-4 text-left">
                                     Supplier
                                 </th>
-
-
                                 <th class="text-left">
                                     Contact Person
                                 </th>
-
-
                                 <th class="p-4 text-left">
                                     Phone
                                 </th>
-
-
                                 <th class="p-4 text-left">
                                     Email
                                 </th>
-
-
                                 <th class=" text-left">
                                     Address
                                 </th>
-
-
                                 <th class="p-2 text-left">
                                     Status
                                 </th>
-
-
                                 <th class="p-8 text-left">
                                     Action
                                 </th>
-
-
                             </tr>
-
-
                         </thead>
-
-
-
-
                         <tbody>
-
-
-
                             <?php
-
                             $count = 1;
-
-
                             while ($row = mysqli_fetch_assoc($result)) {
-
-
                             ?>
-
-
-
                                 <tr class=" border-b">
-
-
-
                                     <td class="p-4">
-
                                         <?= $count++ ?>
-
                                     </td>
-
-
-
-
                                     <td class="font-semibold">
-
                                         🚚 <?= $row['supplier_name'] ?>
-
                                     </td>
 
 

@@ -52,10 +52,11 @@ if (isset($_POST['update'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
 
@@ -65,7 +66,7 @@ if (isset($_POST['update'])) {
             <main class="p-6">
                 <div class="max-w-2xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <form method="POST" novalidate>
+                        <form method="POST" novalidate data-form-guard="true">
                             <div class="mb-5">
                                 <label for="name" class="form-label">Category Name <span class="text-red-500">*</span></label>
                                 <input type="text" id="name" name="name" value="<?= htmlspecialchars($category_name) ?>"
@@ -107,4 +108,5 @@ if (isset($_POST['update'])) {
         </div>
     </div>
 
+    <?php include "../includes/form_guard.php"; ?>
     <?php include "../includes/footer.php"; ?>

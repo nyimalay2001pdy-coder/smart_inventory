@@ -29,8 +29,9 @@ if ($check && $check->num_rows > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Migration</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "includes/theme-init.php"; ?>
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+<body class="bg-gray-50 dark:bg-slate-900 min-h-screen flex items-center justify-center">
     <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center">
         <?php if ($msg): ?>
             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">

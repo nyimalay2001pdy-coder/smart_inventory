@@ -55,6 +55,19 @@ if (isset($_POST['add_cart'])) {
     exit;
 }
 
+// ============ AJAX UPDATE CART QUANTITY ============
+if (isset($_POST['ajax_update_qty'])) {
+    $key = (int)$_POST['item_key'];
+    $qty = max(1, (int)$_POST['quantity']);
+    if (isset($_SESSION['sale_cart'][$key])) {
+        $_SESSION['sale_cart'][$key]['quantity'] = $qty;
+        $_SESSION['sale_cart'][$key]['total'] = $qty * $_SESSION['sale_cart'][$key]['price'];
+    }
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // ============ REMOVE FROM CART ============
 if (isset($_GET['remove'])) {
     $key = (int)$_GET['remove'];
@@ -211,6 +224,7 @@ $page_title = "New Sale (POS)";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Sale (POS) - Smart Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         .product-grid {
@@ -311,7 +325,7 @@ $page_title = "New Sale (POS)";
     </style>
 </head>
 
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-slate-900">
     <div class="flex h-screen overflow-hidden">
         <?php include "../includes/sidebar.php"; ?>
 
@@ -319,7 +333,7 @@ $page_title = "New Sale (POS)";
             <!-- Top Bar -->
             <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
                 <div class="flex items-center gap-4">
-                    <h1 class="text-lg font-bold text-gray-900">New Sale</h1>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-gray-100">New Sale</h1>
                     <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-semibold"><?= $invoice_no ?></span>
                 </div>
                 <div class="flex items-center gap-3">
@@ -410,7 +424,7 @@ $page_title = "New Sale (POS)";
                     <!-- Cart Header -->
                     <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                         <div>
-                            <h2 class="font-bold text-gray-900">Current Order</h2>
+                            <h2 class="font-bold text-gray-900 dark:text-gray-100">Current Order</h2>
                             <p class="text-xs text-gray-500"><?= count($_SESSION['sale_cart'] ?? []) ?> item(s) in cart</p>
                         </div>
                         <?php if (count($_SESSION['sale_cart'] ?? []) > 0): ?>
@@ -443,14 +457,14 @@ $page_title = "New Sale (POS)";
                                         </div>
                                         <div class="flex items-center justify-between mt-2">
                                             <div class="flex items-center gap-1">
-                                                <input type="number" name="quantity[<?= $key ?>]" value="<?= $item['quantity'] ?>" min="0" class="border border-gray-200 rounded-lg w-14 p-1 text-center text-sm focus:outline-none focus:border-indigo-400">
-                                                <span class="text-xs text-gray-400">x <?= number_format($item['price']) ?></span>
+                                                <button type="button" class="qty-btn bg-gray-100 text-gray-600 hover:bg-gray-200" onclick="changeQty(this, -1)">−</button>
+                                                <input type="number" name="quantity[<?= $key ?>]" value="<?= $item['quantity'] ?>" min="1" data-price="<?= $item['price'] ?>" data-key="<?= $key ?>" class="cart-qty border border-gray-200 rounded-lg w-14 p-1 text-center text-sm focus:outline-none focus:border-indigo-400">
+                                                <button type="button" class="qty-btn bg-gray-100 text-gray-600 hover:bg-gray-200" onclick="changeQty(this, 1)">+</button>
                                             </div>
-                                            <span class="font-bold text-sm text-gray-800"><?= number_format($item['total']) ?> Ks</span>
+                                            <span class="font-bold text-sm text-gray-800 item-total-<?= $key ?>"><?= number_format($item['total']) ?> Ks</span>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
-                                <button type="submit" name="update_cart" class="text-indigo-600 text-xs font-semibold hover:text-indigo-800 mt-1 mb-2">Update Quantities</button>
                             </form>
                         <?php else: ?>
                             <div class="flex flex-col items-center justify-center h-full text-gray-400 py-12">
@@ -466,14 +480,14 @@ $page_title = "New Sale (POS)";
                         <div class="border-t border-gray-200 px-4 py-3 space-y-2">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-500">Subtotal</span>
-                                <span class="font-semibold text-gray-800"><?= number_format($cart_subtotal) ?> Ks</span>
+                                <span class="font-semibold text-gray-800" id="cartSubtotal"><?= number_format($cart_subtotal) ?> Ks</span>
                             </div>
                             <div class="flex justify-between text-sm items-center">
                                 <span class="text-gray-500">Discount</span>
                                 <input type="number" form="paymentForm" name="discount" id="discountInput" value="0" min="0" class="border border-gray-200 rounded-lg w-24 text-right p-1.5 text-sm focus:outline-none focus:border-indigo-400" oninput="updateTotals()">
                             </div>
                             <div class="border-t border-gray-100 pt-2 flex justify-between items-center">
-                                <span class="font-bold text-gray-900">Total</span>
+                                <span class="font-bold text-gray-900 dark:text-gray-100">Total</span>
                                 <span class="font-bold text-xl text-indigo-600" id="grandTotalDisplay"><?= number_format($cart_subtotal) ?> Ks</span>
                             </div>
                             <button onclick="showPaymentModal()" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 font-bold text-sm flex items-center justify-center gap-2 transition mt-1">
@@ -498,7 +512,7 @@ $page_title = "New Sale (POS)";
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
                     </svg>
                 </div>
-                <h2 class="text-xl font-bold text-gray-900">Complete Payment</h2>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Complete Payment</h2>
                 <p class="text-sm text-gray-500 mt-1">Review and confirm the sale</p>
             </div>
 
@@ -562,14 +576,54 @@ $page_title = "New Sale (POS)";
     <?php include "../includes/footer.php"; ?>
 
     <script>
-        const subtotal = <?= $cart_subtotal ?>;
+        function calculateSubtotal() {
+            let total = 0;
+            document.querySelectorAll('.cart-qty').forEach(function(input) {
+                const qty = parseInt(input.value) || 0;
+                const price = parseFloat(input.dataset.price) || 0;
+                total += qty * price;
+            });
+            return total;
+        }
+
+        function updateItemTotal(input) {
+            const key = input.dataset.key;
+            const qty = parseInt(input.value) || 0;
+            const price = parseFloat(input.dataset.price) || 0;
+            const el = document.querySelector('.item-total-' + key);
+            if (el) el.textContent = (qty * price).toLocaleString() + ' Ks';
+        }
 
         function updateTotals() {
+            const subtotal = calculateSubtotal();
+            document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString() + ' Ks';
             const discount = parseFloat(document.getElementById('discountInput').value) || 0;
             const total = Math.max(0, subtotal - discount);
             document.getElementById('grandTotalDisplay').textContent = total.toLocaleString() + ' Ks';
             document.getElementById('modalTotal').textContent = total.toLocaleString() + ' Ks';
-            calculatePayments();
+            if (!document.getElementById('paymentModal').classList.contains('hidden')) {
+                calculatePayments();
+            }
+        }
+
+        function changeQty(btn, delta) {
+            const input = btn.parentElement.querySelector('.cart-qty');
+            let val = parseInt(input.value) || 1;
+            val = Math.max(1, val + delta);
+            input.value = val;
+            autoUpdateCart(input);
+        }
+
+        function autoUpdateCart(input) {
+            let val = parseInt(input.value) || 1;
+            if (val < 1) { val = 1; input.value = 1; }
+            updateItemTotal(input);
+            updateTotals();
+            const formData = new FormData();
+            formData.append('ajax_update_qty', '1');
+            formData.append('item_key', input.dataset.key);
+            formData.append('quantity', val);
+            fetch('pos.php', { method: 'POST', body: formData });
         }
 
         function showPaymentModal() {
@@ -577,7 +631,6 @@ $page_title = "New Sale (POS)";
             document.getElementById('paymentCash').value = '0';
             document.getElementById('paymentCard').value = '0';
             document.getElementById('paymentTransfer').value = '0';
-            document.getElementById('modalCustomerName').value = document.getElementById('customerName').value;
             calculatePayments();
             document.getElementById('paymentCash').focus();
         }
@@ -587,6 +640,7 @@ $page_title = "New Sale (POS)";
         }
 
         function calculatePayments() {
+            const subtotal = calculateSubtotal();
             const discount = parseFloat(document.getElementById('discountInput').value) || 0;
             const total = Math.max(0, subtotal - discount);
 
@@ -620,6 +674,31 @@ $page_title = "New Sale (POS)";
                 btn.disabled = false;
             }
         }
+
+        function setupCartQtyListeners() {
+            document.querySelectorAll('.cart-qty').forEach(function(input) {
+                input.addEventListener('input', function() {
+                    let val = parseInt(this.value) || 1;
+                    if (val < 1) { val = 1; this.value = 1; }
+                    autoUpdateCart(this);
+                });
+                input.addEventListener('change', function() {
+                    let val = parseInt(this.value) || 1;
+                    if (val < 1) { val = 1; this.value = 1; }
+                    autoUpdateCart(this);
+                });
+                input.addEventListener('wheel', function(e) {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? -1 : 1;
+                    let val = parseInt(this.value) || 1;
+                    val = Math.max(1, val + delta);
+                    this.value = val;
+                    autoUpdateCart(this);
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', setupCartQtyListeners);
 
         // Keyboard shortcut: F2 to focus search
         document.addEventListener('keydown', function(e) {
