@@ -201,29 +201,29 @@ $page_title = "Purchase History";
 
                     <!-- Purchases Table -->
                     <div class="card overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
                                         <th>#</th>
                                         <th>Invoice No</th>
                                         <th>Date</th>
                                         <th>Supplier</th>
-                                        <th class="text-right">Amount</th>
-                                        <th>Payment</th>
-                                        <th class="text-center">Actions</th>
+                                        <th class="num">Amount</th>
+                                        <th class="center">Status</th>
+                                        <th class="center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php if (mysqli_num_rows($result) > 0): $count = 1;
                                         while ($row = mysqli_fetch_assoc($result)): ?>
                                             <tr>
-                                                <td class="text-gray-400 font-mono"><?= $count++ ?></td>
-                                                <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['invoice_no'] ?? '#' . $row['id']) ?></td>
-                                                <td class="text-gray-600 dark:text-gray-400"><?= date('d M Y, h:i A', strtotime($row['purchase_date'])) ?></td>
-                                                <td class="text-gray-700 dark:text-gray-300"><?= htmlspecialchars($row['supplier_name'] ?? '-') ?></td>
-                                                <td class="text-right font-bold text-emerald-600"><?= number_format($row['total_amount'], 2) ?> Ks</td>
-                                                <td>
+                                                <td><?= $count++ ?></td>
+                                                <td class="font-semibold"><?= htmlspecialchars($row['invoice_no'] ?? '#' . $row['id']) ?></td>
+                                                <td><?= date('d M Y, h:i A', strtotime($row['purchase_date'])) ?></td>
+                                                <td><?= htmlspecialchars($row['supplier_name'] ?? '-') ?></td>
+                                                <td class="num"><?= number_format($row['total_amount'], 2) ?> Ks</td>
+                                                <td class="center">
                                                     <?php
                                                     $status = $row['payment_status'] ?? 'Unpaid';
                                                     $badge = $status === 'Paid' ? 'badge-success' : 'badge-danger';
@@ -233,8 +233,8 @@ $page_title = "Purchase History";
                                                         <?= $status ?>
                                                     </span>
                                                 </td>
-                                                <td>
-                                                    <div class="action-group justify-center">
+                                                <td class="center">
+                                                    <div class="actions">
                                                         <a href="?view_id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg">View</a>
                                                         <?php if (isAdmin()): ?>
                                                             <button onclick="confirmDelete(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['invoice_no'] ?? '#' . $row['id'])) ?>')" class="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg">Delete</button>
@@ -314,22 +314,24 @@ $page_title = "Purchase History";
                     </div>
 
                     <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Items</h4>
-                    <table class="data-table mb-6">
+                    <table class="data-table w-full">
                         <thead>
                             <tr>
-                                <th class="text-left">Product</th>
-                                <th class="text-center">Qty</th>
-                                <th class="text-center">Price</th>
-                                <th class="text-right">Subtotal</th>
+                                <th>#</th>
+                                <th>Product</th>
+                                <th class="num">Qty</th>
+                                <th class="num">Price</th>
+                                <th class="num">Subtotal</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = mysqli_fetch_assoc($view_details)): ?>
+                            <?php $vi = 1; while ($row = mysqli_fetch_assoc($view_details)): ?>
                                 <tr>
+                                    <td><?= $vi++ ?></td>
                                     <td class="font-medium"><?= htmlspecialchars($row['product_name']) ?></td>
-                                    <td class="text-center"><?= $row['quantity'] ?></td>
-                                    <td class="text-center"><?= number_format($row['purchase_price'], 2) ?></td>
-                                    <td class="text-right font-semibold text-emerald-600"><?= number_format($row['subtotal'], 2) ?> Ks</td>
+                                    <td class="num"><?= $row['quantity'] ?></td>
+                                    <td class="num"><?= number_format($row['purchase_price'], 2) ?></td>
+                                    <td class="num"><?= number_format($row['subtotal'], 2) ?> Ks</td>
                                 </tr>
                             <?php endwhile; ?>
                         </tbody>

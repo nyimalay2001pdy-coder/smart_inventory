@@ -342,16 +342,16 @@ if ($accuracy_count > 0) {
                             </h2>
                             <span class="badge badge-danger"><span class="badge-dot"></span> <?= $high_demand ?> items</span>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
                                         <th>#</th>
                                         <th>Product</th>
-                                        <th class="text-center">Current Stock</th>
-                                        <th class="text-center">Forecast Qty</th>
-                                        <th class="text-center">Recommended</th>
-                                        <th class="text-center">Demand</th>
+                                        <th class="num">Current Stock</th>
+                                        <th class="num">Forecast Qty</th>
+                                        <th class="num">Recommended</th>
+                                        <th class="center">Demand</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -359,10 +359,10 @@ if ($accuracy_count > 0) {
                                     <tr>
                                         <td class="text-gray-400 font-mono"><?= $hd_count++ ?></td>
                                         <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($h['product_name']) ?></td>
-                                        <td class="text-center <?= $h['quantity'] < 10 ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $h['quantity'] ?></td>
-                                        <td class="text-center font-bold text-red-600"><?= number_format($h['forecast_quantity']) ?></td>
-                                        <td class="text-center font-bold text-emerald-600"><?= number_format($h['recommended_stock']) ?></td>
-                                        <td class="text-center">
+                                        <td class="num <?= $h['quantity'] < 10 ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $h['quantity'] ?></td>
+                                        <td class="num font-bold text-red-600"><?= number_format($h['forecast_quantity']) ?></td>
+                                        <td class="num font-bold text-emerald-600"><?= number_format($h['recommended_stock']) ?></td>
+                                        <td class="center">
                                             <span class="badge badge-danger"><span class="badge-dot"></span> <?= $h['demand_level'] ?></span>
                                         </td>
                                     </tr>
@@ -383,17 +383,17 @@ if ($accuracy_count > 0) {
                             </h2>
                             <span class="badge badge-warning"><span class="badge-dot"></span> <?= $need_restock ?> items</span>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
                                         <th>#</th>
                                         <th>Product</th>
-                                        <th class="text-center">Current Stock</th>
-                                        <th class="text-center">Min Stock</th>
-                                        <th class="text-center">Forecast Demand</th>
-                                        <th class="text-center">Recommended</th>
-                                        <th class="text-center">Shortage</th>
+                                        <th class="num">Current Stock</th>
+                                        <th class="num">Min Stock</th>
+                                        <th class="num">Forecast Demand</th>
+                                        <th class="num">Recommended</th>
+                                        <th class="num">Shortage</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -403,11 +403,11 @@ if ($accuracy_count > 0) {
                                     <tr>
                                         <td class="text-gray-400 font-mono"><?= $rs_count++ ?></td>
                                         <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($l['product_name']) ?></td>
-                                        <td class="text-center <?= $l['quantity'] < $l['minimum_stock'] ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $l['quantity'] ?></td>
-                                        <td class="text-center text-gray-500 dark:text-gray-400"><?= $l['minimum_stock'] ?></td>
-                                        <td class="text-center font-semibold text-amber-600"><?= number_format($l['forecast_quantity']) ?></td>
-                                        <td class="text-center font-semibold text-emerald-600"><?= number_format($l['recommended_stock']) ?></td>
-                                        <td class="text-center font-bold text-red-600"><?= number_format($shortage) ?></td>
+                                        <td class="num <?= $l['quantity'] < $l['minimum_stock'] ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $l['quantity'] ?></td>
+                                        <td class="num text-gray-500 dark:text-gray-400"><?= $l['minimum_stock'] ?></td>
+                                        <td class="num font-semibold text-amber-600"><?= number_format($l['forecast_quantity']) ?></td>
+                                        <td class="num font-semibold text-emerald-600"><?= number_format($l['recommended_stock']) ?></td>
+                                        <td class="num font-bold text-red-600"><?= number_format($shortage) ?></td>
                                     </tr>
                                     <?php endwhile; ?>
                                 </tbody>
@@ -424,22 +424,22 @@ if ($accuracy_count > 0) {
                                 All Product Forecasts
                             </h2>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
                                         <th>#</th>
-                                        <th>Product</th>
-                                        <th class="text-center">Current Stock</th>
-                                        <th class="text-center">Forecast (30d)</th>
-                                        <th class="text-center">Demand Level</th>
-                                        <th class="text-center">Recommended</th>
+                                        <th>Product Name</th>
+                                        <th class="num">Current Stock</th>
+                                        <th class="num">Forecast Quantity</th>
+                                        <th class="num">Recommended Purchase Qty</th>
+                                        <th class="center">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php
                                     $all_forecasts = mysqli_query($conn, "
-                                        SELECT p.product_name, p.quantity, f.forecast_quantity, f.demand_level, f.recommended_stock
+                                        SELECT p.product_name, p.quantity, f.forecast_quantity
                                         FROM forecasts f
                                         JOIN products p ON f.product_id = p.id
                                         WHERE f.forecast_date = CURDATE()
@@ -447,23 +447,24 @@ if ($accuracy_count > 0) {
                                     ");
                                     $af_count = 1;
                                     if (mysqli_num_rows($all_forecasts) > 0): while ($f = mysqli_fetch_assoc($all_forecasts)):
+                                        $current_stock = (int)$f['quantity'];
+                                        $forecast_qty = (int)$f['forecast_quantity'];
+                                        $recommended_purchase = max(0, $forecast_qty - $current_stock);
+                                        $needs_reorder = $recommended_purchase > 0;
                                     ?>
-                                    <tr>
+                                    <tr class="<?= $needs_reorder ? 'bg-red-50 dark:bg-red-900/10' : '' ?>">
                                         <td class="text-gray-400 font-mono"><?= $af_count++ ?></td>
                                         <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($f['product_name']) ?></td>
-                                        <td class="text-center <?= $f['quantity'] < 5 ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $f['quantity'] ?></td>
-                                        <td class="text-center font-semibold"><?= number_format($f['forecast_quantity']) ?></td>
-                                        <td class="text-center">
-                                            <?php
-                                            $demand_badge = match($f['demand_level']) {
-                                                'High' => 'badge-danger',
-                                                'Medium' => 'badge-warning',
-                                                default => 'badge-success',
-                                            };
-                                            ?>
-                                            <span class="badge <?= $demand_badge ?>"><span class="badge-dot"></span> <?= $f['demand_level'] ?></span>
+                                        <td class="num <?= $current_stock < 5 ? 'text-red-600 font-bold' : 'text-gray-700 dark:text-gray-300' ?>"><?= $current_stock ?></td>
+                                        <td class="num font-semibold"><?= number_format($forecast_qty) ?></td>
+                                        <td class="num font-bold <?= $needs_reorder ? 'text-red-600' : 'text-gray-500' ?>"><?= number_format($recommended_purchase) ?></td>
+                                        <td class="center">
+                                            <?php if ($needs_reorder): ?>
+                                            <span class="badge badge-danger"><span class="badge-dot"></span> Reorder Required</span>
+                                            <?php else: ?>
+                                            <span class="badge badge-success"><span class="badge-dot"></span> Enough Stock</span>
+                                            <?php endif; ?>
                                         </td>
-                                        <td class="text-center font-semibold text-emerald-600"><?= number_format($f['recommended_stock']) ?></td>
                                     </tr>
                                     <?php endwhile; else: ?>
                                     <tr><td colspan="6" class="text-center py-8 text-gray-400">No forecast data. Click "Generate Forecast" to start.</td></tr>

@@ -288,25 +288,27 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                             </div>
                             <div class="card-body p-0">
                                 <?php if (mysqli_num_rows($recent_sales) > 0): ?>
-                                    <div class="overflow-x-auto">
-                                        <table class="data-table">
+                                    <div class="table-wrap">
+                                        <table class="data-table w-full">
                                             <thead>
                                                 <tr>
+                                                    <th>#</th>
                                                     <th>Invoice</th>
-                                                    <th>Date</th>
                                                     <th>Customer</th>
+                                                    <th>Date</th>
                                                     <th>Cashier</th>
-                                                    <th class="text-right">Amount</th>
+                                                    <th class="num">Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php while ($s = mysqli_fetch_assoc($recent_sales)): ?>
+                                                <?php $s_count = 1; while ($s = mysqli_fetch_assoc($recent_sales)): ?>
                                                     <tr>
-                                                        <td class="font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
-                                                        <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
+                                                        <td><?= $s_count++ ?></td>
+                                                        <td><?= htmlspecialchars($s['invoice_no']) ?></td>
                                                         <td><?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?></td>
+                                                        <td><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
                                                         <td><?= htmlspecialchars($s['cashier'] ?? 'Admin') ?></td>
-                                                        <td class="text-right font-bold text-green-600"><?= number_format($s['grand_total']) ?> Ks</td>
+                                                        <td class="num"><?= number_format($s['grand_total']) ?> Ks</td>
                                                     </tr>
                                                 <?php endwhile; ?>
                                             </tbody>
@@ -333,25 +335,27 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                             </div>
                             <div class="card-body p-0">
                                 <?php if (mysqli_num_rows($recent_purchases) > 0): ?>
-                                    <div class="overflow-x-auto">
-                                        <table class="data-table">
+                                    <div class="table-wrap">
+                                        <table class="data-table w-full">
                                             <thead>
                                                 <tr>
+                                                    <th>#</th>
                                                     <th>Invoice</th>
                                                     <th>Supplier</th>
                                                     <th>Date</th>
-                                                    <th class="text-right">Amount</th>
-                                                    <th>Status</th>
+                                                    <th class="num">Total</th>
+                                                    <th class="center">Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php while ($p = mysqli_fetch_assoc($recent_purchases)): ?>
+                                                <?php $p_count = 1; while ($p = mysqli_fetch_assoc($recent_purchases)): ?>
                                                     <tr>
-                                                        <td class="font-semibold"><?= htmlspecialchars($p['invoice_no'] ?? 'N/A') ?></td>
+                                                        <td><?= $p_count++ ?></td>
+                                                        <td><?= htmlspecialchars($p['invoice_no'] ?? 'N/A') ?></td>
                                                         <td><?= htmlspecialchars($p['supplier_name'] ?? 'N/A') ?></td>
-                                                        <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y', strtotime($p['purchase_date'])) ?></td>
-                                                        <td class="text-right font-bold"><?= number_format($p['total_amount']) ?> Ks</td>
-                                                        <td><span class="badge <?= $p['payment_status'] === 'Paid' ? 'badge-success' : 'badge-warning' ?>"><?= $p['payment_status'] ?></span></td>
+                                                        <td><?= date('d-m-Y', strtotime($p['purchase_date'])) ?></td>
+                                                        <td class="num"><?= number_format($p['total_amount']) ?> Ks</td>
+                                                        <td class="center"><span class="badge <?= $p['payment_status'] === 'Paid' ? 'badge-success' : 'badge-warning' ?>"><?= $p['payment_status'] ?></span></td>
                                                     </tr>
                                                 <?php endwhile; ?>
                                             </tbody>
@@ -405,29 +409,31 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                             </div>
                             <div class="card-body p-0">
                                 <?php if ($forecast_items && mysqli_num_rows($forecast_items) > 0): ?>
-                                    <div class="overflow-x-auto">
-                                        <table class="data-table">
+                                    <div class="table-wrap">
+                                        <table class="data-table w-full">
                                             <thead>
                                                 <tr>
+                                                    <th>#</th>
                                                     <th>Product</th>
                                                     <th>Forecast Date</th>
-                                                    <th>Forecast Qty</th>
-                                                    <th>Demand Level</th>
-                                                    <th>Recommended Stock</th>
+                                                    <th class="num">Forecast Qty</th>
+                                                    <th class="center">Demand Level</th>
+                                                    <th class="num">Recommended Stock</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php while ($f = mysqli_fetch_assoc($forecast_items)): ?>
+                                                <?php $f_count = 1; while ($f = mysqli_fetch_assoc($forecast_items)): ?>
                                                     <tr>
-                                                        <td class="font-semibold"><?= htmlspecialchars($f['product_name']) ?></td>
-                                                        <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y', strtotime($f['forecast_date'])) ?></td>
-                                                        <td><?= $f['forecast_quantity'] ?></td>
-                                                        <td>
+                                                        <td><?= $f_count++ ?></td>
+                                                        <td><?= htmlspecialchars($f['product_name']) ?></td>
+                                                        <td><?= date('d-m-Y', strtotime($f['forecast_date'])) ?></td>
+                                                        <td class="num"><?= $f['forecast_quantity'] ?></td>
+                                                        <td class="center">
                                                             <span class="badge <?= $f['demand_level'] === 'High' ? 'badge-success' : ($f['demand_level'] === 'Low' ? 'badge-warning' : 'badge-info') ?>">
                                                                 <?= $f['demand_level'] ?>
                                                             </span>
                                                         </td>
-                                                        <td><?= $f['recommended_stock'] ?></td>
+                                                        <td class="num"><?= $f['recommended_stock'] ?></td>
                                                     </tr>
                                                 <?php endwhile; ?>
                                             </tbody>
@@ -571,25 +577,27 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                         </div>
                         <div class="card-body p-0">
                             <?php if (mysqli_num_rows($recent_purchases) > 0): ?>
-                                <div class="overflow-x-auto">
-                                    <table class="data-table">
+                                <div class="table-wrap">
+                                    <table class="data-table w-full">
                                         <thead>
                                             <tr>
+                                                <th>#</th>
                                                 <th>Invoice</th>
                                                 <th>Supplier</th>
                                                 <th>Date</th>
-                                                <th class="text-right">Amount</th>
-                                                <th>Status</th>
+                                                <th class="num">Total</th>
+                                                <th class="center">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php while ($p = mysqli_fetch_assoc($recent_purchases)): ?>
+                                            <?php $p_count = 1; while ($p = mysqli_fetch_assoc($recent_purchases)): ?>
                                                 <tr>
-                                                    <td class="font-semibold"><?= htmlspecialchars($p['invoice_no'] ?? 'N/A') ?></td>
+                                                    <td><?= $p_count++ ?></td>
+                                                    <td><?= htmlspecialchars($p['invoice_no'] ?? 'N/A') ?></td>
                                                     <td><?= htmlspecialchars($p['supplier_name'] ?? 'N/A') ?></td>
-                                                    <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y', strtotime($p['purchase_date'])) ?></td>
-                                                    <td class="text-right font-bold"><?= number_format($p['total_amount']) ?> Ks</td>
-                                                    <td><span class="badge <?= $p['payment_status'] === 'Paid' ? 'badge-success' : 'badge-warning' ?>"><?= $p['payment_status'] ?></span></td>
+                                                    <td><?= date('d-m-Y', strtotime($p['purchase_date'])) ?></td>
+                                                    <td class="num"><?= number_format($p['total_amount']) ?> Ks</td>
+                                                    <td class="center"><span class="badge <?= $p['payment_status'] === 'Paid' ? 'badge-success' : 'badge-warning' ?>"><?= $p['payment_status'] ?></span></td>
                                                 </tr>
                                             <?php endwhile; ?>
                                         </tbody>
@@ -658,23 +666,25 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                         </div>
                         <div class="card-body p-0">
                             <?php if (mysqli_num_rows($recent_sales) > 0): ?>
-                                <div class="overflow-x-auto">
-                                    <table class="data-table">
+                                <div class="table-wrap">
+                                    <table class="data-table w-full">
                                         <thead>
                                             <tr>
+                                                <th>#</th>
                                                 <th>Invoice</th>
-                                                <th>Date</th>
                                                 <th>Customer</th>
-                                                <th class="text-right">Amount</th>
+                                                <th>Date</th>
+                                                <th class="num">Total</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php while ($s = mysqli_fetch_assoc($recent_sales)): ?>
+                                            <?php $s_count = 1; while ($s = mysqli_fetch_assoc($recent_sales)): ?>
                                                 <tr>
-                                                    <td class="font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
-                                                    <td class="text-gray-500 dark:text-gray-400"><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
+                                                    <td><?= $s_count++ ?></td>
+                                                    <td><?= htmlspecialchars($s['invoice_no']) ?></td>
                                                     <td><?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?></td>
-                                                    <td class="text-right font-bold text-green-600"><?= number_format($s['grand_total']) ?> Ks</td>
+                                                    <td><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
+                                                    <td class="num"><?= number_format($s['grand_total']) ?> Ks</td>
                                                 </tr>
                                             <?php endwhile; ?>
                                         </tbody>

@@ -229,15 +229,15 @@ $top_products = mysqli_query($conn, "
 
             <div class="bg-white rounded-xl shadow-sm p-6">
                 <h2 class="text-lg font-bold mb-4">Daily Sales</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Date</th><th>Sales</th><th>Revenue</th></tr></thead>
+                <div class="table-wrap">
+                    <table class="data-table w-full">
+                        <thead><tr><th class="text-left">Date</th><th class="num">Count</th><th class="num">Revenue</th></tr></thead>
                         <tbody>
                             <?php while ($d = mysqli_fetch_assoc($sales_daily)): ?>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-3 font-semibold"><?= date('d-m-Y', strtotime($d['day'])) ?></td>
-                                <td><?= $d['count'] ?></td>
-                                <td class="text-green-600 font-bold"><?= number_format($d['total']) ?> Ks</td>
+                            <tr>
+                                <td class="font-semibold"><?= date('d-m-Y', strtotime($d['day'])) ?></td>
+                                <td class="num"><?= $d['count'] ?></td>
+                                <td class="num"><?= number_format($d['total']) ?> Ks</td>
                             </tr>
                             <?php endwhile; ?>
                         </tbody>
@@ -247,18 +247,18 @@ $top_products = mysqli_query($conn, "
 
             <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
                 <h2 class="text-lg font-bold mb-4">All Sales</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Invoice</th><th>Date</th><th>Customer</th><th>Cashier</th><th>Method</th><th>Amount</th></tr></thead>
+                <div class="table-wrap">
+                    <table class="data-table w-full">
+                        <thead><tr><th>Invoice</th><th class="text-left">Date</th><th>Customer</th><th>Cashier</th><th class="center">Method</th><th class="num">Total</th></tr></thead>
                         <tbody>
                             <?php while ($s = mysqli_fetch_assoc($sales_report)): ?>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-3 font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
+                            <tr>
+                                <td class="font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
                                 <td><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
                                 <td><?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?></td>
                                 <td><?= htmlspecialchars($s['cashier'] ?? 'Admin') ?></td>
-                                <td><span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-xs"><?= $s['payment_method'] ?? 'Cash' ?></span></td>
-                                <td class="text-green-600 font-bold"><?= number_format($s['grand_total']) ?> Ks</td>
+                                <td class="center"><span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-xs"><?= $s['payment_method'] ?? 'Cash' ?></span></td>
+                                <td class="num"><?= number_format($s['grand_total']) ?> Ks</td>
                             </tr>
                             <?php endwhile; ?>
                         </tbody>
@@ -280,17 +280,19 @@ $top_products = mysqli_query($conn, "
 
             <div class="bg-white rounded-xl shadow-sm p-6">
                 <h2 class="text-lg font-bold mb-4">Purchase History</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Date</th><th>Supplier</th><th>Amount</th><th>Payment</th></tr></thead>
+                <div class="table-wrap">
+                    <table class="data-table w-full">
+                        <thead><tr><th class="text-left">Date</th><th>Invoice</th><th>Supplier</th><th class="num">Total</th><th class="center">Status</th></tr></thead>
                         <tbody>
                             <?php while ($p = mysqli_fetch_assoc($purchase_report)): ?>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-3"><?= $p['purchase_date'] ?></td>
-                                <td class="font-semibold"><?= htmlspecialchars($p['supplier_name']) ?></td>
-                                <td class="text-orange-600 font-bold"><?= number_format($p['total_amount']) ?> Ks</td>
-                                <td>
-                                    <span class="<?= $p['payment_status'] == 'Paid' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' ?> px-2 py-0.5 rounded-full text-xs">
+                            <tr>
+                                <td><?= $p['purchase_date'] ?></td>
+                                <td class="font-semibold"><?= htmlspecialchars($p['invoice_no'] ?? '#' . $p['id']) ?></td>
+                                <td><?= htmlspecialchars($p['supplier_name']) ?></td>
+                                <td class="num"><?= number_format($p['total_amount']) ?> Ks</td>
+                                <td class="center">
+                                    <span class="badge <?= $p['payment_status'] == 'Paid' ? 'badge-success' : 'badge-danger' ?>">
+                                        <span class="badge-dot"></span>
                                         <?= $p['payment_status'] ?>
                                     </span>
                                 </td>
@@ -326,17 +328,16 @@ $top_products = mysqli_query($conn, "
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h2 class="text-lg font-bold mb-4">Daily Profit Breakdown</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Date</th><th>Sales</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr></thead>
+                    <div class="table-wrap">
+                        <table class="data-table w-full">
+                            <thead><tr><th class="text-left">Date</th><th class="num">Revenue</th><th class="num">Cost</th><th class="num">Profit</th></tr></thead>
                             <tbody>
                                 <?php while ($d = mysqli_fetch_assoc($profit_data)): ?>
-                                <tr class="border-b hover:bg-gray-50">
-                                    <td class="p-3 font-semibold"><?= date('d-m-Y', strtotime($d['day'])) ?></td>
-                                    <td><?= $d['sales_count'] ?></td>
-                                    <td class="text-green-600"><?= number_format($d['revenue']) ?> Ks</td>
-                                    <td class="text-red-600"><?= number_format($d['cost']) ?> Ks</td>
-                                    <td class="text-indigo-600 font-bold"><?= number_format($d['profit']) ?> Ks</td>
+                                <tr>
+                                    <td class="font-semibold"><?= date('d-m-Y', strtotime($d['day'])) ?></td>
+                                    <td class="num"><?= number_format($d['revenue']) ?> Ks</td>
+                                    <td class="num"><?= number_format($d['cost']) ?> Ks</td>
+                                    <td class="num"><?= number_format($d['profit']) ?> Ks</td>
                                 </tr>
                                 <?php endwhile; ?>
                             </tbody>
@@ -346,16 +347,16 @@ $top_products = mysqli_query($conn, "
 
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h2 class="text-lg font-bold mb-4">Top Selling Products</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead><tr class="border-b text-gray-500 dark:text-gray-400 text-left"><th class="p-3">Product</th><th>Sold</th><th>Revenue</th><th>Profit</th></tr></thead>
+                    <div class="table-wrap">
+                        <table class="data-table w-full">
+                            <thead><tr><th>#</th><th>Product</th><th class="num">Qty Sold</th><th class="num">Revenue</th></tr></thead>
                             <tbody>
-                                <?php while ($tp = mysqli_fetch_assoc($top_products)): ?>
-                                <tr class="border-b hover:bg-gray-50">
-                                    <td class="p-3 font-semibold"><?= htmlspecialchars($tp['product_name']) ?></td>
-                                    <td><?= $tp['total_qty'] ?></td>
-                                    <td class="text-green-600"><?= number_format($tp['total_revenue']) ?> Ks</td>
-                                    <td class="text-indigo-600 font-bold"><?= number_format($tp['total_profit']) ?> Ks</td>
+                                <?php $tp_idx = 1; while ($tp = mysqli_fetch_assoc($top_products)): ?>
+                                <tr>
+                                    <td><?= $tp_idx++ ?></td>
+                                    <td class="font-semibold"><?= htmlspecialchars($tp['product_name']) ?></td>
+                                    <td class="num"><?= $tp['total_qty'] ?></td>
+                                    <td class="num"><?= number_format($tp['total_revenue']) ?> Ks</td>
                                 </tr>
                                 <?php endwhile; ?>
                             </tbody>

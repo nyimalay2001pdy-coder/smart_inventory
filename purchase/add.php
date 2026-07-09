@@ -32,7 +32,12 @@ if (isset($_POST['add_cart'])) {
             ];
         }
     }
-    header("Location: add.php");
+    $params = [];
+    foreach (['supplier_id', 'payment_method', 'payment_status', 'paid_amount', 'discount', 'tax', 'purchase_date'] as $f) {
+        if (!empty($_POST[$f])) $params[$f] = $_POST[$f];
+    }
+    $query = $params ? '?' . http_build_query($params) : '';
+    header("Location: add.php" . $query);
     exit;
 }
 
@@ -109,6 +114,14 @@ foreach ($_SESSION['cart'] as $item) {
     $cart_subtotal += $item['subtotal'];
 }
 
+$old_supplier = $_POST['supplier_id'] ?? $_GET['supplier_id'] ?? '';
+$old_date     = $_POST['purchase_date'] ?? $_GET['purchase_date'] ?? date('Y-m-d');
+$old_method   = $_POST['payment_method'] ?? $_GET['payment_method'] ?? 'Cash';
+$old_status   = $_POST['payment_status'] ?? $_GET['payment_status'] ?? 'Unpaid';
+$old_paid     = $_POST['paid_amount'] ?? $_GET['paid_amount'] ?? '0';
+$old_discount = $_POST['discount'] ?? $_GET['discount'] ?? '0';
+$old_tax      = $_POST['tax'] ?? $_GET['tax'] ?? '0';
+
 $page_title = "New Purchase";
 ?>
 <!DOCTYPE html>
@@ -122,9 +135,7 @@ $page_title = "New Purchase";
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         .summary-sticky { position: sticky; top: 6rem; }
-        .product-table td, .product-table th { padding: 0.75rem 0.5rem; white-space: nowrap; }
-        .product-table tbody tr { transition: background 0.12s; }
-        .product-table tbody tr:hover { background: #f9fafb; }
+
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 0.8s linear infinite; }
     </style>
@@ -174,7 +185,7 @@ $page_title = "New Purchase";
                                             </div>
                                             <div>
                                                 <label class="form-label">Purchase Date</label>
-                                                <input type="date" name="purchase_date" value="<?= date('Y-m-d') ?>" required
+                                                <input type="date" name="purchase_date" value="<?= $old_date ?>" required
                                                     class="form-input text-sm">
                                             </div>
                                             <div>
@@ -182,7 +193,7 @@ $page_title = "New Purchase";
                                                 <select name="supplier_id" id="supplier_id" class="form-input text-sm" required>
                                                     <option value="">-- Select Supplier --</option>
                                                     <?php mysqli_data_seek($suppliers, 0); while ($s = mysqli_fetch_assoc($suppliers)) { ?>
-                                                        <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['supplier_name'])?></option>
+                                                        <option value="<?= $s['id'] ?>" <?= $old_supplier == $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['supplier_name'])?></option>
                                                     <?php } ?>
                                                 </select>
                                                 <p class="form-error hidden" id="supplierError">Please select a supplier.</p>
@@ -209,22 +220,22 @@ $page_title = "New Purchase";
                                             <div>
                                                 <label class="form-label">Payment Method</label>
                                                 <select name="payment_method" class="form-input text-sm">
-                                                    <option value="Cash">Cash</option>
-                                                    <option value="Card">Card</option>
-                                                    <option value="Transfer">Transfer</option>
+                                                    <option value="Cash" <?= $old_method == 'Cash' ? 'selected' : '' ?>>Cash</option>
+                                                    <option value="Card" <?= $old_method == 'Card' ? 'selected' : '' ?>>Card</option>
+                                                    <option value="Transfer" <?= $old_method == 'Transfer' ? 'selected' : '' ?>>Transfer</option>
                                                 </select>
                                             </div>
                                             <div>
                                                 <label class="form-label">Payment Status <span class="text-red-500">*</span></label>
                                                 <select name="payment_status" class="form-input text-sm" required>
-                                                    <option value="Unpaid">Unpaid</option>
-                                                    <option value="Paid">Paid</option>
+                                                    <option value="Unpaid" <?= $old_status == 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
+                                                    <option value="Paid" <?= $old_status == 'Paid' ? 'selected' : '' ?>>Paid</option>
                                                 </select>
                                             </div>
                                             <div>
                                                 <label class="form-label">Paid Amount</label>
                                                 <div class="relative">
-                                                     <input type="number" name="paid_amount" value="0" min="0" step="0.01" class="form-input text-sm">
+                                                     <input type="number" name="paid_amount" value="<?= $old_paid ?>" min="0" step="0.01" class="form-input text-sm">
                                                 </div>
                                             </div>
                                         </div>
@@ -271,28 +282,28 @@ $page_title = "New Purchase";
                                         </div>
 
                                         <!-- Products Table -->
-                                        <div class="overflow-x-auto -mx-1">
-                                            <table class="w-full product-table">
+                                        <div class="table-wrap">
+                                            <table class="data-table w-full">
                                                 <thead>
-                                                    <tr class="border-b border-gray-200 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                                        <th class="text-left">#</th>
-                                                        <th class="text-left">Product</th>
-                                                        <th class="text-center">Qty</th>
-                                                        <th class="text-center">Unit Cost</th>
-                                                        <th class="text-center">Total</th>
-                                                        <th class="text-center w-16">Action</th>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Product</th>
+                                                        <th class="center">Qty</th>
+                                                        <th class="num">Unit Cost</th>
+                                                        <th class="num">Total</th>
+                                                        <th class="center">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     <?php if (count($_SESSION['cart']) > 0): $i = 1; ?>
                                                         <?php foreach ($_SESSION['cart'] as $key => $item): ?>
-                                                            <tr class="border-b border-gray-100 text-sm">
-                                                                <td class="text-gray-400 font-mono"><?= sprintf('%02d', $i++) ?></td>
-                                                                <td class="font-medium text-gray-800 dark:text-gray-200"><?= htmlspecialchars($item['product_name']) ?></td>
-                                                                <td class="text-center"><?= $item['quantity'] ?></td>
-                                                                 <td class="text-center"><?= number_format($item['price'], 2) ?></td>
-                                                                 <td class="text-center font-semibold text-indigo-600"><?= number_format($item['subtotal'], 2) ?></td>
-                                                                <td class="text-center">
+                                                            <tr>
+                                                                <td><?= sprintf('%02d', $i++) ?></td>
+                                                                <td class="font-medium"><?= htmlspecialchars($item['product_name']) ?></td>
+                                                                <td class="center"><?= $item['quantity'] ?></td>
+                                                                <td class="num"><?= number_format($item['price'], 2) ?></td>
+                                                                <td class="num"><?= number_format($item['subtotal'], 2) ?></td>
+                                                                <td class="center">
                                                                     <button type="button" onclick="removeCartItem(<?= $key ?>)" class="text-red-400 hover:text-red-600 transition p-1" title="Remove">
                                                                         <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                                     </button>
@@ -337,14 +348,14 @@ $page_title = "New Purchase";
                                             <div>
                                                 <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Discount</label>
                                                 <div class="relative mt-1">
-                                                     <input type="number" name="discount" id="discount" value="0" min="0" step="0.01"
+                                                     <input type="number" name="discount" id="discount" value="<?= $old_discount ?>" min="0" step="0.01"
                                                          class="form-input text-sm" oninput="recalcTotals()">
                                                 </div>
                                             </div>
                                             <div>
                                                 <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tax</label>
                                                 <div class="relative mt-1">
-                                                     <input type="number" name="tax" id="tax" value="0" min="0" step="0.01"
+                                                     <input type="number" name="tax" id="tax" value="<?= $old_tax ?>" min="0" step="0.01"
                                                          class="form-input text-sm" oninput="recalcTotals()">
                                                 </div>
                                             </div>
@@ -477,14 +488,14 @@ $page_title = "New Purchase";
             }
             document.getElementById('supplierError').classList.add('hidden');
 
-            const rows = document.querySelectorAll('.product-table tbody tr');
+            const rows = document.querySelectorAll('.data-table tbody tr');
             const hasItems = rows.length > 0 && !(rows.length === 1 && rows[0].querySelector('td[colspan]'));
             if (!hasItems) {
                 showToast('error', 'Please add at least one product to the cart.');
                 return;
             }
 
-            const items = document.querySelectorAll('.product-table tbody tr:not(:has(td[colspan]))');
+            const items = document.querySelectorAll('.data-table tbody tr:not(:has(td[colspan]))');
             document.getElementById('confirmItems').textContent = items.length;
 
             const subtotalTxt = document.getElementById('summarySubtotal').textContent.replace(/,/g, '');

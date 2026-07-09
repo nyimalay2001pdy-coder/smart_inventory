@@ -273,34 +273,19 @@ $result = mysqli_query($conn, $sql);
                     </a>
                 </form>
                 <!-- Table -->
-                <div class="bg-white rounded-2xl shadow mt-8 p-6 overflow-x-auto">
-                    <table class="w-full">
+                <div class="bg-white rounded-2xl shadow mt-8 p-6">
+                    <div class="table-wrap">
+                    <table class="data-table w-full">
                         <thead>
-                            <tr class="border-b text-gray-500 dark:text-gray-400">
-                                <th class="p-4 text-left">
-                                    #
-                                </th>
-                                <th class="p-4 text-left">
-                                    Supplier
-                                </th>
-                                <th class="text-left">
-                                    Contact Person
-                                </th>
-                                <th class="p-4 text-left">
-                                    Phone
-                                </th>
-                                <th class="p-4 text-left">
-                                    Email
-                                </th>
-                                <th class=" text-left">
-                                    Address
-                                </th>
-                                <th class="p-2 text-left">
-                                    Status
-                                </th>
-                                <th class="p-8 text-left">
-                                    Action
-                                </th>
+                            <tr>
+                                <th>#</th>
+                                <th>Supplier</th>
+                                <th>Contact Person</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Address</th>
+                                <th class="center">Status</th>
+                                <th class="center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -308,133 +293,31 @@ $result = mysqli_query($conn, $sql);
                             $count = 1;
                             while ($row = mysqli_fetch_assoc($result)) {
                             ?>
-                                <tr class=" border-b">
-                                    <td class="p-4">
-                                        <?= $count++ ?>
-                                    </td>
-                                    <td class="font-semibold">
-                                        🚚 <?= $row['supplier_name'] ?>
-                                    </td>
-
-
-
-
-                                    <td>
-
-                                        <?= $row['contact_person'] ?? '' ?>
-
-                                    </td>
-
-
-
-
-                                    <td>
-
-                                        <?= $row['phone'] ?>
-
-                                    </td>
-
-
-
-
-                                    <td>
-
-                                        <?= $row['email'] ?>
-
-                                    </td>
-
-
-
-
-                                    <td>
-
-                                        <?= $row['address'] ?>
-
-                                    </td>
-
-
-
-
-                                    <td>
-
-
+                                <tr>
+                                    <td><?= $count++ ?></td>
+                                    <td class="font-semibold"><?= htmlspecialchars($row['supplier_name']) ?></td>
+                                    <td><?= htmlspecialchars($row['contact_person'] ?? '') ?></td>
+                                    <td><?= htmlspecialchars($row['phone']) ?></td>
+                                    <td><?= htmlspecialchars($row['email']) ?></td>
+                                    <td class="text-sm text-gray-500 max-w-xs truncate"><?= htmlspecialchars($row['address']) ?></td>
+                                    <td class="center">
                                         <?php if ($row['status'] == "Active") { ?>
-
-
-                                            <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full">
-
-                                                Active
-
-                                            </span>
-
-
+                                            <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
                                         <?php } else { ?>
-
-
-                                            <span class="bg-red-100 text-red-600 px-3 py-1 rounded-full">
-
-                                                Inactive
-
-                                            </span>
-
-
+                                            <span class="badge badge-danger"><span class="badge-dot"></span> Inactive</span>
                                         <?php } ?>
-
-
                                     </td>
-
-
-
-
-                                    <td>
-
-
-                                        <a href="edit.php?id=<?= $row['id'] ?>"
-
-                                            class="bg-blue-100 text-blue-600 px-3 py-2 rounded">
-
-
-                                            ✏️Edit
-
-
-                                        </a>
-
-
-
-
-                                        <a href="?delete=<?= $row['id'] ?>"
-
-                                            onclick="return confirm('Delete supplier?')"
-
-                                            class="bg-red-100 text-red-600 px-3 py-2 rounded ml-2">
-
-
-                                            🗑 Delete
-
-
-                                        </a>
-
-
-
+                                    <td class="center">
+                                        <div class="actions">
+                                            <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg">Edit</a>
+                                            <a href="?delete=<?= $row['id'] ?>" onclick="return confirm('Delete supplier?')" class="btn btn-sm bg-red-100 text-red-600 hover:bg-red-200 rounded-lg">Delete</a>
+                                        </div>
                                     </td>
-
-
-
                                 </tr>
-
-
-
                             <?php } ?>
-
-
-
                         </tbody>
-
-
-
                     </table>
-
-
+                    </div>
 
                 </div>
 

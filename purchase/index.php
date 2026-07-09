@@ -157,17 +157,17 @@ $page_title = "Purchase Management";
 
                     <!-- Table -->
                     <div class="card overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
                                         <th>#</th>
                                         <th>Invoice</th>
                                         <th>Date</th>
                                         <th>Supplier</th>
-                                        <th class="text-right">Amount</th>
-                                        <th>Payment</th>
-                                        <th class="text-center">Action</th>
+                                        <th class="num">Amount</th>
+                                        <th class="center">Payment</th>
+                                        <th class="center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -178,15 +178,15 @@ $page_title = "Purchase Management";
                                                 <td class="font-semibold"><?= htmlspecialchars($row['invoice_no'] ?? '#' . $row['id']) ?></td>
                                                 <td><?= $row['purchase_date'] ?></td>
                                                 <td><?= htmlspecialchars($row['supplier_name']) ?></td>
-                                                <td class="text-right font-bold text-green-600"><?= number_format($row['total_amount'], 2) ?></td>
-                                                <td>
+                                                <td class="num"><?= number_format($row['total_amount'], 2) ?></td>
+                                                <td class="center">
                                                     <span class="badge <?= $row['payment_status'] === 'Paid' ? 'badge-success' : 'badge-danger' ?>">
                                                         <span class="badge-dot"></span>
                                                         <?= $row['payment_status'] ?>
                                                     </span>
                                                 </td>
-                                                <td>
-                                                    <div class="action-group justify-center">
+                                                <td class="center">
+                                                    <div class="actions">
                                                         <a href="?view_id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg">View</a>
                                                         <?php if ($is_admin): ?>
                                                             <a href="?edit_id=<?= $row['id'] ?>" class="btn btn-sm bg-green-50 text-green-600 hover:bg-green-100 rounded-lg">Edit</a>
@@ -275,22 +275,24 @@ $page_title = "Purchase Management";
                 </div>
 
                 <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Items</h4>
-                <table class="data-table mb-6">
+                <table class="data-table w-full">
                     <thead>
                         <tr>
-                            <th class="text-left">Product</th>
-                            <th class="text-center">Qty</th>
-                            <th class="text-center">Price</th>
-                            <th class="text-right">Subtotal</th>
+                            <th>#</th>
+                            <th>Product</th>
+                            <th class="num">Qty</th>
+                            <th class="num">Price</th>
+                            <th class="num">Subtotal</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php while ($row = mysqli_fetch_assoc($view_details)): ?>
+                        <?php $vi = 1; while ($row = mysqli_fetch_assoc($view_details)): ?>
                             <tr>
+                                <td><?= $vi++ ?></td>
                                 <td class="font-medium"><?= htmlspecialchars($row['product_name']) ?></td>
-                                <td class="text-center"><?= $row['quantity'] ?></td>
-                                <td class="text-center"><?= number_format($row['purchase_price'], 2) ?></td>
-                                <td class="text-right font-semibold">$<?= number_format($row['subtotal'], 2) ?></td>
+                                <td class="num"><?= $row['quantity'] ?></td>
+                                <td class="num"><?= number_format($row['purchase_price'], 2) ?></td>
+                                <td class="num">$<?= number_format($row['subtotal'], 2) ?></td>
                             </tr>
                         <?php endwhile; ?>
                     </tbody>
@@ -336,20 +338,22 @@ $page_title = "Purchase Management";
                     </div>
 
                     <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Products</h4>
-                    <div class="overflow-x-auto mb-6">
-                        <table class="data-table">
+                    <div class="table-wrap mb-6">
+                        <table class="data-table w-full">
                             <thead>
                                 <tr>
-                                    <th class="text-left">Product</th>
-                                    <th class="text-center w-28">Quantity</th>
-                                    <th class="text-center w-36">Price</th>
-                                    <th class="text-right w-32">Subtotal</th>
+                                    <th>#</th>
+                                    <th>Product</th>
+                                    <th class="num">Quantity</th>
+                                    <th class="num">Price</th>
+                                    <th class="num">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php $edit_total = 0;
+                                <?php $edit_total = 0; $ei = 1;
                                 while ($row = mysqli_fetch_assoc($edit_details)): $edit_total += $row['subtotal']; ?>
                                     <tr>
+                                        <td><?= $ei++ ?></td>
                                         <td>
                                             <select name="product_id[]" class="form-input text-sm">
                                                 <?php mysqli_data_seek($all_products, 0);
@@ -363,7 +367,7 @@ $page_title = "Purchase Management";
                                         </td>
                                         <td><input type="number" name="quantity[]" value="<?= $row['quantity'] ?>" min="0" class="form-input text-sm text-center"></td>
                                         <td><input type="number" name="purchase_price[]" value="<?= $row['purchase_price'] ?>" step="0.01" min="0" class="form-input text-sm text-center"></td>
-                                        <td class="text-right font-semibold"><?= number_format($row['subtotal'], 2) ?></td>
+                                        <td class="num"><?= number_format($row['subtotal'], 2) ?></td>
                                     </tr>
                                 <?php endwhile; ?>
                             </tbody>

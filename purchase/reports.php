@@ -209,23 +209,25 @@ $page_title = "Purchase Reports";
                                 Top Purchased Products
                             </h2>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
                                         <th>#</th>
                                         <th>Product</th>
-                                        <th class="text-center">Qty Purchased</th>
-                                        <th class="text-right">Total Cost</th>
+                                        <th class="num">Total Qty</th>
+                                        <th class="num">Total Spent</th>
+                                        <th class="num">Avg Price</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php $tp_count = 1; while ($tp = mysqli_fetch_assoc($top_products)): ?>
                                     <tr>
-                                        <td class="text-gray-400 font-mono"><?= $tp_count++ ?></td>
-                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($tp['product_name']) ?></td>
-                                        <td class="text-center font-semibold"><?= number_format($tp['total_qty']) ?></td>
-                                        <td class="text-right font-bold text-emerald-600"><?= number_format($tp['total_cost']) ?> Ks</td>
+                                        <td><?= $tp_count++ ?></td>
+                                        <td class="font-semibold"><?= htmlspecialchars($tp['product_name']) ?></td>
+                                        <td class="num"><?= number_format($tp['total_qty']) ?></td>
+                                        <td class="num"><?= number_format($tp['total_cost']) ?> Ks</td>
+                                        <td class="num"><?= $tp['total_qty'] > 0 ? number_format($tp['total_cost'] / $tp['total_qty'], 2) : '0.00' ?> Ks</td>
                                     </tr>
                                     <?php endwhile; ?>
                                 </tbody>
@@ -241,23 +243,23 @@ $page_title = "Purchase Reports";
                                 Supplier Performance
                             </h2>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
                                         <th>#</th>
                                         <th>Supplier</th>
-                                        <th class="text-center">Purchases</th>
-                                        <th class="text-right">Total Spent</th>
+                                        <th class="num">Purchases Count</th>
+                                        <th class="num">Total Spent</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php $ts_count = 1; while ($ts = mysqli_fetch_assoc($top_suppliers)): ?>
                                     <tr>
-                                        <td class="text-gray-400 font-mono"><?= $ts_count++ ?></td>
-                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($ts['supplier_name']) ?></td>
-                                        <td class="text-center"><?= $ts['purchase_count'] ?></td>
-                                        <td class="text-right font-bold text-emerald-600"><?= number_format($ts['total_spent']) ?> Ks</td>
+                                        <td><?= $ts_count++ ?></td>
+                                        <td class="font-semibold"><?= htmlspecialchars($ts['supplier_name']) ?></td>
+                                        <td class="num"><?= $ts['purchase_count'] ?></td>
+                                        <td class="num"><?= number_format($ts['total_spent']) ?> Ks</td>
                                     </tr>
                                     <?php endwhile; ?>
                                 </tbody>
@@ -273,21 +275,23 @@ $page_title = "Purchase Reports";
                                 Daily Purchases
                             </h2>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
-                                        <th>Date</th>
-                                        <th class="text-center">Purchases</th>
-                                        <th class="text-right">Total</th>
+                                        <th>#</th>
+                                        <th class="text-left">Date</th>
+                                        <th class="num">Count</th>
+                                        <th class="num">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php while ($dp = mysqli_fetch_assoc($daily_purchases)): ?>
+                                    <?php $dc = 1; while ($dp = mysqli_fetch_assoc($daily_purchases)): ?>
                                     <tr>
+                                        <td><?= $dc++ ?></td>
                                         <td class="font-semibold"><?= date('d M Y (D)', strtotime($dp['day'])) ?></td>
-                                        <td class="text-center"><?= $dp['count'] ?></td>
-                                        <td class="text-right font-bold text-emerald-600"><?= number_format($dp['total']) ?> Ks</td>
+                                        <td class="num"><?= $dp['count'] ?></td>
+                                        <td class="num"><?= number_format($dp['total']) ?> Ks</td>
                                     </tr>
                                     <?php endwhile; ?>
                                 </tbody>

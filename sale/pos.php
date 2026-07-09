@@ -3,7 +3,7 @@ include "../includes/auth_check.php";
 include "../config/database.php";
 include "../config/helpers.php";
 
-if (!isAdmin() && !isStaff() && !isCashier()) {
+if (!isStaff() && !isCashier()) {
     header("Location: ../dashboard/index.php");
     exit;
 }

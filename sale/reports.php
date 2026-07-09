@@ -1,6 +1,9 @@
 <?php
 include "../includes/auth_check.php";
-requireAdmin();
+if (!isStaff() && !isCashier()) {
+    header("Location: ../dashboard/index.php");
+    exit;
+}
 include "../config/database.php";
 include "../config/helpers.php";
 
@@ -304,16 +307,16 @@ $page_title = "Sales Reports";
                                 Best Selling Products
                             </h2>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
-                                        <th class="w-12">#</th>
+                                        <th>#</th>
                                         <th>Product</th>
                                         <th>SKU</th>
-                                        <th class="text-center">Qty Sold</th>
-                                        <th class="text-right">Revenue</th>
-                                        <th class="text-right">Profit</th>
+                                        <th class="num">Qty Sold</th>
+                                        <th class="num">Revenue</th>
+                                        <th class="num">Profit</th>
                                         <th class="w-40">Share</th>
                                     </tr>
                                 </thead>
@@ -331,12 +334,12 @@ $page_title = "Sales Reports";
                                         $share = $total_revenue_all > 0 ? ($tp['total_revenue'] / $total_revenue_all) * 100 : 0;
                                     ?>
                                     <tr>
-                                        <td class="font-mono text-gray-400"><?= $rank++ ?></td>
-                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($tp['product_name']) ?></td>
-                                        <td class="text-gray-500 dark:text-gray-400 text-sm"><?= htmlspecialchars($tp['sku'] ?? 'N/A') ?></td>
-                                        <td class="text-center font-semibold"><?= number_format($tp['total_qty']) ?></td>
-                                        <td class="text-right font-bold text-emerald-600"><?= number_format($tp['total_revenue']) ?> Ks</td>
-                                        <td class="text-right font-bold text-indigo-600"><?= number_format($tp['total_profit']) ?> Ks</td>
+                                        <td><?= $rank++ ?></td>
+                                        <td><?= htmlspecialchars($tp['product_name']) ?></td>
+                                        <td><?= htmlspecialchars($tp['sku'] ?? 'N/A') ?></td>
+                                        <td class="num"><?= number_format($tp['total_qty']) ?></td>
+                                        <td class="num"><?= number_format($tp['total_revenue']) ?> Ks</td>
+                                        <td class="num"><?= number_format($tp['total_profit']) ?> Ks</td>
                                         <td>
                                             <div class="flex items-center gap-2">
                                                 <div class="progress-bar flex-1">
@@ -363,14 +366,15 @@ $page_title = "Sales Reports";
                                 Sales by Category
                             </h2>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
                                 <thead>
                                     <tr>
+                                        <th>#</th>
                                         <th>Category</th>
-                                        <th class="text-center">Sales Count</th>
-                                        <th class="text-center">Qty Sold</th>
-                                        <th class="text-right">Revenue</th>
+                                        <th class="num">Count</th>
+                                        <th class="num">Qty Sold</th>
+                                        <th class="num">Revenue</th>
                                         <th class="w-48">Share</th>
                                     </tr>
                                 </thead>
@@ -387,10 +391,11 @@ $page_title = "Sales Reports";
                                         $ci++;
                                     ?>
                                     <tr>
-                                        <td class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($cs['category_name']) ?></td>
-                                        <td class="text-center"><?= number_format($cs['sale_count']) ?></td>
-                                        <td class="text-center font-semibold"><?= number_format($cs['total_qty']) ?></td>
-                                        <td class="text-right font-bold text-emerald-600"><?= number_format($cs['total_revenue']) ?> Ks</td>
+                                        <td><?= $ci ?></td>
+                                        <td><?= htmlspecialchars($cs['category_name']) ?></td>
+                                        <td class="num"><?= number_format($cs['sale_count']) ?></td>
+                                        <td class="num"><?= number_format($cs['total_qty']) ?></td>
+                                        <td class="num"><?= number_format($cs['total_revenue']) ?> Ks</td>
                                         <td>
                                             <div class="flex items-center gap-2">
                                                 <div class="progress-bar flex-1">
@@ -402,7 +407,7 @@ $page_title = "Sales Reports";
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php if (empty($cat_rows)): ?>
-                                    <tr><td colspan="5" class="text-center py-8 text-gray-400">No category data in this period</td></tr>
+                                    <tr><td colspan="6" class="text-center py-8 text-gray-400">No category data in this period</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -421,21 +426,21 @@ $page_title = "Sales Reports";
                             <div class="h-64 mb-4">
                                 <canvas id="dailyChart"></canvas>
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="data-table">
+                            <div class="table-wrap">
+                                <table class="data-table w-full">
                                     <thead>
                                         <tr>
                                             <th>Date</th>
-                                            <th class="text-center">Sales</th>
-                                            <th class="text-right">Revenue</th>
+                                            <th class="num">Sales</th>
+                                            <th class="num">Revenue</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php while ($d = mysqli_fetch_assoc($daily_sales)): ?>
                                         <tr>
-                                            <td class="font-semibold"><?= date('d M Y (D)', strtotime($d['day'])) ?></td>
-                                            <td class="text-center"><?= $d['count'] ?></td>
-                                            <td class="text-right font-bold text-emerald-600"><?= number_format($d['total']) ?> Ks</td>
+                                            <td><?= date('d M Y (D)', strtotime($d['day'])) ?></td>
+                                            <td class="num"><?= $d['count'] ?></td>
+                                            <td class="num"><?= number_format($d['total']) ?> Ks</td>
                                         </tr>
                                         <?php endwhile; ?>
                                     </tbody>

@@ -2,6 +2,11 @@
 include "../includes/auth_check.php";
 include "../config/database.php";
 
+if (!isStaff() && !isCashier()) {
+    header("Location: ../dashboard/index.php");
+    exit;
+}
+
 $sale_id = (int)($_GET['id'] ?? 0);
 if ($sale_id <= 0) {
     header("Location: index.php");
@@ -20,7 +25,7 @@ if (!$sale) {
 }
 
 $items = mysqli_query($conn, "
-    SELECT sd.*, p.product_name
+    SELECT sd.*, p.product_name, p.sku
     FROM sale_details sd
     LEFT JOIN products p ON sd.product_id = p.id
     WHERE sd.sale_id='$sale_id'
@@ -69,6 +74,7 @@ $change = max(0, $total_paid - $grand_total);
     <title>Invoice #<?= htmlspecialchars($sale['invoice_no']) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <?php include "../includes/theme-init.php"; ?>
+    <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         @media print {
             .no-print { display: none !important; }
@@ -121,26 +127,32 @@ $change = max(0, $total_paid - $grand_total);
                 <div class="border-t border-dashed border-gray-300 mb-4"></div>
 
                 <!-- Items Table -->
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                            <th class="text-left pb-2.5">Product</th>
-                            <th class="text-center pb-2.5">Qty</th>
-                            <th class="text-right pb-2.5">Price</th>
-                            <th class="text-right pb-2.5">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $row_idx = 0; foreach ($item_rows as $item): $row_idx++; ?>
-                        <tr class="<?= $row_idx < count($item_rows) ? 'border-b border-gray-50' : '' ?>">
-                            <td class="py-2.5 pr-2 font-medium text-gray-800"><?= htmlspecialchars($item['product_name']) ?></td>
-                            <td class="py-2.5 text-center font-semibold text-gray-800"><?= (int)$item['quantity'] ?></td>
-                            <td class="py-2.5 text-right text-gray-600"><?= number_format((float)$item['selling_price']) ?> Ks</td>
-                            <td class="py-2.5 text-right font-semibold text-gray-800"><?= number_format((float)$item['subtotal']) ?> Ks</td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <div class="table-wrap">
+                    <table class="data-table w-full">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th class="num">Qty</th>
+                                <th class="num">Unit Price</th>
+                                <th class="num">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $row_idx = 0; foreach ($item_rows as $item): $row_idx++; ?>
+                            <tr>
+                                <td><?= $row_idx ?></td>
+                                <td><?= htmlspecialchars($item['product_name']) ?></td>
+                                <td><?= htmlspecialchars($item['sku'] ?? '—') ?></td>
+                                <td class="num"><?= (int)$item['quantity'] ?></td>
+                                <td class="num"><?= number_format((float)$item['selling_price']) ?> Ks</td>
+                                <td class="num"><?= number_format((float)$item['subtotal']) ?> Ks</td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
 
                 <!-- Divider -->
                 <div class="border-t border-dashed border-gray-300 my-4"></div>

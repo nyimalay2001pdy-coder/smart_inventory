@@ -49,7 +49,7 @@ function hasPermission($module, $action = 'view') {
             'categories' => ['view', 'add', 'edit', 'delete'],
             'suppliers' => ['view', 'add', 'edit', 'delete'],
             'purchases' => ['view', 'add', 'edit', 'delete'],
-            'sales' => ['view', 'delete'],
+            'sales' => [],
             'reports' => ['view'],
             'forecast' => ['view'],
             'users' => ['view', 'add', 'edit', 'delete'],
@@ -61,7 +61,7 @@ function hasPermission($module, $action = 'view') {
             'invoices' => ['view'],
         ],
         'cashier' => [
-            'pos' => ['view', 'add'],
+            'sales' => ['view', 'add'],
             'invoices' => ['view'],
             'products' => ['view'],
         ],

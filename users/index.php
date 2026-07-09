@@ -124,54 +124,58 @@ if (isset($_GET['edit_id'])) {
                     <a href="index.php" class="border px-5 py-2.5 rounded-lg">Reset</a>
                 </form>
 
-                <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-                    <table class="w-full">
-                        <thead>
-                            <tr class="border-b text-gray-500 dark:text-gray-400 text-left">
-                                <th class="p-4">#</th>
-                                <th>Username</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Created</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (mysqli_num_rows($result) > 0): $count = 1;
-                                while ($row = mysqli_fetch_assoc($result)): ?>
-                                    <tr class="border-b hover:bg-gray-50">
-                                        <td class="p-4"><?= $count++ ?></td>
-                                        <td class="font-semibold"><?= htmlspecialchars($row['username']) ?></td>
-                                        <td><?= htmlspecialchars($row['name']) ?></td>
-                                        <td><?= htmlspecialchars($row['email']) ?></td>
-                                        <td>
-                                            <span class="<?= $row['role'] == 'admin' ? 'bg-purple-100 text-purple-600' : ($row['role'] == 'staff' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600') ?> px-3 py-1 rounded-full text-xs font-semibold">
-                                                <?= ucfirst($row['role']) ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="<?= $row['status'] == 'Active' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' ?> px-3 py-1 rounded-full text-xs font-semibold">
-                                                <?= $row['status'] ?>
-                                            </span>
-                                        </td>
-                                        <td class="text-sm text-gray-500 dark:text-gray-400"><?= date('d-m-Y', strtotime($row['created_at'])) ?></td>
-                                        <td class="flex gap-2 mt-3">
-                                            <a href="?edit_id=<?= $row['id'] ?>" class="bg-blue-100 text-blue-600 px-3 py-1.5 rounded text-sm">Edit</a>
-                                            <?php if ($row['id'] != $_SESSION['user_id']): ?>
-                                                <a href="?delete_id=<?= $row['id'] ?>" onclick="return confirm('Delete user?')" class="bg-red-100 text-red-600 px-3 py-1.5 rounded text-sm">Delete</a>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endwhile;
-                            else: ?>
+                <div class="bg-white rounded-xl shadow-sm">
+                    <div class="table-wrap">
+                        <table class="data-table w-full">
+                            <thead>
                                 <tr>
-                                    <td colspan="8" class="text-center py-10 text-gray-500 dark:text-gray-400">No users found</td>
+                                    <th>#</th>
+                                    <th>Username</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th class="center">Role</th>
+                                    <th class="center">Status</th>
+                                    <th>Created</th>
+                                    <th class="center">Actions</th>
                                 </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <?php if (mysqli_num_rows($result) > 0): $count = 1;
+                                    while ($row = mysqli_fetch_assoc($result)): ?>
+                                        <tr>
+                                            <td><?= $count++ ?></td>
+                                            <td class="font-semibold"><?= htmlspecialchars($row['username']) ?></td>
+                                            <td><?= htmlspecialchars($row['name']) ?></td>
+                                            <td><?= htmlspecialchars($row['email']) ?></td>
+                                            <td class="center">
+                                                <span class="<?= $row['role'] == 'admin' ? 'bg-purple-100 text-purple-600' : ($row['role'] == 'staff' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600') ?> px-3 py-1 rounded-full text-xs font-semibold">
+                                                    <?= ucfirst($row['role']) ?>
+                                                </span>
+                                            </td>
+                                            <td class="center">
+                                                <span class="<?= $row['status'] == 'Active' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' ?> px-3 py-1 rounded-full text-xs font-semibold">
+                                                    <?= $row['status'] ?>
+                                                </span>
+                                            </td>
+                                            <td><?= date('d-m-Y', strtotime($row['created_at'])) ?></td>
+                                            <td class="center">
+                                                <div class="actions">
+                                                    <a href="?edit_id=<?= $row['id'] ?>" class="bg-blue-100 text-blue-600 px-3 py-1.5 rounded text-sm">Edit</a>
+                                                    <?php if ($row['id'] != $_SESSION['user_id']): ?>
+                                                        <a href="?delete_id=<?= $row['id'] ?>" onclick="return confirm('Delete user?')" class="bg-red-100 text-red-600 px-3 py-1.5 rounded text-sm">Delete</a>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endwhile;
+                                else: ?>
+                                    <tr>
+                                        <td colspan="8" class="text-center py-10 text-gray-500 dark:text-gray-400">No users found</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </main>
         </div>
