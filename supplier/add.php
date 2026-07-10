@@ -62,7 +62,8 @@ if (isset($_POST['save'])) {
 
             <main class="p-6">
                 <div class="max-w-2xl mx-auto">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="card">
+                        <div class="card-body">
                         <form method="POST" novalidate data-form-guard="true">
 
                             <div class="mb-5">

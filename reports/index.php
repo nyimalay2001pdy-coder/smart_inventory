@@ -249,13 +249,12 @@ $top_products = mysqli_query($conn, "
                 <h2 class="text-lg font-bold mb-4">All Sales</h2>
                 <div class="table-wrap">
                     <table class="data-table w-full">
-                        <thead><tr><th>Invoice</th><th class="text-left">Date</th><th>Customer</th><th>Cashier</th><th class="center">Method</th><th class="num">Total</th></tr></thead>
+                        <thead><tr><th>Invoice</th><th class="text-left">Date</th><th>Cashier</th><th class="center">Method</th><th class="num">Total</th></tr></thead>
                         <tbody>
                             <?php while ($s = mysqli_fetch_assoc($sales_report)): ?>
                             <tr>
                                 <td class="font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
                                 <td><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
-                                <td><?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?></td>
                                 <td><?= htmlspecialchars($s['cashier'] ?? 'Admin') ?></td>
                                 <td class="center"><span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-xs"><?= $s['payment_method'] ?? 'Cash' ?></span></td>
                                 <td class="num"><?= number_format($s['grand_total']) ?> Ks</td>

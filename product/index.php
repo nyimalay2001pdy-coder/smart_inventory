@@ -218,7 +218,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                     <?php $is_edit = ($action === 'edit' && $product); ?>
                     <div class="min-h-screen flex items-center justify-center">
                         <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-3xl">
-                                <form method="POST" enctype="multipart/form-data" data-form-guard="true">
+                            <form method="POST" enctype="multipart/form-data" data-form-guard="true">
 
                                 <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 border-b pb-2">Product Information</h2>
                                 <div class="grid grid-cols-2 gap-5">
@@ -335,16 +335,16 @@ if ($action === 'edit' && isset($_GET['id'])) {
                         </div>
                     </div>
 
-    <script>
-        function calcProfit() {
-            var purchase = parseFloat(document.getElementById('purchase_price').value) || 0;
-            var selling = parseFloat(document.getElementById('selling_price').value) || 0;
-            document.getElementById('profit').value = (selling - purchase).toFixed(2);
-        }
-        <?php if ($is_edit): ?>
-            calcProfit();
-        <?php endif; ?>
-    </script>
+                    <script>
+                        function calcProfit() {
+                            var purchase = parseFloat(document.getElementById('purchase_price').value) || 0;
+                            var selling = parseFloat(document.getElementById('selling_price').value) || 0;
+                            document.getElementById('profit').value = (selling - purchase).toFixed(2);
+                        }
+                        <?php if ($is_edit): ?>
+                            calcProfit();
+                        <?php endif; ?>
+                    </script>
 
                 <?php else: ?>
 
@@ -436,11 +436,9 @@ WHERE 1=1
                                         <th>Product Name</th>
                                         <th>SKU</th>
                                         <th>Category</th>
-                                        <th class="num">Purchase Price</th>
                                         <th class="num">Selling Price</th>
                                         <th class="num">Stock</th>
                                         <th class="center">Status</th>
-                                        <th>Created Date</th>
                                         <th class="center sticky right-0 bg-gray-50 z-10">Action</th>
                                     </tr>
                                 </thead>
@@ -474,7 +472,6 @@ WHERE 1=1
                                             <td class="px-4 py-3">
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"><?= htmlspecialchars($row['name']) ?></span>
                                             </td>
-                                            <td class="px-4 py-3 num text-gray-700 dark:text-gray-300"><?= number_format($row['purchase_price']) ?> Ks</td>
                                             <td class="px-4 py-3 num font-bold text-green-600"><?= number_format($row['selling_price']) ?> Ks</td>
                                             <td class="px-4 py-3 num">
                                                 <div class="flex flex-col items-center gap-1">
@@ -488,9 +485,6 @@ WHERE 1=1
                                                 <?php else: ?>
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>
                                                 <?php endif; ?>
-                                            </td>
-                                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
-                                                <?= date('d M Y', strtotime($row['created_at'])) ?>
                                             </td>
                                             <td class="px-4 py-3 center sticky right-0 bg-white z-10">
                                                 <div class="actions">

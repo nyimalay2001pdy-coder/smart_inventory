@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS sales (
     id INT AUTO_INCREMENT PRIMARY KEY,
     invoice_no VARCHAR(50) NOT NULL,
     user_id INT DEFAULT NULL,
-    customer_name VARCHAR(100) DEFAULT 'Walk-in Customer',
+
     grand_total DECIMAL(10,2) DEFAULT 0.00,
     payment_method ENUM('Cash', 'Card', 'Transfer') DEFAULT 'Cash',
     paid_amount DECIMAL(10,2) DEFAULT 0.00,

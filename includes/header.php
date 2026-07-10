@@ -58,19 +58,33 @@ if (isset($conn)) {
         <div class="flex items-center gap-3">
             <!-- Theme Toggle -->
             <button onclick="toggleTheme()" id="themeToggleBtn" class="header-btn relative flex items-center justify-center w-10 h-10 text-gray-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl border border-gray-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-500 bg-white dark:bg-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200 shadow-sm hover:shadow" title="Toggle Theme">
-                <!-- Sun icon (light mode) -->
-                <svg id="iconLight" class="w-[18px] h-[18px] transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                <!-- Sun (light mode) -->
+                <svg id="iconLight" class="w-[18px] h-[18px] absolute inset-0 m-auto" style="opacity:0;transition:opacity .3s" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
                 </svg>
-                <!-- Moon icon (dark mode) -->
-                <svg id="iconDark" class="w-[18px] h-[18px] transition-all duration-300 absolute inset-0 m-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-                <!-- Monitor icon (system mode) -->
-                <svg id="iconSystem" class="w-[18px] h-[18px] transition-all duration-300 absolute inset-0 m-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <!-- Moon (dark mode) -->
+                <svg id="iconDark" class="w-[18px] h-[18px] absolute inset-0 m-auto" style="opacity:0;transition:opacity .3s" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                 </svg>
             </button>
+            <script>
+            (function(){
+                var t=localStorage.getItem('theme')||'dark';
+                var s=document.getElementById('iconLight');
+                var m=document.getElementById('iconDark');
+                if(!s||!m)return;
+                if(t==='light'){s.style.opacity='1';m.style.opacity='0';}
+                else{m.style.opacity='1';s.style.opacity='0';}
+            })();
+            </script>
 
             <!-- Notifications -->
             <div class="relative">

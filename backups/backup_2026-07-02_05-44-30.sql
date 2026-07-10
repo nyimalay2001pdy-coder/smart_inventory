@@ -32,10 +32,10 @@ TRUNCATE TABLE purchases;
 TRUNCATE TABLE purchase_details;
 
 TRUNCATE TABLE sales;
-INSERT INTO sales (id, invoice_no, user_id, customer_name, grand_total, payment_method, paid_amount, discount, sale_date, created_at) VALUES ('2', 'INV-00001', '', '', '521200.00', 'Card', '500000.00', '0.00', '2026-07-01 23:46:57', '2026-07-01 23:46:57');
-INSERT INTO sales (id, invoice_no, user_id, customer_name, grand_total, payment_method, paid_amount, discount, sale_date, created_at) VALUES ('3', 'INV-00003', '', '', '521200.00', 'Card', '500000.00', '0.00', '2026-07-01 23:48:25', '2026-07-01 23:48:25');
-INSERT INTO sales (id, invoice_no, user_id, customer_name, grand_total, payment_method, paid_amount, discount, sale_date, created_at) VALUES ('4', 'INV-00004', '', '', '3600.00', 'Cash', '5000.00', '0.00', '2026-07-01 23:51:52', '2026-07-01 23:51:52');
-INSERT INTO sales (id, invoice_no, user_id, customer_name, grand_total, payment_method, paid_amount, discount, sale_date, created_at) VALUES ('5', 'POS-20260701-0005', '3', '', '941900.00', 'Cash', '941900.00', '100000.00', '2026-07-02 00:08:06', '2026-07-02 00:08:06');
+INSERT INTO sales (id, invoice_no, user_id, grand_total, payment_method, paid_amount, discount, sale_date, created_at) VALUES ('2', 'INV-00001', '', '521200.00', 'Card', '500000.00', '0.00', '2026-07-01 23:46:57', '2026-07-01 23:46:57');
+INSERT INTO sales (id, invoice_no, user_id, grand_total, payment_method, paid_amount, discount, sale_date, created_at) VALUES ('3', 'INV-00003', '', '521200.00', 'Card', '500000.00', '0.00', '2026-07-01 23:48:25', '2026-07-01 23:48:25');
+INSERT INTO sales (id, invoice_no, user_id, grand_total, payment_method, paid_amount, discount, sale_date, created_at) VALUES ('4', 'INV-00004', '', '3600.00', 'Cash', '5000.00', '0.00', '2026-07-01 23:51:52', '2026-07-01 23:51:52');
+INSERT INTO sales (id, invoice_no, user_id, grand_total, payment_method, paid_amount, discount, sale_date, created_at) VALUES ('5', 'POS-20260701-0005', '3', '941900.00', 'Cash', '941900.00', '100000.00', '2026-07-02 00:08:06', '2026-07-02 00:08:06');
 
 TRUNCATE TABLE sale_details;
 INSERT INTO sale_details (id, sale_id, product_id, quantity, purchase_price, selling_price, subtotal) VALUES ('1', '3', '1', '1', '0.00', '1200.00', '1200.00');

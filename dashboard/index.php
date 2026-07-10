@@ -16,8 +16,6 @@ $low_stock_result = mysqli_query($conn, "SELECT p.*, c.name AS category_name FRO
 // ─── Admin queries ────────────────────────────────────────────────
 if ($role === 'admin') {
     $total_users = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS count FROM users WHERE status='Active'"))['count'];
-    $total_customers = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT customer_name) AS count FROM sales WHERE customer_name != '' AND customer_name IS NOT NULL"))['count'];
-
     $today_sales = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS count, COALESCE(SUM(grand_total), 0) AS revenue FROM sales WHERE DATE(sale_date) = CURDATE()"));
     $total_revenue = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(grand_total), 0) AS total FROM sales"))['total'];
     $total_purchase_cost = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(purchase_price * quantity), 0) AS cost FROM sale_details"))['cost'];
@@ -118,9 +116,11 @@ if ($role === 'cashier') {
 }
 
 // ─── Helper ───────────────────────────────────────────────────────
-function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
+function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '', $link = '')
 {
-    return '<div class="stat-card fade-in' . ($stagger ? ' ' . $stagger : '') . '">
+    $tag = $link ? 'a href="' . $link . '"' : 'div';
+    $linkClass = $link ? ' stat-card-link' : '';
+    return '<' . $tag . ' class="stat-card fade-in' . ($stagger ? ' ' . $stagger : '') . $linkClass . '">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-9 h-9 ' . $bg . ' rounded-lg flex items-center justify-center flex-shrink-0">
                     ' . $icon . '
@@ -128,7 +128,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                 <span class="text-l font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">' . $value . '</span>
             </div>
             <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-400">' . $label . '</p>
-        </div>';
+        </' . ($link ? 'a' : 'div') . '>';
 }
 
 
@@ -155,110 +155,116 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
 
                 <?php if ($role === 'admin'): ?>
                     <!-- ════════════════════════ ADMIN DASHBOARD ════════════════════════ -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>',
                             '',
                             'text-indigo-600',
                             $total_products,
-                            'Total Products'
+                            'Total Products',
+                            '',
+                            '../product/index.php'
                         ) ?>
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>',
                             'text-blue-600',
                             $total_categories,
                             'Categories',
-                            'stagger-1'
+                            'stagger-1',
+                            '../categories/index.php'
                         ) ?>
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
                             'text-emerald-600',
                             $total_suppliers,
                             'Suppliers',
-                            'stagger-2'
-                        ) ?>
-                        <?= statCard(
-                            '<svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>',
-                            'text-amber-600',
-                            $total_customers,
-                            'Customers',
-                            'stagger-3'
+                            'stagger-2',
+                            '../supplier/index.php'
                         ) ?>
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>',
                             'text-purple-600',
                             $total_users,
                             'Users',
-                            'stagger-4'
+                            'stagger-4',
+                            '../users/index.php'
                         ) ?>
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
                             'text-green-600',
                             number_format($today_sales['revenue']),
                             "Today's Revenue",
-                            'stagger-5'
+                            'stagger-5',
+                            '../sale/history.php'
                         ) ?>
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>',
                             'text-rose-600',
                             number_format($total_revenue),
                             'Monthly Revenue',
-                            'stagger-6'
+                            'stagger-6',
+                            '../reports/index.php'
                         ) ?>
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
                             'text-cyan-600',
                             number_format(max(0, $total_profit)),
                             'Total Profit',
-                            'stagger-7'
+                            'stagger-7',
+                            '../reports/index.php'
                         ) ?>
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>',
                             'text-red-600',
                             $low_stock_count,
                             'Low Stock Items',
-                            'stagger-8'
+                            'stagger-8',
+                            '../product/index.php'
                         ) ?>
                     </div>
 
                     <!-- Charts Row 1: Sales -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <div class="card fade-in">
+                        <a href="../reports/index.php" class="card fade-in card-link">
                             <div class="card-header">
                                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">Daily Sales (30 Days)</h2>
+                                <span class="text-indigo-600 text-sm font-semibold">View Reports →</span>
                             </div>
                             <div class="card-body"><canvas id="dailySalesChart" height="120"></canvas></div>
-                        </div>
-                        <div class="card fade-in stagger-1">
+                        </a>
+                        <a href="../reports/index.php" class="card fade-in stagger-1 card-link">
                             <div class="card-header">
                                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Monthly Sales</h2>
+                                <span class="text-indigo-600 text-sm font-semibold">View Reports →</span>
                             </div>
                             <div class="card-body"><canvas id="monthlySalesChart" height="120"></canvas></div>
-                        </div>
+                        </a>
                     </div>
 
                     <!-- Charts Row 2: Profit & Products -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <div class="card fade-in">
+                        <a href="../reports/index.php" class="card fade-in card-link">
                             <div class="card-header">
                                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Profit Trend (30 Days)</h2>
+                                <span class="text-indigo-600 text-sm font-semibold">View Reports →</span>
                             </div>
                             <div class="card-body"><canvas id="profitChart" height="120"></canvas></div>
-                        </div>
-                        <div class="card fade-in stagger-1">
+                        </a>
+                        <a href="../product/index.php" class="card fade-in stagger-1 card-link">
                             <div class="card-header">
                                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Top Selling Products</h2>
+                                <span class="text-indigo-600 text-sm font-semibold">View Products →</span>
                             </div>
                             <div class="card-body"><canvas id="topProductsChart" height="120"></canvas></div>
-                        </div>
+                        </a>
                     </div>
 
                     <!-- Low Stock + Recent Sales -->
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                        <div class="card fade-in">
+                        <a href="../product/index.php" class="card fade-in card-link">
                             <div class="card-header">
                                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Low Stock Alert</h2>
-                                <?php if ($low_stock_count > 0): ?><span class="badge badge-danger"><?= $low_stock_count ?> items</span><?php endif; ?>
+                                <span class="text-indigo-600 text-sm font-semibold">View All →</span>
                             </div>
                             <div class="card-body">
                                 <?php if ($low_stock_result && mysqli_num_rows($low_stock_result) > 0): while ($p = mysqli_fetch_assoc($low_stock_result)): ?>
@@ -279,7 +285,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                     </div>
                                 <?php endif; ?>
                             </div>
-                        </div>
+                        </a>
 
                         <div class="lg:col-span-2 card fade-in stagger-1">
                             <div class="card-header">
@@ -294,18 +300,17 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                                 <tr>
                                                     <th>#</th>
                                                     <th>Invoice</th>
-                                                    <th>Customer</th>
                                                     <th>Date</th>
                                                     <th>Cashier</th>
                                                     <th class="num">Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php $s_count = 1; while ($s = mysqli_fetch_assoc($recent_sales)): ?>
+                                                <?php $s_count = 1;
+                                                while ($s = mysqli_fetch_assoc($recent_sales)): ?>
                                                     <tr>
                                                         <td><?= $s_count++ ?></td>
                                                         <td><?= htmlspecialchars($s['invoice_no']) ?></td>
-                                                        <td><?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?></td>
                                                         <td><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
                                                         <td><?= htmlspecialchars($s['cashier'] ?? 'Admin') ?></td>
                                                         <td class="num"><?= number_format($s['grand_total']) ?> Ks</td>
@@ -348,7 +353,8 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php $p_count = 1; while ($p = mysqli_fetch_assoc($recent_purchases)): ?>
+                                                <?php $p_count = 1;
+                                                while ($p = mysqli_fetch_assoc($recent_purchases)): ?>
                                                     <tr>
                                                         <td><?= $p_count++ ?></td>
                                                         <td><?= htmlspecialchars($p['invoice_no'] ?? 'N/A') ?></td>
@@ -371,19 +377,21 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="card fade-in stagger-1">
+                        <a href="../purchase/reports.php" class="card fade-in stagger-1 card-link">
                             <div class="card-header">
                                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Monthly Purchases</h2>
+                                <span class="text-indigo-600 text-sm font-semibold">View Reports →</span>
                             </div>
                             <div class="card-body"><canvas id="purchaseChart" height="140"></canvas></div>
-                        </div>
+                        </a>
                     </div>
 
                     <!-- Forecast Summary -->
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-                        <div class="card fade-in">
+                        <a href="../forecast/index.php" class="card fade-in card-link">
                             <div class="card-header">
                                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Forecast Summary</h2>
+                                <span class="text-indigo-600 text-sm font-semibold">Manage →</span>
                             </div>
                             <div class="card-body">
                                 <div class="space-y-4">
@@ -401,7 +409,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                         <div class="lg:col-span-3 card fade-in stagger-1">
                             <div class="card-header">
                                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Forecast Details</h2>
@@ -422,7 +430,8 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php $f_count = 1; while ($f = mysqli_fetch_assoc($forecast_items)): ?>
+                                                <?php $f_count = 1;
+                                                while ($f = mysqli_fetch_assoc($forecast_items)): ?>
                                                     <tr>
                                                         <td><?= $f_count++ ?></td>
                                                         <td><?= htmlspecialchars($f['product_name']) ?></td>
@@ -452,7 +461,7 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                     </div>
                 <?php elseif ($role === 'staff'): ?>
                     <!-- ═══════════════════════ STAFF DASHBOARD ═════════════════════════ -->
-                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
                         <?= statCard(
                             '<svg class="w-4.5 h-4.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>',
                             'bg-indigo-100',
@@ -590,7 +599,8 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php $p_count = 1; while ($p = mysqli_fetch_assoc($recent_purchases)): ?>
+                                            <?php $p_count = 1;
+                                            while ($p = mysqli_fetch_assoc($recent_purchases)): ?>
                                                 <tr>
                                                     <td><?= $p_count++ ?></td>
                                                     <td><?= htmlspecialchars($p['invoice_no'] ?? 'N/A') ?></td>
@@ -672,17 +682,16 @@ function statCard($icon, $bg, $iconColor, $value, $label, $stagger = '')
                                             <tr>
                                                 <th>#</th>
                                                 <th>Invoice</th>
-                                                <th>Customer</th>
                                                 <th>Date</th>
                                                 <th class="num">Total</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php $s_count = 1; while ($s = mysqli_fetch_assoc($recent_sales)): ?>
+                                            <?php $s_count = 1;
+                                            while ($s = mysqli_fetch_assoc($recent_sales)): ?>
                                                 <tr>
                                                     <td><?= $s_count++ ?></td>
                                                     <td><?= htmlspecialchars($s['invoice_no']) ?></td>
-                                                    <td><?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?></td>
                                                     <td><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
                                                     <td class="num"><?= number_format($s['grand_total']) ?> Ks</td>
                                                 </tr>

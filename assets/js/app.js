@@ -4,76 +4,40 @@ let deleteModalCallback = null;
 // ============ Theme Toggle ============
 var currentTheme = localStorage.getItem('theme') || 'dark';
 
-function updateThemeIcon() {
-    var iconLight = document.getElementById('iconLight');
-    var iconDark = document.getElementById('iconDark');
-    var iconSystem = document.getElementById('iconSystem');
+function setIcon(theme) {
+    var sun = document.getElementById('iconLight');
+    var moon = document.getElementById('iconDark');
     var btn = document.getElementById('themeToggleBtn');
+    if (!sun || !moon) return;
 
-    if (!iconLight || !iconDark || !iconSystem) return;
-
-    // Hide all icons first
-    iconLight.style.opacity = '0';
-    iconLight.style.transform = 'rotate(-90deg) scale(0.5)';
-    iconDark.style.opacity = '0';
-    iconDark.style.transform = 'rotate(-90deg) scale(0.5)';
-    iconSystem.style.opacity = '0';
-    iconSystem.style.transform = 'rotate(-90deg) scale(0.5)';
-
-    // Show the active icon with animation
-    setTimeout(function() {
-        if (currentTheme === 'light') {
-            iconLight.style.opacity = '1';
-            iconLight.style.transform = 'rotate(0) scale(1)';
-            btn.title = 'Theme: Light (click for Dark)';
-        } else if (currentTheme === 'dark') {
-            iconDark.style.opacity = '1';
-            iconDark.style.transform = 'rotate(0) scale(1)';
-            btn.title = 'Theme: Dark (click for System)';
-        } else {
-            iconSystem.style.opacity = '1';
-            iconSystem.style.transform = 'rotate(0) scale(1)';
-            btn.title = 'Theme: System (click for Light)';
-        }
-    }, 150);
-}
-
-function toggleTheme() {
-    // Cycle: dark -> light -> system -> dark
-    if (currentTheme === 'dark') {
-        currentTheme = 'light';
-    } else if (currentTheme === 'light') {
-        currentTheme = 'system';
+    if (theme === 'light') {
+        sun.style.opacity = '1';
+        sun.style.transform = 'rotate(0) scale(1)';
+        moon.style.opacity = '0';
+        moon.style.transform = 'rotate(90deg) scale(0.5)';
     } else {
-        currentTheme = 'dark';
+        moon.style.opacity = '1';
+        moon.style.transform = 'rotate(0) scale(1)';
+        sun.style.opacity = '0';
+        sun.style.transform = 'rotate(-90deg) scale(0.5)';
     }
-
-    applyTheme(currentTheme);
-    updateThemeIcon();
-
-    // Save to localStorage (persists across all pages)
-    localStorage.setItem('theme', currentTheme);
+    if (btn) btn.title = theme === 'light' ? 'Switch to Dark' : 'Switch to Light';
 }
 
 function applyTheme(theme) {
     if (theme === 'dark') {
         document.documentElement.classList.add('dark');
-    } else if (theme === 'light') {
-        document.documentElement.classList.remove('dark');
     } else {
-        // System: follow OS preference
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        document.documentElement.classList.remove('dark');
     }
 }
 
-// Initialize icon on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateThemeIcon();
-});
+function toggleTheme() {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', currentTheme);
+    applyTheme(currentTheme);
+    setIcon(currentTheme);
+}
 
 // ============ Form Guard (Unsaved Changes) ============
 function showUnsavedModal(callback) {

@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 require_once __DIR__ . '/../config/database.php';
 
 $theme = $_POST['theme'] ?? '';
-if (!in_array($theme, ['light', 'dark', 'system'])) {
+if (!in_array($theme, ['light', 'dark'])) {
     echo json_encode(['success' => false, 'error' => 'Invalid theme']);
     exit;
 }

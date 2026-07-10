@@ -137,7 +137,6 @@ if (isset($_POST['complete_sale'])) {
                     ? "Payment amount is not enough."
                     : "Payment amount exceeds total.";
             } else {
-                $customer_name = mysqli_real_escape_string($conn, $_POST['customer_name'] ?? 'Walk-in Customer');
                 $invoice_no = generateInvoiceNo($conn);
                 $user_id = $_SESSION['user_id'] ?? null;
 
@@ -151,9 +150,9 @@ if (isset($_POST['complete_sale'])) {
 
                 mysqli_begin_transaction($conn);
                 try {
-                    $stmt = $conn->prepare("INSERT INTO sales (invoice_no, user_id, customer_name, grand_total, payment_method, paid_amount, discount, sale_date)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
-                    $stmt->bind_param("sisdddd", $invoice_no, $user_id, $customer_name, $grand_total, $primary_method, $total_paid, $discount);
+                    $stmt = $conn->prepare("INSERT INTO sales (invoice_no, user_id, grand_total, payment_method, paid_amount, discount, sale_date)
+                        VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                    $stmt->bind_param("sidddd", $invoice_no, $user_id, $grand_total, $primary_method, $total_paid, $discount);
                     $stmt->execute();
                     $sale_id = $conn->insert_id;
 
@@ -432,12 +431,6 @@ $page_title = "New Sale (POS)";
                         <?php endif; ?>
                     </div>
 
-                    <!-- Customer Info -->
-                    <!-- <div class="px-4 py-3 border-b border-gray-100">
-                        <label class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Customer</label>
-                        <input type="text" id="customerName" placeholder="Walk-in Customer" value="" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-400">
-                    </div> -->
-
                     <!-- Cart Items -->
                     <div class="flex-1 overflow-y-auto px-4 py-2">
                         <?php if (count($_SESSION['sale_cart'] ?? []) > 0): ?>
@@ -522,10 +515,6 @@ $page_title = "New Sale (POS)";
                         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Invoice No</label>
                         <div class="bg-gray-50 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 mt-1 border border-gray-100"><?= $invoice_no ?></div>
                     </div>
-                    <!-- <div>
-                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer Name</label>
-                        <input type="text" name="customer_name" id="modalCustomerName" placeholder="Walk-in Customer" class="w-full border border-gray-200 rounded-xl p-2.5 text-sm mt-1 focus:outline-none focus:border-indigo-400">
-                    </div> -->
                     <div>
                         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Grand Total</label>
                         <div class="text-emerald-600 text-2xl font-bold mt-1" id="modalTotal"><?= number_format($cart_subtotal) ?> Ks</div>
