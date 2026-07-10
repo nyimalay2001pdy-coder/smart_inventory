@@ -85,8 +85,10 @@ $payment_summary = mysqli_query($conn, "
 $payment_totals = ['Cash' => 0, 'Card' => 0, 'Transfer' => 0];
 $payment_counts = ['Cash' => 0, 'Card' => 0, 'Transfer' => 0];
 while ($pt = mysqli_fetch_assoc($payment_summary)) {
-    $payment_totals[$pt['payment_method']] = (float)$pt['total'];
-    $payment_counts[$pt['payment_method']] = (int)$pt['count'];
+    $pm = $pt['payment_method'];
+    if ($pm === '' || $pm === null) continue;
+    $payment_totals[$pm] = (float)$pt['total'];
+    $payment_counts[$pm] = (int)$pt['count'];
 }
 $has_payments = array_sum($payment_totals) > 0;
 if (!$has_payments) {
@@ -276,7 +278,7 @@ $page_title = "Sales Reports";
                                     ];
                                     foreach ($payment_totals as $method => $amount):
                                         $pct = $total_payment > 0 ? ($amount / $total_payment) * 100 : 0;
-                                        $colors = $payment_colors[$method];
+                                        $colors = $payment_colors[$method] ?? ['bg' => 'bg-gray-100', 'text' => 'text-gray-600', 'fill' => 'bg-gray-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>'];
                                     ?>
                                     <div class="flex items-center gap-3">
                                         <div class="w-10 h-10 <?= $colors['bg'] ?> rounded-full flex items-center justify-center flex-shrink-0">

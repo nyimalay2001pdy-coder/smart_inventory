@@ -6,33 +6,93 @@ include "../config/database.php";
 $page_title = "Reports";
 $tab = $_GET['tab'] ?? 'sales';
 
-// Date filters
-$from = $_GET['from'] ?? date('Y-m-01');
-$to = $_GET['to'] ?? date('Y-m-t');
+// Revenue period filter
+$period = $_GET['period'] ?? 'monthly';
+switch ($period) {
+    case 'daily':
+        $from = date('Y-m-d');
+        $to = date('Y-m-d');
+        break;
+    case 'yearly':
+        $from = date('Y-01-01');
+        $to = date('Y-12-31');
+        break;
+    case 'custom':
+        $from = $_GET['from'] ?? date('Y-m-01');
+        $to = $_GET['to'] ?? date('Y-m-t');
+        break;
+    default: // monthly
+        $from = date('Y-m-01');
+        $to = date('Y-m-t');
+}
 $safe_from = mysqli_real_escape_string($conn, $from);
 $safe_to = mysqli_real_escape_string($conn, $to);
 
+// Category filter
+$category_id = (int)($_GET['category_id'] ?? 0);
+$category_join = '';
+$category_where = '';
+if ($category_id > 0) {
+    $category_join = "JOIN sale_details sd ON s.id = sd.sale_id
+                      JOIN products p ON sd.product_id = p.id";
+    $category_where = "AND p.category_id = $category_id";
+}
+
+$categories = mysqli_query($conn, "SELECT id, name FROM categories WHERE status='Active' ORDER BY name");
+
 // Sales Report
 $sales_report = mysqli_query($conn, "
-    SELECT s.*, u.name AS cashier
+    SELECT DISTINCT s.*, u.name AS cashier
     FROM sales s
     LEFT JOIN users u ON s.user_id = u.id
+    $category_join
     WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    $category_where
     ORDER BY s.sale_date DESC
 ");
 
 $sales_summary = mysqli_fetch_assoc(mysqli_query($conn, "
-    SELECT COUNT(*) AS total_sales, COALESCE(SUM(grand_total), 0) AS total_revenue,
-           COALESCE(SUM(paid_amount), 0) AS total_paid
-    FROM sales
-    WHERE DATE(sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    SELECT COUNT(DISTINCT s.id) AS total_sales,
+           COALESCE(SUM(s.grand_total), 0) AS total_revenue,
+           COALESCE(SUM(s.paid_amount), 0) AS total_paid
+    FROM sales s
+    $category_join
+    WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    $category_where
 "));
 
+// Chart data (ASC order for chart)
+$sales_chart = mysqli_query($conn, "
+    SELECT DATE(s.sale_date) AS day, COUNT(DISTINCT s.id) AS count, COALESCE(SUM(s.grand_total), 0) AS total
+    FROM sales s
+    $category_join
+    WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    $category_where
+    GROUP BY DATE(s.sale_date) ORDER BY day ASC
+");
+
+// Best Selling Category
+$best_category = mysqli_fetch_assoc(mysqli_query($conn, "
+    SELECT c.name, SUM(sd.quantity) AS total_qty, SUM(sd.subtotal) AS total_rev
+    FROM sale_details sd
+    JOIN sales s ON sd.sale_id = s.id
+    JOIN products p ON sd.product_id = p.id
+    JOIN categories c ON p.category_id = c.id
+    WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    " . ($category_id > 0 ? "AND p.category_id = $category_id " : "") . "
+    GROUP BY c.id
+    ORDER BY total_qty DESC
+    LIMIT 1
+"));
+
+// Daily sales table data (DESC order)
 $sales_daily = mysqli_query($conn, "
-    SELECT DATE(sale_date) AS day, COUNT(*) AS count, SUM(grand_total) AS total
-    FROM sales
-    WHERE DATE(sale_date) BETWEEN '$safe_from' AND '$safe_to'
-    GROUP BY DATE(sale_date) ORDER BY day DESC
+    SELECT DATE(s.sale_date) AS day, COUNT(DISTINCT s.id) AS count, COALESCE(SUM(s.grand_total), 0) AS total
+    FROM sales s
+    $category_join
+    WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    $category_where
+    GROUP BY DATE(s.sale_date) ORDER BY day DESC
 ");
 
 // Payment method summaries (from payments table)
@@ -139,7 +199,7 @@ $top_products = mysqli_query($conn, "
             </div>
 
             <div class="flex gap-1 mb-6 bg-white p-1 rounded-xl shadow-sm w-fit">
-                <a href="?tab=sales&from=<?= $from ?>&to=<?= $to ?>"
+                <a href="?tab=sales&period=<?= $period ?>&category_id=<?= $category_id ?>&from=<?= $from ?>&to=<?= $to ?>"
                     class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'sales' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100' ?>">Sales Report</a>
                 <a href="?tab=purchase&from=<?= $from ?>&to=<?= $to ?>"
                     class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'purchase' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100' ?>">Purchase Report</a>
@@ -147,39 +207,64 @@ $top_products = mysqli_query($conn, "
                     class="px-5 py-2.5 rounded-lg text-sm font-semibold <?= $tab == 'profit' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100' ?>">Profit Report</a>
             </div>
 
-            <form method="GET" class="bg-white p-4 rounded-xl shadow-sm flex gap-4 items-end mb-6">
-                <input type="hidden" name="tab" value="<?= $tab ?>">
-                <div>
-                    <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">From Date</label>
-                    <input type="date" name="from" value="<?= $from ?>" class="border rounded-lg p-2.5 mt-1">
+            <form method="GET" id="revenueFilterForm" class="bg-white p-5 rounded-xl shadow-sm mb-6">
+                <input type="hidden" name="tab" value="sales">
+                <div class="flex flex-wrap gap-x-6 gap-y-3 items-end">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 block">Period</label>
+                        <div class="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+                            <?php foreach (['daily' => 'Daily', 'monthly' => 'Monthly', 'yearly' => 'Yearly', 'custom' => 'Custom'] as $p => $pl): ?>
+                            <button type="button" data-period="<?= $p ?>"
+                                class="period-btn px-4 py-1.5 rounded-md text-sm font-medium transition <?= $period == $p ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' ?>"><?= $pl ?></button>
+                            <?php endforeach; ?>
+                            <input type="hidden" name="period" id="periodInput" value="<?= $period ?>">
+                        </div>
+                    </div>
+                    <div id="customDateFields" class="flex gap-3 items-end <?= $period !== 'custom' ? 'opacity-40 pointer-events-none' : '' ?>">
+                        <div>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">From</label>
+                            <input type="date" name="from" value="<?= $from ?>" class="border border-gray-200 rounded-lg p-2 mt-1 text-sm w-40">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">To</label>
+                            <input type="date" name="to" value="<?= $to ?>" class="border border-gray-200 rounded-lg p-2 mt-1 text-sm w-40">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 block">Category</label>
+                        <select name="category_id" onchange="this.form.submit()" class="border border-gray-200 rounded-lg p-2 text-sm bg-white min-w-[180px]">
+                            <option value="0">All Categories</option>
+                            <?php while ($cat = mysqli_fetch_assoc($categories)): ?>
+                            <option value="<?= $cat['id'] ?>" <?= $category_id == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    <button class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">Generate</button>
                 </div>
-                <div>
-                    <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">To Date</label>
-                    <input type="date" name="to" value="<?= $to ?>" class="border rounded-lg p-2.5 mt-1">
-                </div>
-                <button class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700">Generate</button>
             </form>
 
             <?php if ($tab == 'sales'): ?>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Sales</p>
-                    <p class="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1"><?= $sales_summary['total_sales'] ?></p>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-emerald-500">
                     <p class="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
-                    <p class="text-2xl font-bold text-green-600 mt-1"><?= number_format($sales_summary['total_revenue']) ?> Ks</p>
+                    <p class="text-2xl font-bold text-emerald-600 mt-1"><?= number_format($sales_summary['total_revenue']) ?> Ks</p>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Paid</p>
-                    <p class="text-2xl font-bold text-blue-600 mt-1"><?= number_format($sales_summary['total_paid']) ?> Ks</p>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-indigo-500">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Orders</p>
+                    <p class="text-2xl font-bold text-indigo-600 mt-1"><?= $sales_summary['total_sales'] ?></p>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Avg per Sale</p>
-                    <p class="text-2xl font-bold text-indigo-600 mt-1">
-                        <?= $sales_summary['total_sales'] > 0 ? number_format($sales_summary['total_revenue'] / $sales_summary['total_sales']) : 0 ?> Ks
-                    </p>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-amber-500">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Best Selling Category</p>
+                    <p class="text-2xl font-bold text-amber-600 mt-1"><?= htmlspecialchars($best_category['name'] ?? 'N/A') ?></p>
+                    <?php if ($best_category): ?>
+                    <p class="text-xs text-gray-400 mt-0.5"><?= $best_category['total_qty'] ?> items sold</p>
+                    <?php endif; ?>
                 </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h2 class="text-lg font-bold mb-4">Revenue Overview</h2>
+                <canvas id="revenueChart" height="100"></canvas>
             </div>
 
             <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
@@ -227,41 +312,43 @@ $top_products = mysqli_query($conn, "
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm p-6">
-                <h2 class="text-lg font-bold mb-4">Daily Sales</h2>
-                <div class="table-wrap">
-                    <table class="data-table w-full">
-                        <thead><tr><th class="text-left">Date</th><th class="num">Count</th><th class="num">Revenue</th></tr></thead>
-                        <tbody>
-                            <?php while ($d = mysqli_fetch_assoc($sales_daily)): ?>
-                            <tr>
-                                <td class="font-semibold"><?= date('d-m-Y', strtotime($d['day'])) ?></td>
-                                <td class="num"><?= $d['count'] ?></td>
-                                <td class="num"><?= number_format($d['total']) ?> Ks</td>
-                            </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold mb-4">Daily Revenue</h2>
+                    <div class="table-wrap max-h-64 overflow-y-auto">
+                        <table class="data-table w-full">
+                            <thead><tr><th class="text-left">Date</th><th class="num">Orders</th><th class="num">Revenue</th></tr></thead>
+                            <tbody>
+                                <?php while ($d = mysqli_fetch_assoc($sales_daily)): ?>
+                                <tr>
+                                    <td class="font-semibold"><?= date('d-m-Y', strtotime($d['day'])) ?></td>
+                                    <td class="num"><?= $d['count'] ?></td>
+                                    <td class="num"><?= number_format($d['total']) ?> Ks</td>
+                                </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
-                <h2 class="text-lg font-bold mb-4">All Sales</h2>
-                <div class="table-wrap">
-                    <table class="data-table w-full">
-                        <thead><tr><th>Invoice</th><th class="text-left">Date</th><th>Cashier</th><th class="center">Method</th><th class="num">Total</th></tr></thead>
-                        <tbody>
-                            <?php while ($s = mysqli_fetch_assoc($sales_report)): ?>
-                            <tr>
-                                <td class="font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
-                                <td><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
-                                <td><?= htmlspecialchars($s['cashier'] ?? 'Admin') ?></td>
-                                <td class="center"><span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-xs"><?= $s['payment_method'] ?? 'Cash' ?></span></td>
-                                <td class="num"><?= number_format($s['grand_total']) ?> Ks</td>
-                            </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold mb-4">All Sales</h2>
+                    <div class="table-wrap max-h-64 overflow-y-auto">
+                        <table class="data-table w-full">
+                            <thead><tr><th>Invoice</th><th class="text-left">Date</th><th>Cashier</th><th class="center">Method</th><th class="num">Total</th></tr></thead>
+                            <tbody>
+                                <?php while ($s = mysqli_fetch_assoc($sales_report)): ?>
+                                <tr>
+                                    <td class="font-semibold"><?= htmlspecialchars($s['invoice_no']) ?></td>
+                                    <td><?= date('d-m-Y h:i A', strtotime($s['sale_date'])) ?></td>
+                                    <td><?= htmlspecialchars($s['cashier'] ?? 'Admin') ?></td>
+                                    <td class="center"><span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-xs"><?= $s['payment_method'] ?? 'Cash' ?></span></td>
+                                    <td class="num"><?= number_format($s['grand_total']) ?> Ks</td>
+                                </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -367,6 +454,72 @@ $top_products = mysqli_query($conn, "
         </main>
         </div>
     </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Period buttons
+        document.querySelectorAll('.period-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.period-btn').forEach(function (b) {
+                    b.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+                    b.classList.add('text-gray-500');
+                });
+                this.classList.remove('text-gray-500');
+                this.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+                document.getElementById('periodInput').value = this.dataset.period;
+
+                var customFields = document.getElementById('customDateFields');
+                if (this.dataset.period === 'custom') {
+                    customFields.classList.remove('opacity-40', 'pointer-events-none');
+                } else {
+                    customFields.classList.add('opacity-40', 'pointer-events-none');
+                }
+                document.getElementById('revenueFilterForm').submit();
+            });
+        });
+
+        // Revenue chart
+        var ctx = document.getElementById('revenueChart');
+        if (ctx) {
+            var chartData = [
+            <?php mysqli_data_seek($sales_chart, 0); while ($rc = mysqli_fetch_assoc($sales_chart)): ?>
+                { day: '<?= $rc['day'] ?>', total: <?= (float)$rc['total'] ?> },
+            <?php endwhile; ?>
+            ];
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.map(function (d) { return d.day; }),
+                    datasets: [{
+                        label: 'Revenue (Ks)',
+                        data: chartData.map(function (d) { return d.total; }),
+                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (v) { return v.toLocaleString() + ' Ks'; }
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+    });
+    </script>
     <?php include "../includes/toast.php"; ?>
     <?php include "../includes/modal.php"; ?>
     <?php include "../includes/footer.php"; ?>
