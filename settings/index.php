@@ -56,7 +56,7 @@ if (isset($_POST['save'])) {
             <?php include "../includes/header.php"; ?>
             <main class="p-6">
 
-                <div class="max-w-3xl mx-auto">
+                <div class="max-w-4xl mx-auto">
                     <?php if (isset($success)): ?>
                         <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6"><?= $success ?></div>
                     <?php endif; ?>

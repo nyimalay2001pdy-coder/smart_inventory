@@ -53,6 +53,7 @@
         if (href.charAt(0) === '#' || href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
         if (link.getAttribute('target') === '_blank') return;
         if (link.hasAttribute('download')) return;
+        if (href.indexOf('logout.php') !== -1) return;
         e.preventDefault();
         showUnsavedModal(function() {
             window.location.href = href;
