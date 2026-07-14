@@ -235,7 +235,7 @@ $result = mysqli_query($conn, $sql);
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-6">
-                <div class="flex justify-between items-center">
+                <div class="flex justify-end items-center">
                     <a href="add.php"
                         class="bg-indigo-600 text-white px-6 py-3 rounded-xl">
                         + Add Supplier
@@ -249,28 +249,16 @@ $result = mysqli_query($conn, $sql);
                         name="search"
                         value="<?= $search ?>"
                         placeholder="Search supplier..."
-                        class="flex-1 border rounded-xl p-3">
+                        class="flex-1 border rounded-xl px-4 py-3">
                     <select
                         name="status"
-                        class="border rounded-xl px-5">
-                        <option value="">
-                            All Status
-                        </option>
-                        <option value="Active">
-                            Active
-                        </option>
-                        <option value="Inactive">
-                            Inactive
-                        </option>
+                        class="border rounded-xl px-4 py-3">
+                        <option value="">All Status</option>
+                        <option value="Active" <?= $status === 'Active' ? 'selected' : '' ?>>Active</option>
+                        <option value="Inactive" <?= $status === 'Inactive' ? 'selected' : '' ?>>Inactive</option>
                     </select>
-                    <button
-                        class="bg-indigo-600 text-white px-6 rounded-xl">
-                        Search
-                    </button>
-                    <a href="index.php"
-                        class="border px-6 py-3 rounded-xl">
-                        Reset
-                    </a>
+                    <button class="bg-indigo-600 text-white px-6 py-3 rounded-xl">Search</button>
+                    <a href="index.php" class="border px-6 py-3 rounded-xl">Reset</a>
                 </form>
                 <!-- Table -->
                 <div class="bg-white rounded-2xl shadow mt-8 p-6">

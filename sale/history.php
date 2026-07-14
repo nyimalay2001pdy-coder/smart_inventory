@@ -2,10 +2,7 @@
 include "../includes/auth_check.php";
 include "../config/database.php";
 include "../config/helpers.php";
-if (!isStaff() && !isCashier()) {
-    header("Location: ../dashboard/index.php");
-    exit;
-}
+// All authenticated users can access sale history
 
 // ============ DELETE SALE ============
 if (isset($_GET['delete_id']) && isAdmin()) {
@@ -13,10 +10,10 @@ if (isset($_GET['delete_id']) && isAdmin()) {
     $details = mysqli_query($conn, "SELECT * FROM sale_details WHERE sale_id='$id'");
     while ($row = mysqli_fetch_assoc($details)) {
         $pid = $row['product_id'];
-        $qty = $row['quantity'];
-        mysqli_query($conn, "UPDATE products SET quantity = quantity + $qty WHERE id='$pid'");
+        $qty = $row['current_stock'] ?? $row['quantity'] ?? 0;
+        mysqli_query($conn, "UPDATE products SET current_stock = current_stock + $qty WHERE id='$pid'");
     }
-    mysqli_query($conn, "DELETE FROM payments WHERE sale_id='$id'");
+    mysqli_query($conn, "DELETE FROM sale_payments WHERE sale_id='$id'");
     mysqli_query($conn, "DELETE FROM sale_details WHERE sale_id='$id'");
     mysqli_query($conn, "DELETE FROM sales WHERE id='$id'");
     header("Location: history.php?success=deleted");
@@ -45,14 +42,14 @@ if (isset($_GET['view_id'])) {
     while ($d = mysqli_fetch_assoc($details)) $items[] = $d;
 
     // Payment info
-    $payments = mysqli_query($conn, "SELECT * FROM payments WHERE sale_id = $vid");
+    $payments = mysqli_query($conn, "SELECT * FROM sale_payments WHERE sale_id = $vid");
     $total_paid = 0;
     if (mysqli_num_rows($payments) > 0) {
         while ($p = mysqli_fetch_assoc($payments)) $total_paid += $p['amount'];
     } else {
-        $total_paid = floatval($sale['paid_amount'] ?? $sale['grand_total']);
+        $total_paid = floatval($sale['paid_amount'] ?? $sale['total_amount']);
     }
-    $grand_total = floatval($sale['grand_total']);
+    $grand_total = floatval($sale['total_amount']);
     $change = max(0, $total_paid - $grand_total);
 
     echo json_encode([
@@ -96,25 +93,25 @@ if ($payment_method !== '') {
     $sql .= " AND s.payment_method = '$safe'";
 }
 if ($date_from !== '') {
-    $sql .= " AND DATE(s.sale_date) >= '$date_from'";
+    $sql .= " AND DATE(s.created_at) >= '$date_from'";
 }
 if ($date_to !== '') {
-    $sql .= " AND DATE(s.sale_date) <= '$date_to'";
+    $sql .= " AND DATE(s.created_at) <= '$date_to'";
 }
 
 $sql .= " ORDER BY s.id DESC";
 $result = mysqli_query($conn, $sql);
 
 // Overall stats
-$stats = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total_sales, COALESCE(SUM(grand_total), 0) AS total_revenue FROM sales"));
+$stats = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total_sales, COALESCE(SUM(total_amount), 0) AS total_revenue FROM sales"));
 
 // Today's sales count
-$today_stats = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS count, COALESCE(SUM(grand_total), 0) AS revenue FROM sales WHERE DATE(sale_date) = CURDATE()"));
+$today_stats = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS revenue FROM sales WHERE DATE(created_at) = CURDATE()"));
 
 // Filtered period stats (for the current filter range, for summary cards)
-$period_sql = "SELECT COUNT(*) AS total_sales, COALESCE(SUM(grand_total), 0) AS total_revenue FROM sales WHERE 1";
-if ($date_from !== '') $period_sql .= " AND DATE(sale_date) >= '$date_from'";
-if ($date_to !== '') $period_sql .= " AND DATE(sale_date) <= '$date_to'";
+$period_sql = "SELECT COUNT(*) AS total_sales, COALESCE(SUM(total_amount), 0) AS total_revenue FROM sales WHERE 1";
+if ($date_from !== '') $period_sql .= " AND DATE(created_at) >= '$date_from'";
+if ($date_to !== '') $period_sql .= " AND DATE(created_at) <= '$date_to'";
 $period_stats = mysqli_fetch_assoc(mysqli_query($conn, $period_sql));
 
 $avg_sale = $period_stats['total_sales'] > 0 ? round($period_stats['total_revenue'] / $period_stats['total_sales']) : 0;
@@ -283,6 +280,8 @@ $page_title = "Sales History";
                                         <th>Invoice No</th>
                                         <th>Date</th>
                                         <th>Cashier</th>
+                                        <th class="num">Subtotal</th>
+                                        <th class="num">Discount</th>
                                         <th class="num">Grand Total</th>
                                         <th class="center">Payment</th>
                                         <th class="center">Action</th>
@@ -300,9 +299,11 @@ $page_title = "Sales History";
                                     <tr class="hover:bg-indigo-50/40 transition-colors border-b border-gray-100 last:border-0">
                                         <td><?= $count++ ?></td>
                                         <td><?= htmlspecialchars($row['invoice_no']) ?></td>
-                                        <td><?= date('d M Y, h:i A', strtotime($row['sale_date'])) ?></td>
+                                        <td><?= date('d M Y, h:i A', strtotime($row['created_at'])) ?></td>
                                         <td><?= htmlspecialchars($row['cashier_name'] ?? '—') ?></td>
-                                        <td class="num"><?= number_format((float)$row['grand_total']) ?> Ks</td>
+                                        <td class="num"><?= number_format((float)$row['subtotal']) ?> Ks</td>
+                                        <td class="num text-red-500"><?= (float)$row['discount'] > 0 ? '-' . number_format((float)$row['discount']) . ' Ks' : '—' ?></td>
+                                        <td class="num font-semibold"><?= number_format((float)$row['total_amount']) ?> Ks</td>
                                         <td class="center">
                                             <span class="badge <?= $method_badge ?> whitespace-nowrap text-xs">
                                                 <span class="badge-dot"></span>
@@ -317,7 +318,7 @@ $page_title = "Sales History";
                                     </tr>
                                     <?php endwhile; else: ?>
                                     <tr>
-                                        <td colspan="7" class="text-center py-16">
+                                        <td colspan="9" class="text-center py-16">
                                             <div class="flex flex-col items-center">
                                                 <svg class="w-14 h-14 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
                                                 <h3 class="text-base font-semibold text-gray-500 dark:text-gray-400">No sales found</h3>
@@ -359,11 +360,13 @@ $page_title = "Sales History";
                 document.getElementById('modalInvoiceNo').textContent = s.invoice_no;
 
                 var subtotal = 0;
+                var totalProfit = 0;
                 for (var i = 0; i < items.length; i++) {
                     subtotal += parseFloat(items[i].subtotal) || 0;
+                    totalProfit += parseFloat(items[i].profit) || 0;
                 }
                 var discount = parseFloat(s.discount) || 0;
-                var grandTotal = parseFloat(s.grand_total) || 0;
+                var grandTotal = parseFloat(s.total_amount) || 0;
                 var totalPaid = parseFloat(data.total_paid) || 0;
                 var change = parseFloat(data.change) || 0;
 
@@ -371,7 +374,7 @@ $page_title = "Sales History";
                 // Info header
                 html += '<div class="grid grid-cols-2 gap-4 mb-5 pb-5 border-b border-gray-100 dark:border-slate-700">';
                 html += '<div><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Invoice No</p><p class="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5">' + s.invoice_no + '</p></div>';
-                html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Time</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + new Date(s.sale_date).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p></div>';
+                html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Time</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + new Date(s.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p></div>';
                 html += '<div><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cashier</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (s.cashier_name || '—') + '</p></div>';
                 html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Method</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (s.payment_method || 'Cash') + '</p></div>';
                 html += '</div>';
@@ -385,6 +388,7 @@ $page_title = "Sales History";
                 html += '<th class="text-center py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Qty</th>';
                 html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Unit Price</th>';
                 html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Subtotal</th>';
+                html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Profit</th>';
                 html += '</tr></thead><tbody>';
                 for (var i = 0; i < items.length; i++) {
                     var it = items[i];
@@ -395,6 +399,10 @@ $page_title = "Sales History";
                     html += '<td class="py-2.5 px-3 text-center font-semibold text-gray-800 dark:text-gray-200">' + it.quantity + '</td>';
                     html += '<td class="py-2.5 px-3 text-right text-gray-700 dark:text-gray-300">' + Number(it.selling_price).toLocaleString() + ' Ks</td>';
                     html += '<td class="py-2.5 px-3 text-right font-semibold text-gray-800 dark:text-gray-200">' + Number(it.subtotal).toLocaleString() + ' Ks</td>';
+                    var pVal = parseFloat(it.profit) || 0;
+                    var pColor = pVal < 0 ? 'text-red-600' : 'text-emerald-600';
+                    var pLabel = pVal < 0 ? 'Loss ' : '';
+                    html += '<td class="py-2.5 px-3 text-right font-semibold ' + pColor + '">' + pLabel + pVal.toLocaleString() + ' Ks</td>';
                     html += '</tr>';
                 }
                 html += '</tbody></table></div>';
@@ -405,6 +413,9 @@ $page_title = "Sales History";
                 if (discount > 0) html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Discount</span><span class="font-semibold text-red-500">- ' + discount.toLocaleString() + ' Ks</span></div>';
                 html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Tax</span><span class="text-gray-400">— Ks</span></div>';
                 html += '<div class="flex justify-between text-base pt-2 border-t border-gray-100 dark:border-slate-600"><span class="font-bold text-gray-900 dark:text-gray-100">Grand Total</span><span class="font-bold text-emerald-600">' + grandTotal.toLocaleString() + ' Ks</span></div>';
+                var profitLabel = totalProfit < 0 ? 'Loss' : 'Profit';
+                var profitColor = totalProfit < 0 ? 'text-red-600' : 'text-emerald-600';
+                html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">' + profitLabel + '</span><span class="font-semibold ' + profitColor + '">' + totalProfit.toLocaleString() + ' Ks</span></div>';
                 html += '<div class="border-t border-dashed border-gray-300 dark:border-slate-600 my-2"></div>';
                 html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Amount Paid</span><span class="font-semibold text-gray-800 dark:text-gray-200">' + totalPaid.toLocaleString() + ' Ks</span></div>';
                 html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Change</span><span class="font-semibold ' + (change > 0 ? 'text-emerald-600' : 'text-gray-800 dark:text-gray-200') + '">' + change.toLocaleString() + ' Ks</span></div>';
@@ -448,7 +459,7 @@ $page_title = "Sales History";
         $row_num = 1;
         while ($row = mysqli_fetch_assoc($result)):
         ?>
-        rows.push([<?= $row_num++ ?>, '<?= addslashes($row['invoice_no']) ?>', '<?= date('d M Y, h:i A', strtotime($row['sale_date'])) ?>', '<?= addslashes($row['cashier_name'] ?? '—') ?>', <?= (float)$row['grand_total'] ?>, '<?= $row['payment_method'] ?? 'Cash' ?>']);
+        rows.push([<?= $row_num++ ?>, '<?= addslashes($row['invoice_no']) ?>', '<?= date('d M Y, h:i A', strtotime($row['created_at'])) ?>', '<?= addslashes($row['cashier_name'] ?? '—') ?>', <?= (float)$row['total_amount'] ?>, '<?= $row['payment_method'] ?? 'Cash' ?>']);
         <?php endwhile; ?>
 
         const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');

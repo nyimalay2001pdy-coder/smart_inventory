@@ -14,9 +14,9 @@ if (!isset($_SESSION['cart'])) {
 
 // ============ ADD TO CART ============
 if (isset($_POST['add_cart'])) {
-    $product_id = (int)$_POST['product_id'];
-    $qty = (int)$_POST['quantity'];
-    $price = (float)$_POST['purchase_price'];
+    $product_id = (int)($_POST['product_id'] ?? 0);
+    $qty = (int)($_POST['quantity'] ?? 0);
+    $price = (float)($_POST['purchase_price'] ?? 0);
 
     if ($product_id > 0 && $qty > 0 && $price > 0) {
         $product = mysqli_fetch_assoc(
@@ -33,7 +33,7 @@ if (isset($_POST['add_cart'])) {
         }
     }
     $params = [];
-    foreach (['supplier_id', 'payment_method', 'payment_status', 'paid_amount', 'discount', 'tax', 'purchase_date'] as $f) {
+    foreach (['supplier_id', 'payment_method', 'purchase_date'] as $f) {
         if (!empty($_POST[$f])) $params[$f] = $_POST[$f];
     }
     $query = $params ? '?' . http_build_query($params) : '';
@@ -52,16 +52,23 @@ if (isset($_GET['remove'])) {
     exit;
 }
 
+$old_method = $_POST['payment_method'] ?? $_GET['payment_method'] ?? 'Cash';
+$old_paid   = $_POST['paid_amount'] ?? $_GET['paid_amount'] ?? '';
+
 // ============ SAVE PURCHASE ============
 $error_msg = '';
 if (isset($_POST['save_purchase'])) {
     $supplier_id = (int)$_POST['supplier_id'];
-    $payment_status = $_POST['payment_status'] ?? 'Unpaid';
     $purchase_date = $_POST['purchase_date'] ?? date('Y-m-d');
+    $payment_method = $_POST['payment_method'] ?? 'Cash';
+    $paid_amount = (float)($_POST['paid_amount'] ?? 0);
+
     if ($supplier_id <= 0) {
         $error_msg = 'Please select a supplier.';
     } elseif (count($_SESSION['cart']) === 0) {
         $error_msg = 'Please add at least one product.';
+    } elseif ($paid_amount <= 0) {
+        $error_msg = 'Please enter a valid paid amount.';
     } else {
         $date_prefix = date('Ymd');
         $inv_result = mysqli_query($conn, "SELECT invoice_no FROM purchases WHERE invoice_no LIKE 'INV-$date_prefix-%' ORDER BY id DESC LIMIT 1");
@@ -78,11 +85,23 @@ if (isset($_POST['save_purchase'])) {
             $total += $item['subtotal'];
         }
 
-        mysqli_query($conn, "INSERT INTO purchases(supplier_id, invoice_no, purchase_date, total_amount, payment_status)
-            VALUES('$supplier_id', '$invoice_no', '$purchase_date', '$total', '$payment_status')");
+        // Auto-calculate payment status
+        if ($paid_amount >= $total) {
+            $payment_status = 'Paid';
+        } else {
+            $payment_status = 'Partial';
+        }
+
+        $user_id = (int)($_SESSION['user_id'] ?? 0);
+        mysqli_query($conn, "INSERT INTO purchases(supplier_id, user_id, invoice_no, purchase_date, total_amount, payment_status)
+            VALUES('$supplier_id', $user_id, '$invoice_no', '$purchase_date', '$total', '$payment_status')");
         $purchase_id = mysqli_insert_id($conn);
 
         if ($purchase_id) {
+            // Insert payment record
+            mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, amount, payment_date)
+                VALUES('$purchase_id', '$payment_method', '$paid_amount', '$purchase_date')");
+
             foreach ($_SESSION['cart'] as $item) {
                 $pid = (int)$item['product_id'];
                 $qty = (int)$item['quantity'];
@@ -92,11 +111,11 @@ if (isset($_POST['save_purchase'])) {
                 mysqli_query($conn, "INSERT INTO purchase_details(purchase_id, product_id, quantity, purchase_price, subtotal)
                     VALUES('$purchase_id', '$pid', '$qty', '$price', '$subtotal')");
 
-                mysqli_query($conn, "UPDATE products SET quantity = quantity + $qty, purchase_price = '$price' WHERE id='$pid'");
+                mysqli_query($conn, "UPDATE products SET current_stock = current_stock + $qty, purchase_price = '$price' WHERE id='$pid'");
             }
 
             unset($_SESSION['cart']);
-            header("Location: index.php?success=" . urlencode("Purchase #$invoice_no created successfully."));
+            header("Location: index.php?view_id=$purchase_id&success=" . urlencode("Purchase #$invoice_no created successfully."));
             exit;
         } else {
             $error_msg = 'Failed to create purchase. Please try again.';
@@ -116,11 +135,6 @@ foreach ($_SESSION['cart'] as $item) {
 
 $old_supplier = $_POST['supplier_id'] ?? $_GET['supplier_id'] ?? '';
 $old_date     = $_POST['purchase_date'] ?? $_GET['purchase_date'] ?? date('Y-m-d');
-$old_method   = $_POST['payment_method'] ?? $_GET['payment_method'] ?? 'Cash';
-$old_status   = $_POST['payment_status'] ?? $_GET['payment_status'] ?? 'Unpaid';
-$old_paid     = $_POST['paid_amount'] ?? $_GET['paid_amount'] ?? '0';
-$old_discount = $_POST['discount'] ?? $_GET['discount'] ?? '0';
-$old_tax      = $_POST['tax'] ?? $_GET['tax'] ?? '0';
 
 $page_title = "New Purchase";
 ?>
@@ -138,16 +152,6 @@ $page_title = "New Purchase";
         .summary-sticky {
             position: sticky;
             top: 6rem;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .animate-spin {
-            animation: spin 0.8s linear infinite;
         }
     </style>
 </head>
@@ -246,7 +250,7 @@ $page_title = "New Purchase";
                                                     <option value="">-- Select Product --</option>
                                                     <?php mysqli_data_seek($products, 0);
                                                     while ($p = mysqli_fetch_assoc($products)) { ?>
-                                                        <option value="<?= $p['id'] ?>" data-price="<?= $p['purchase_price'] ?>"><?= htmlspecialchars($p['product_name']) ?> (Stock: <?= $p['quantity'] ?>)</option>
+                                                        <option value="<?= $p['id'] ?>" data-price="<?= $p['purchase_price'] ?? 0 ?>"><?= htmlspecialchars($p['product_name']) ?> (Stock: <?= $p['current_stock'] ?? 0 ?>)</option>
                                                     <?php } ?>
                                                 </select>
                                             </div>
@@ -255,7 +259,7 @@ $page_title = "New Purchase";
                                                 <input type="number" name="quantity" id="add_qty" value="1" min="1" class="form-input text-sm">
                                             </div>
                                             <div class="col-span-6 sm:col-span-3">
-                                                <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1 block">Unit Cost <span class="text-red-500">*</span></label>
+                                                <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1 block">Purchase Price <span class="text-red-500">*</span></label>
                                                 <div class="relative">
                                                     <input type="number" name="purchase_price" id="add_price" value="0" min="0" step="0.01" class="form-input text-sm">
                                                 </div>
@@ -278,7 +282,7 @@ $page_title = "New Purchase";
                                                         <th>#</th>
                                                         <th>Product</th>
                                                         <th class="center">Qty</th>
-                                                        <th class="num">Unit Cost</th>
+                                                        <th class="num">Purchase Price</th>
                                                         <th class="num">Total</th>
                                                         <th class="center">Action</th>
                                                     </tr>
@@ -286,7 +290,7 @@ $page_title = "New Purchase";
                                                 <tbody>
                                                     <?php if (count($_SESSION['cart']) > 0): $i = 1; ?>
                                                         <?php foreach ($_SESSION['cart'] as $key => $item): ?>
-                                                            <tr>
+                                                            <tr data-product-id="<?= $item['product_id'] ?>">
                                                                 <td><?= sprintf('%02d', $i++) ?></td>
                                                                 <td class="font-medium"><?= htmlspecialchars($item['product_name']) ?></td>
                                                                 <td class="center"><?= $item['quantity'] ?></td>
@@ -329,27 +333,18 @@ $page_title = "New Purchase";
                                         </h2>
                                     </div>
                                     <div class="card-body">
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                             <div>
-                                                <label class="form-label">Payment Method</label>
-                                                <select name="payment_method" class="form-input text-sm">
+                                                <label class="form-label">Payment Method <span class="text-red-500">*</span></label>
+                                                <select name="payment_method" id="paymentMethod" class="form-input text-sm" required onchange="recalcTotals()">
                                                     <option value="Cash" <?= $old_method == 'Cash' ? 'selected' : '' ?>>Cash</option>
-                                                    <option value="Card" <?= $old_method == 'Card' ? 'selected' : '' ?>>Card</option>
-                                                    <option value="Transfer" <?= $old_method == 'Transfer' ? 'selected' : '' ?>>Transfer</option>
+                                                    <option value="KBZPay" <?= $old_method == 'KBZPay' ? 'selected' : '' ?>>KBZPay</option>
                                                 </select>
                                             </div>
                                             <div>
-                                                <label class="form-label">Payment Status <span class="text-red-500">*</span></label>
-                                                <select name="payment_status" class="form-input text-sm" required>
-                                                    <option value="Unpaid" <?= $old_status == 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
-                                                    <option value="Paid" <?= $old_status == 'Paid' ? 'selected' : '' ?>>Paid</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label class="form-label">Paid Amount</label>
-                                                <div class="relative">
-                                                    <input type="number" name="paid_amount" value="<?= $old_paid ?>" min="0" step="0.01" class="form-input text-sm">
-                                                </div>
+                                                <label class="form-label">Paid Amount <span class="text-red-500">*</span></label>
+                                                <input type="number" name="paid_amount" id="paidAmount" value="<?= $old_paid ?>" min="0" step="0.01"
+                                                    class="form-input text-sm" oninput="recalcTotals()" placeholder="Enter paid amount" required>
                                             </div>
                                         </div>
                                     </div>
@@ -376,20 +371,6 @@ $page_title = "New Purchase";
                                                     <span class="text-lg font-bold text-gray-800 dark:text-gray-200" id="summarySubtotal"><?= number_format($cart_subtotal, 2) ?></span>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Discount</label>
-                                                <div class="relative mt-1">
-                                                    <input type="number" name="discount" id="discount" value="<?= $old_discount ?>" min="0" step="0.01"
-                                                        class="form-input text-sm" oninput="recalcTotals()">
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tax</label>
-                                                <div class="relative mt-1">
-                                                    <input type="number" name="tax" id="tax" value="<?= $old_tax ?>" min="0" step="0.01"
-                                                        class="form-input text-sm" oninput="recalcTotals()">
-                                                </div>
-                                            </div>
                                             <div class="border-t border-gray-200"></div>
                                             <div>
                                                 <div class="flex items-center justify-between mb-1">
@@ -401,8 +382,25 @@ $page_title = "New Purchase";
                                                 </div>
                                             </div>
 
+                                            <div>
+                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Status</label>
+                                                <div class="mt-1">
+                                                    <input type="text" id="paymentStatusDisplay" readonly
+                                                        class="form-input bg-gray-50 cursor-not-allowed text-sm font-semibold text-red-600 bg-red-50">
+                                                    <input type="hidden" name="payment_status" id="paymentStatusInput" value="Unpaid">
+                                                </div>
+                                            </div>
+
+                                            <div id="changeAmountSection" class="hidden">
+                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Change Amount</label>
+                                                <div class="mt-1 flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 border border-emerald-200">
+                                                    <span class="text-sm font-medium text-emerald-600">Change</span>
+                                                    <span class="text-xl font-extrabold text-emerald-700" id="changeAmount">0.00</span>
+                                                </div>
+                                            </div>
+
                                             <input type="hidden" name="save_purchase" id="savePurchaseField" value="0">
-                                            <button type="button" onclick="showConfirmModal()" id="saveBtn" class="btn btn-primary w-full justify-center btn-lg gap-2 mt-2">
+                                            <button type="button" onclick="checkPricesThenConfirm()" id="saveBtn" class="btn btn-primary w-full justify-center btn-lg gap-2 mt-2">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                                                 </svg>
@@ -422,30 +420,96 @@ $page_title = "New Purchase";
 
     <!-- ===== CONFIRMATION MODAL ===== -->
     <div id="confirmModal" class="modal-overlay hidden">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl" style="animation: modalIn 0.2s ease-out;">
-            <div class="text-center mb-5">
-                <div class="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg class="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" style="animation: modalIn 0.2s ease-out;">
+            <!-- Header -->
+            <div class="flex items-center gap-4 mb-5">
+                <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Confirm Purchase</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Please review the summary before saving.</p>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Confirm Purchase</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Please review all details before saving.</p>
+                </div>
             </div>
-            <div class="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm mb-5">
-                <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Items</span><span class="font-semibold" id="confirmItems">0</span></div>
-                <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Subtotal</span><span class="font-semibold" id="confirmSubtotal">0.00</span></div>
-                <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Discount</span><span class="font-semibold text-red-500" id="confirmDiscount">0.00</span></div>
-                <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Tax</span><span class="font-semibold text-green-600" id="confirmTax">0.00</span></div>
-                <div class="border-t border-gray-200 pt-2.5 flex justify-between"><span class="font-bold text-gray-800 dark:text-gray-200">Grand Total</span><span class="font-bold text-indigo-600" id="confirmTotal">0.00</span></div>
+
+            <!-- Purchase Details -->
+            <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 mb-4">
+                <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Purchase Details</h4>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">Invoice No</span>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200" id="confirmInvoice">-</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">Supplier</span>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200" id="confirmSupplier">-</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">Purchase Date</span>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200" id="confirmDate">-</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">Products</span>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200"><span id="confirmProductCount">0</span> items (<span id="confirmTotalQty">0</span> total qty)</p>
+                    </div>
+                </div>
             </div>
+
+            <!-- Payment Summary -->
+            <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 mb-4">
+                <h4 class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3">Payment Summary</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 dark:text-gray-400">Grand Total</span>
+                        <span class="font-bold text-indigo-700 dark:text-indigo-400 text-lg" id="confirmTotal">0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 dark:text-gray-400">Payment Method</span>
+                        <span class="font-semibold text-gray-800 dark:text-gray-200" id="confirmMethod">Cash</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 dark:text-gray-400">Total Paid</span>
+                        <span class="font-semibold text-emerald-600" id="confirmPaid">0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 dark:text-gray-400">Remaining Balance</span>
+                        <span class="font-semibold" id="confirmBalance">0.00</span>
+                    </div>
+                    <div class="border-t border-indigo-200 dark:border-indigo-800 pt-2 flex justify-between">
+                        <span class="font-bold text-gray-800 dark:text-gray-200">Payment Status</span>
+                        <span class="font-bold px-3 py-1 rounded-full text-xs" id="confirmStatus">Unpaid</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warning -->
+            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-5">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                        <p class="text-sm font-semibold text-amber-700 dark:text-amber-400">Warning</p>
+                        <p class="text-xs text-amber-600 dark:text-amber-500 mt-1">This action will save the purchase, update product stock automatically, record the payment, and cannot be undone.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
             <div class="flex gap-3">
-                <button type="button" onclick="closeConfirmModal()" class="btn btn-secondary flex-1 justify-center">Cancel</button>
-                <button type="button" onclick="submitForm()" class="btn btn-primary flex-1 justify-center gap-1.5">
+                <button type="button" onclick="closeConfirmModal()" class="btn btn-secondary flex-1 justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Cancel
+                </button>
+                <button type="button" onclick="submitForm()" class="btn btn-primary flex-1 justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
-                    Confirm & Save
+                    Confirm Purchase
                 </button>
             </div>
         </div>
@@ -475,11 +539,64 @@ $page_title = "New Purchase";
         </div>
     </div>
 
+    <!-- ===== PRICE WARNING MODAL ===== -->
+    <div id="priceWarningModal" class="modal-overlay hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" style="animation: modalIn 0.2s ease-out;">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Price Warning</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Purchase price exceeds selling price</p>
+                </div>
+            </div>
+
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-5">
+                <p class="text-sm text-red-700 dark:text-red-400">The purchase price is higher than the current selling price. Selling this product at the current price may result in a loss. Do you want to continue?</p>
+            </div>
+
+            <div id="priceWarningItems" class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 mb-5 max-h-48 overflow-y-auto">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" onclick="closePriceWarning()" class="btn btn-secondary flex-1 justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Cancel
+                </button>
+                <button type="button" onclick="proceedWithPurchase()" class="btn bg-red-600 hover:bg-red-700 text-white flex-1 justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Continue Anyway
+                </button>
+            </div>
+        </div>
+    </div>
+
     <?php include "../includes/toast.php"; ?>
     <?php include "../includes/form_guard.php"; ?>
     <?php include "../includes/footer.php"; ?>
 
     <script>
+        // Product selling prices map: { product_id: selling_price }
+        const sellingPrices = {
+            <?php
+            mysqli_data_seek($products, 0);
+            $first = true;
+            while ($p = mysqli_fetch_assoc($products)) {
+                if (!$first) echo ',';
+                echo $p['id'] . ':' . (float)$p['selling_price'];
+                $first = false;
+            }
+            ?>
+        };
+
         function autoFillPrice(el) {
             const price = el.options[el.selectedIndex]?.dataset.price;
             if (price && parseFloat(price) > 0) {
@@ -487,6 +604,62 @@ $page_title = "New Purchase";
             } else {
                 document.getElementById('add_price').value = '0';
             }
+        }
+
+        function checkPricesThenConfirm() {
+            const rows = document.querySelectorAll('.data-table tbody tr');
+            const hasItems = rows.length > 0 && !(rows.length === 1 && rows[0].querySelector('td[colspan]'));
+            if (!hasItems) {
+                showToast('error', 'Please add at least one product to the cart.');
+                return;
+            }
+
+            // Check each cart item for price > selling price
+            const warnings = [];
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 4) return;
+                const productId = row.dataset.productId;
+                const productName = cells[1]?.textContent?.trim() || '';
+                const purchasePrice = parseFloat(cells[3]?.textContent?.replace(/,/g, '')) || 0;
+                const sp = sellingPrices[productId] || 0;
+                if (sp > 0 && purchasePrice > sp) {
+                    warnings.push({ name: productName, purchase: purchasePrice, selling: sp });
+                }
+            });
+
+            if (warnings.length > 0) {
+                let html = '<table class="w-full text-sm"><thead><tr class="border-b border-gray-200 dark:border-slate-600">';
+                html += '<th class="text-left py-2 font-semibold text-gray-600 dark:text-gray-400">Product</th>';
+                html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Purchase</th>';
+                html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Selling</th>';
+                html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Loss</th>';
+                html += '</tr></thead><tbody>';
+                warnings.forEach(w => {
+                    const loss = w.purchase - w.selling;
+                    html += '<tr class="border-b border-gray-100 dark:border-slate-700">';
+                    html += '<td class="py-2 font-medium text-gray-800 dark:text-gray-200">' + w.name + '</td>';
+                    html += '<td class="py-2 text-right text-red-600 font-semibold">' + w.purchase.toLocaleString() + ' Ks</td>';
+                    html += '<td class="py-2 text-right text-gray-600 dark:text-gray-400">' + w.selling.toLocaleString() + ' Ks</td>';
+                    html += '<td class="py-2 text-right text-red-600 font-bold">-' + loss.toLocaleString() + ' Ks</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                document.getElementById('priceWarningItems').innerHTML = html;
+                document.getElementById('priceWarningModal').classList.remove('hidden');
+                return;
+            }
+
+            showConfirmModal();
+        }
+
+        function closePriceWarning() {
+            document.getElementById('priceWarningModal').classList.add('hidden');
+        }
+
+        function proceedWithPurchase() {
+            document.getElementById('priceWarningModal').classList.add('hidden');
+            showConfirmModal();
         }
 
         function handleFormSubmit(e) {
@@ -498,11 +671,45 @@ $page_title = "New Purchase";
 
         function recalcTotals() {
             const subtotalTxt = document.getElementById('summarySubtotal').textContent.replace(/,/g, '');
-            const subtotal = parseFloat(subtotalTxt) || 0;
-            const discount = parseFloat(document.getElementById('discount').value) || 0;
-            const tax = parseFloat(document.getElementById('tax').value) || 0;
-            const grand = Math.max(0, subtotal - discount + tax);
+            const grand = parseFloat(subtotalTxt) || 0;
             document.getElementById('grandTotal').textContent = grand.toFixed(2);
+
+            const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
+            const statusDisplay = document.getElementById('paymentStatusDisplay');
+            const statusInput = document.getElementById('paymentStatusInput');
+            const changeSection = document.getElementById('changeAmountSection');
+            const changeDisplay = document.getElementById('changeAmount');
+
+            let status = 'Unpaid';
+            if (grand > 0) {
+                if (paidAmount >= grand) {
+                    status = 'Paid';
+                } else if (paidAmount > 0) {
+                    status = 'Partial';
+                }
+            }
+
+            statusInput.value = status;
+            statusDisplay.value = status;
+
+            // Status colors
+            statusDisplay.className = 'form-input bg-gray-50 cursor-not-allowed text-sm font-semibold ';
+            if (status === 'Paid') {
+                statusDisplay.className += 'text-emerald-600 bg-emerald-50';
+            } else if (status === 'Partial') {
+                statusDisplay.className += 'text-amber-600 bg-amber-50';
+            } else {
+                statusDisplay.className += 'text-red-600 bg-red-50';
+            }
+
+            // Change amount (only for Cash)
+            const method = document.getElementById('paymentMethod').value;
+            if (method === 'Cash' && paidAmount > grand && grand > 0) {
+                changeDisplay.textContent = (paidAmount - grand).toFixed(2);
+                changeSection.classList.remove('hidden');
+            } else {
+                changeSection.classList.add('hidden');
+            }
         }
 
         let removeKey = null;
@@ -534,18 +741,54 @@ $page_title = "New Purchase";
                 return;
             }
 
+            const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
+            if (paidAmount <= 0) {
+                showToast('error', 'Please enter a valid paid amount.');
+                return;
+            }
+
+            // Gather data
             const items = document.querySelectorAll('.data-table tbody tr:not(:has(td[colspan]))');
-            document.getElementById('confirmItems').textContent = items.length;
+            const grand = parseFloat(document.getElementById('grandTotal').textContent.replace(/,/g, '')) || 0;
+            const method = document.getElementById('paymentMethod').value;
+            const status = document.getElementById('paymentStatusInput').value;
+            const supplierName = document.getElementById('supplier_id').options[document.getElementById('supplier_id').selectedIndex].text;
+            const purchaseDate = document.querySelector('input[name="purchase_date"]').value;
+            const today = new Date();
+            const invoiceNo = 'INV-' + today.getFullYear() + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0') + '-....';
 
-            const subtotalTxt = document.getElementById('summarySubtotal').textContent.replace(/,/g, '');
-            const discount = document.getElementById('discount').value || '0';
-            const tax = document.getElementById('tax').value || '0';
-            const grandTxt = document.getElementById('grandTotal').textContent;
+            // Calculate total quantity
+            let totalQty = 0;
+            items.forEach(row => {
+                const qtyCell = row.querySelectorAll('td')[2];
+                if (qtyCell) totalQty += parseInt(qtyCell.textContent) || 0;
+            });
 
-            document.getElementById('confirmSubtotal').textContent = Math.max(0, parseFloat(subtotalTxt) || 0).toFixed(2);
-            document.getElementById('confirmDiscount').textContent = Math.max(0, parseFloat(discount)).toFixed(2);
-            document.getElementById('confirmTax').textContent = Math.max(0, parseFloat(tax)).toFixed(2);
-            document.getElementById('confirmTotal').textContent = grandTxt;
+            // Calculate balance
+            const balance = Math.max(0, grand - paidAmount);
+
+            // Populate modal
+            document.getElementById('confirmInvoice').textContent = invoiceNo;
+            document.getElementById('confirmSupplier').textContent = supplierName || '-';
+            document.getElementById('confirmDate').textContent = purchaseDate || '-';
+            document.getElementById('confirmProductCount').textContent = items.length;
+            document.getElementById('confirmTotalQty').textContent = totalQty;
+            document.getElementById('confirmTotal').textContent = grand.toFixed(2);
+            document.getElementById('confirmPaid').textContent = paidAmount.toFixed(2);
+            document.getElementById('confirmMethod').textContent = method;
+            document.getElementById('confirmBalance').textContent = balance.toFixed(2);
+            document.getElementById('confirmStatus').textContent = status;
+
+            // Status badge styling
+            const statusEl = document.getElementById('confirmStatus');
+            statusEl.className = 'font-bold px-3 py-1 rounded-full text-xs ';
+            if (status === 'Paid') {
+                statusEl.className += 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400';
+            } else if (status === 'Partial') {
+                statusEl.className += 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400';
+            } else {
+                statusEl.className += 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400';
+            }
 
             document.getElementById('confirmModal').classList.remove('hidden');
         }
@@ -556,9 +799,15 @@ $page_title = "New Purchase";
 
         function submitForm() {
             document.getElementById('savePurchaseField').value = '1';
+            // Disable all buttons and show loading
             const btn = document.getElementById('saveBtn');
             btn.disabled = true;
             btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Saving...';
+
+            // Disable modal buttons
+            const modalBtns = document.querySelectorAll('#confirmModal button');
+            modalBtns.forEach(b => { b.disabled = true; });
+
             document.getElementById('purchaseForm').submit();
         }
     </script>

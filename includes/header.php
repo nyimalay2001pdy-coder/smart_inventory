@@ -14,12 +14,12 @@ if ($page_title !== 'Dashboard') {
 $notif_count = 0;
 $low_stock_products = [];
 if (isset($conn)) {
-    $notif_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE quantity <= minimum_stock AND status='Active'");
+    $notif_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE current_stock <= reorder_level AND status='Active'");
     if ($notif_result) {
         $notif_count = (int)mysqli_fetch_assoc($notif_result)['count'];
     }
     if ($notif_count > 0) {
-        $ls_result = mysqli_query($conn, "SELECT id, product_name, quantity, minimum_stock FROM products WHERE quantity <= minimum_stock AND status='Active' ORDER BY quantity ASC LIMIT 10");
+        $ls_result = mysqli_query($conn, "SELECT id, product_name, current_stock, reorder_level FROM products WHERE current_stock <= reorder_level AND status='Active' ORDER BY current_stock ASC LIMIT 10");
         while ($row = mysqli_fetch_assoc($ls_result)) {
             $low_stock_products[] = $row;
         }
@@ -117,7 +117,7 @@ if (isset($conn)) {
                                         </div>
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-medium text-gray-800 dark:text-slate-200 truncate"><?= htmlspecialchars($item['product_name']) ?></p>
-                                            <p class="text-xs text-red-500 dark:text-red-400 mt-0.5">Stock: <?= $item['quantity'] ?> (min: <?= $item['minimum_stock'] ?>)</p>
+                                            <p class="text-xs text-red-500 dark:text-red-400 mt-0.5">Stock: <?= $item['current_stock'] ?> (min: <?= $item['reorder_level'] ?>)</p>
                                         </div>
                                     </div>
                                 </a>

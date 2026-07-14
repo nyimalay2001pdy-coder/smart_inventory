@@ -13,6 +13,38 @@ $status_filter = $_GET['status'] ?? '';
 $show_edit_id = isset($_GET['edit_id']) ? (int)$_GET['edit_id'] : null;
 $show_view_id = isset($_GET['view_id']) ? (int)$_GET['view_id'] : null;
 
+// ============ ADD PAYMENT ============
+if (isset($_POST['add_payment'])) {
+    $purchase_id = (int)$_POST['purchase_id'];
+    $payment_method = $_POST['payment_method'] ?? 'Cash';
+    $payment_amount = (float)($_POST['payment_amount'] ?? 0);
+    $payment_date = $_POST['payment_date'] ?? date('Y-m-d');
+    $notes = $_POST['notes'] ?? '';
+
+    if ($purchase_id > 0 && $payment_amount > 0) {
+        mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, amount, payment_date, notes)
+            VALUES('$purchase_id', '$payment_method', '$payment_amount', '$payment_date', '$notes')");
+
+        // Recalculate payment status
+        $total_paid_result = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(amount), 0) AS total_paid FROM purchase_payments WHERE purchase_id='$purchase_id'"));
+        $total_paid = (float)$total_paid_result['total_paid'];
+        $purchase = mysqli_fetch_assoc(mysqli_query($conn, "SELECT total_amount FROM purchases WHERE id='$purchase_id'"));
+        $grand_total = (float)$purchase['total_amount'];
+
+        if ($total_paid >= $grand_total) {
+            $new_status = 'Paid';
+        } elseif ($total_paid > 0) {
+            $new_status = 'Partial';
+        } else {
+            $new_status = 'Unpaid';
+        }
+
+        mysqli_query($conn, "UPDATE purchases SET payment_status='$new_status' WHERE id='$purchase_id'");
+        header("Location: index.php?view_id=$purchase_id&success=" . urlencode("Payment added successfully."));
+        exit;
+    }
+}
+
 // ============ DELETE ============
 if (isset($_GET['delete_id'])) {
     $id = (int)$_GET['delete_id'];
@@ -21,9 +53,10 @@ if (isset($_GET['delete_id'])) {
     while ($row = mysqli_fetch_assoc($details)) {
         $product_id = $row['product_id'];
         $qty = $row['quantity'];
-        mysqli_query($conn, "UPDATE products SET quantity = quantity - $qty WHERE id='$product_id'");
+        mysqli_query($conn, "UPDATE products SET current_stock = current_stock - $qty WHERE id='$product_id'");
     }
 
+    mysqli_query($conn, "DELETE FROM purchase_payments WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchase_details WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchases WHERE id='$id'");
     header("Location: index.php?success=" . urlencode("Purchase deleted and stock rolled back."));
@@ -34,7 +67,6 @@ if (isset($_GET['delete_id'])) {
 if (isset($_POST['update'])) {
     $id = (int)$_POST['id'];
     $supplier_id = (int)$_POST['supplier_id'];
-    $payment_status = $_POST['payment_status'];
     $detail_ids = $_POST['detail_id'] ?? [];
     $quantities = $_POST['quantity'] ?? [];
     $prices = $_POST['purchase_price'] ?? [];
@@ -53,12 +85,25 @@ if (isset($_POST['update'])) {
         $old_qty = $old ? (int)$old['quantity'] : 0;
         $diff = $qty - $old_qty;
 
-        mysqli_query($conn, "UPDATE products SET quantity = quantity + $diff, purchase_price='$price' WHERE id='$product_id'");
+        mysqli_query($conn, "UPDATE products SET current_stock = current_stock + $diff, purchase_price='$price' WHERE id='$product_id'");
         mysqli_query($conn, "UPDATE purchase_details SET quantity='$qty', purchase_price='$price', subtotal='$subtotal' WHERE id='$detail_id'");
         $new_total += $subtotal;
     }
 
-    mysqli_query($conn, "UPDATE purchases SET supplier_id='$supplier_id', total_amount='$new_total', payment_status='$payment_status' WHERE id='$id'");
+    mysqli_query($conn, "UPDATE purchases SET supplier_id='$supplier_id', total_amount='$new_total' WHERE id='$id'");
+
+    // Recalculate payment status
+    $total_paid_result = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(amount), 0) AS total_paid FROM purchase_payments WHERE purchase_id='$id'"));
+    $total_paid = (float)$total_paid_result['total_paid'];
+    if ($new_total > 0) {
+        if ($total_paid >= $new_total) $new_status = 'Paid';
+        elseif ($total_paid > 0) $new_status = 'Partial';
+        else $new_status = 'Unpaid';
+    } else {
+        $new_status = 'Unpaid';
+    }
+    mysqli_query($conn, "UPDATE purchases SET payment_status='$new_status' WHERE id='$id'");
+
     header("Location: index.php?success=" . urlencode("Purchase #$id updated successfully."));
     exit;
 }
@@ -96,6 +141,7 @@ if ($show_edit_id) {
 // ============ VIEW MODAL DATA ============
 $view_purchase = null;
 $view_details = null;
+$view_payments = null;
 if ($show_view_id) {
     $view_purchase = mysqli_fetch_assoc(mysqli_query(
         $conn,
@@ -111,9 +157,14 @@ if ($show_view_id) {
              INNER JOIN products p ON d.product_id = p.id
              WHERE d.purchase_id='$show_view_id'"
         );
+        $view_payments = mysqli_query(
+            $conn,
+            "SELECT * FROM purchase_payments WHERE purchase_id='$show_view_id' ORDER BY payment_date ASC, id ASC"
+        );
     }
 }
 
+$success_msg = $_GET['success'] ?? '';
 $page_title = "Purchase Management";
 ?>
 <!DOCTYPE html>
@@ -135,6 +186,15 @@ $page_title = "Purchase Management";
             <?php include "../includes/header.php"; ?>
             <main class="p-4 lg:p-6">
                 <div class="max-w-7xl mx-auto">
+                    <?php if ($success_msg): ?>
+                        <div class="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-700 px-5 py-4 rounded-xl flex items-start gap-3 shadow-sm">
+                            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="text-sm font-medium"><?= htmlspecialchars($success_msg) ?></span>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
                         <form method="GET" class="flex flex-wrap items-center gap-3 flex-1">
                             <input type="text" name="search" value="<?= htmlspecialchars($search) ?>"
@@ -142,6 +202,7 @@ $page_title = "Purchase Management";
                             <select name="status" class="form-input w-auto">
                                 <option value="">All Status</option>
                                 <option value="Paid" <?= $status_filter === 'Paid' ? 'selected' : '' ?>>Paid</option>
+                                <option value="Partial" <?= $status_filter === 'Partial' ? 'selected' : '' ?>>Partial</option>
                                 <option value="Unpaid" <?= $status_filter === 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
                             </select>
                             <button class="btn btn-primary">Search</button>
@@ -172,15 +233,31 @@ $page_title = "Purchase Management";
                                 </thead>
                                 <tbody>
                                     <?php if (mysqli_num_rows($result) > 0): $count = 1;
-                                        while ($row = mysqli_fetch_assoc($result)): ?>
+                                        while ($row = mysqli_fetch_assoc($result)):
+                                            $total_paid_q = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(amount), 0) AS tp FROM purchase_payments WHERE purchase_id='{$row['id']}'"));
+                                            $total_paid = (float)$total_paid_q['tp'];
+                                            $remaining = (float)$row['total_amount'] - $total_paid;
+                                        ?>
                                             <tr>
                                                 <td><?= $count++ ?></td>
                                                 <td class="font-semibold"><?= htmlspecialchars($row['invoice_no'] ?? '#' . $row['id']) ?></td>
                                                 <td><?= $row['purchase_date'] ?></td>
                                                 <td><?= htmlspecialchars($row['supplier_name']) ?></td>
-                                                <td class="num"><?= number_format($row['total_amount'], 2) ?></td>
+                                                <td class="num">
+                                                    <div class="text-sm font-bold"><?= number_format($row['total_amount'], 2) ?></div>
+                                                    <?php if ($total_paid > 0 && $remaining > 0): ?>
+                                                        <div class="text-xs text-amber-600">Paid: <?= number_format($total_paid, 2) ?> | Bal: <?= number_format($remaining, 2) ?></div>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td class="center">
-                                                    <span class="badge <?= $row['payment_status'] === 'Paid' ? 'badge-success' : 'badge-danger' ?>">
+                                                    <?php
+                                                    $statusClass = match($row['payment_status']) {
+                                                        'Paid' => 'badge-success',
+                                                        'Partial' => 'badge-warning',
+                                                        default => 'badge-danger'
+                                                    };
+                                                    ?>
+                                                    <span class="badge <?= $statusClass ?>">
                                                         <span class="badge-dot"></span>
                                                         <?= $row['payment_status'] ?>
                                                     </span>
@@ -244,6 +321,12 @@ $page_title = "Purchase Management";
 
     <!-- ============ VIEW MODAL ============ -->
     <?php if ($view_purchase): ?>
+        <?php
+        $vp_total_paid = 0;
+        while ($vp = mysqli_fetch_assoc($view_payments)) { $vp_total_paid += (float)$vp['amount']; }
+        mysqli_data_seek($view_payments, 0);
+        $vp_balance = (float)$view_purchase['total_amount'] - $vp_total_paid;
+        ?>
         <div id="viewModal" class="modal-overlay">
             <div class="bg-white rounded-2xl p-6 lg:p-8 w-full max-w-3xl relative mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
                 <button onclick="window.location.href='index.php'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:text-gray-300 text-2xl leading-none">&times;</button>
@@ -253,7 +336,14 @@ $page_title = "Purchase Management";
                         <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Purchase Invoice</h2>
                         <p class="text-sm text-gray-500 dark:text-gray-400">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
                     </div>
-                    <span class="badge <?= $view_purchase['payment_status'] === 'Paid' ? 'badge-success' : 'badge-danger' ?>">
+                    <?php
+                    $vStatusClass = match($view_purchase['payment_status']) {
+                        'Paid' => 'badge-success',
+                        'Partial' => 'badge-warning',
+                        default => 'badge-danger'
+                    };
+                    ?>
+                    <span class="badge <?= $vStatusClass ?>">
                         <span class="badge-dot"></span><?= $view_purchase['payment_status'] ?>
                     </span>
                 </div>
@@ -274,8 +364,27 @@ $page_title = "Purchase Management";
                     </div>
                 </div>
 
+                <!-- Payment Summary -->
+                <div class="bg-gray-50 rounded-xl p-4 mb-6">
+                    <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Payment Summary</h4>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Grand Total</p>
+                            <p class="text-lg font-bold text-indigo-600"><?= number_format($view_purchase['total_amount'], 2) ?></p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Paid</p>
+                            <p class="text-lg font-bold text-emerald-600"><?= number_format($vp_total_paid, 2) ?></p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Remaining Balance</p>
+                            <p class="text-lg font-bold <?= $vp_balance > 0 ? 'text-red-600' : 'text-emerald-600' ?>"><?= number_format($vp_balance, 2) ?></p>
+                        </div>
+                    </div>
+                </div>
+
                 <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Items</h4>
-                <table class="data-table w-full">
+                <table class="data-table w-full mb-6">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -292,15 +401,84 @@ $page_title = "Purchase Management";
                                 <td class="font-medium"><?= htmlspecialchars($row['product_name']) ?></td>
                                 <td class="num"><?= $row['quantity'] ?></td>
                                 <td class="num"><?= number_format($row['purchase_price'], 2) ?></td>
-                                <td class="num">$<?= number_format($row['subtotal'], 2) ?></td>
+                                <td class="num"><?= number_format($row['subtotal'], 2) ?></td>
                             </tr>
                         <?php endwhile; ?>
                     </tbody>
                 </table>
 
-                <div class="text-right border-t pt-4">
-                    <p class="text-lg text-gray-500 dark:text-gray-400">Total Amount</p>
-                    <p class="text-3xl font-extrabold text-indigo-600"><?= number_format($view_purchase['total_amount'], 2) ?></p>
+                <!-- Payment History -->
+                <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Payment History</h4>
+                <?php if (mysqli_num_rows($view_payments) > 0): ?>
+                    <table class="data-table w-full mb-6">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Method</th>
+                                <th class="num">Amount</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $pi = 1; while ($pmt = mysqli_fetch_assoc($view_payments)): ?>
+                                <tr>
+                                    <td><?= $pi++ ?></td>
+                                    <td><?= $pmt['payment_date'] ?></td>
+                                    <td>
+                                        <span class="badge <?= $pmt['payment_method'] === 'Cash' ? 'badge-success' : 'badge-info' ?>">
+                                            <?= $pmt['payment_method'] ?>
+                                        </span>
+                                    </td>
+                                    <td class="num font-semibold"><?= number_format($pmt['amount'], 2) ?></td>
+                                    <td class="text-gray-500 text-sm"><?= htmlspecialchars($pmt['notes'] ?? '-') ?></td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p class="text-sm text-gray-400 mb-6">No payments recorded.</p>
+                <?php endif; ?>
+
+                <!-- Add Payment Button (only if balance remaining) -->
+                <?php if ($vp_balance > 0 && $is_admin): ?>
+                    <div class="border-t pt-4">
+                        <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Add Payment</h4>
+                        <form method="POST" class="space-y-3">
+                            <input type="hidden" name="purchase_id" value="<?= $view_purchase['id'] ?>">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Method</label>
+                                    <select name="payment_method" class="form-input text-sm" required>
+                                        <option value="Cash">Cash</option>
+                                        <option value="KBZPay">KBZPay</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Amount (Max: <?= number_format($vp_balance, 2) ?>)</label>
+                                    <input type="number" name="payment_amount" min="0.01" max="<?= $vp_balance ?>" step="0.01" value="<?= $vp_balance ?>" class="form-input text-sm" required>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Date</label>
+                                    <input type="date" name="payment_date" value="<?= date('Y-m-d') ?>" class="form-input text-sm" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Notes (Optional)</label>
+                                <input type="text" name="notes" class="form-input text-sm" placeholder="Payment notes...">
+                            </div>
+                            <button type="submit" name="add_payment" class="btn btn-primary gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Payment
+                            </button>
+                        </form>
+                    </div>
+                <?php endif; ?>
+
+                <div class="text-right border-t pt-4 mt-4">
+                    <a href="index.php" class="btn btn-secondary">Close</a>
                 </div>
             </div>
         </div>
@@ -326,13 +504,6 @@ $page_title = "Purchase Management";
                                         <?= htmlspecialchars($s['supplier_name']) ?>
                                     </option>
                                 <?php endwhile; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label">Payment Status</label>
-                            <select name="payment_status" class="form-input">
-                                <option value="Paid" <?= $edit_purchase['payment_status'] === 'Paid' ? 'selected' : '' ?>>Paid</option>
-                                <option value="Unpaid" <?= $edit_purchase['payment_status'] === 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
                             </select>
                         </div>
                     </div>

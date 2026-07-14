@@ -1,9 +1,6 @@
 <?php
 include "../includes/auth_check.php";
-if (!isStaff() && !isCashier()) {
-    header("Location: ../dashboard/index.php");
-    exit;
-}
+// All authenticated users can access sale reports
 include "../config/database.php";
 include "../config/helpers.php";
 
@@ -14,48 +11,48 @@ $safe_to = mysqli_real_escape_string($conn, $date_to);
 
 // ============ TODAY'S SALES ============
 $today_stats = mysqli_fetch_assoc(mysqli_query($conn, "
-    SELECT COUNT(*) AS count, COALESCE(SUM(grand_total), 0) AS revenue
-    FROM sales WHERE DATE(sale_date) = CURDATE()
+    SELECT COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS revenue
+    FROM sales WHERE DATE(created_at) = CURDATE()
 "));
 
 // ============ WEEKLY SALES (last 7 days) ============
 $week_stats = mysqli_fetch_assoc(mysqli_query($conn, "
-    SELECT COUNT(*) AS count, COALESCE(SUM(grand_total), 0) AS revenue
-    FROM sales WHERE sale_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    SELECT COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS revenue
+    FROM sales WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
 "));
 
 // ============ MONTHLY SALES (current month) ============
 $month_stats = mysqli_fetch_assoc(mysqli_query($conn, "
-    SELECT COUNT(*) AS count, COALESCE(SUM(grand_total), 0) AS revenue
-    FROM sales WHERE MONTH(sale_date) = MONTH(CURDATE()) AND YEAR(sale_date) = YEAR(CURDATE())
+    SELECT COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS revenue
+    FROM sales WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
 "));
 
 // ============ OVERALL REVENUE (filtered range) ============
 $revenue_stats = mysqli_fetch_assoc(mysqli_query($conn, "
-    SELECT COUNT(*) AS total_sales, COALESCE(SUM(grand_total), 0) AS total_revenue,
+    SELECT COUNT(*) AS total_sales, COALESCE(SUM(total_amount), 0) AS total_revenue,
            COALESCE(SUM(paid_amount), 0) AS total_paid
-    FROM sales WHERE DATE(sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    FROM sales WHERE DATE(created_at) BETWEEN '$safe_from' AND '$safe_to'
 "));
 
 // ============ PROFIT ============
 $profit_stats = mysqli_fetch_assoc(mysqli_query($conn, "
     SELECT COALESCE(SUM(sd.subtotal), 0) AS revenue,
            COALESCE(SUM(sd.purchase_price * sd.quantity), 0) AS cost,
-           COALESCE(SUM(sd.subtotal - (sd.purchase_price * sd.quantity)), 0) AS profit
+           COALESCE(SUM(sd.profit), 0) AS profit
     FROM sale_details sd
     JOIN sales s ON sd.sale_id = s.id
-    WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    WHERE DATE(s.created_at) BETWEEN '$safe_from' AND '$safe_to'
 "));
 
 // ============ BEST SELLING PRODUCTS ============
 $top_products = mysqli_query($conn, "
     SELECT p.product_name, p.sku, SUM(sd.quantity) AS total_qty,
            SUM(sd.subtotal) AS total_revenue,
-           SUM(sd.subtotal - (sd.purchase_price * sd.quantity)) AS total_profit
+           SUM(sd.profit) AS total_profit
     FROM sale_details sd
     JOIN products p ON sd.product_id = p.id
     JOIN sales s ON sd.sale_id = s.id
-    WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    WHERE DATE(s.created_at) BETWEEN '$safe_from' AND '$safe_to'
     GROUP BY sd.product_id
     ORDER BY total_qty DESC LIMIT 10
 ");
@@ -69,21 +66,21 @@ $category_sales = mysqli_query($conn, "
     JOIN products p ON sd.product_id = p.id
     JOIN categories c ON p.category_id = c.id
     JOIN sales s ON sd.sale_id = s.id
-    WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
+    WHERE DATE(s.created_at) BETWEEN '$safe_from' AND '$safe_to'
     GROUP BY c.id
     ORDER BY total_revenue DESC
 ");
 
 // ============ PAYMENT METHOD SUMMARY ============
 $payment_summary = mysqli_query($conn, "
-    SELECT p.payment_method, COALESCE(SUM(p.amount), 0) AS total, COUNT(*) AS count
-    FROM payments p
-    JOIN sales s ON p.sale_id = s.id
-    WHERE DATE(s.sale_date) BETWEEN '$safe_from' AND '$safe_to'
-    GROUP BY p.payment_method
+    SELECT sp.payment_method, COALESCE(SUM(sp.amount), 0) AS total, COUNT(*) AS count
+    FROM sale_payments sp
+    JOIN sales s ON sp.sale_id = s.id
+    WHERE DATE(s.created_at) BETWEEN '$safe_from' AND '$safe_to'
+    GROUP BY sp.payment_method
 ");
-$payment_totals = ['Cash' => 0, 'Card' => 0, 'Transfer' => 0];
-$payment_counts = ['Cash' => 0, 'Card' => 0, 'Transfer' => 0];
+$payment_totals = ['Cash' => 0, 'KBZPay' => 0];
+$payment_counts = ['Cash' => 0, 'KBZPay' => 0];
 while ($pt = mysqli_fetch_assoc($payment_summary)) {
     $pm = $pt['payment_method'];
     if ($pm === '' || $pm === null) continue;
@@ -94,7 +91,7 @@ $has_payments = array_sum($payment_totals) > 0;
 if (!$has_payments) {
     $legacy_pm = mysqli_query($conn, "
         SELECT payment_method, COALESCE(SUM(paid_amount), 0) AS total, COUNT(*) AS count
-        FROM sales WHERE DATE(sale_date) BETWEEN '$safe_from' AND '$safe_to'
+        FROM sales WHERE DATE(created_at) BETWEEN '$safe_from' AND '$safe_to'
         GROUP BY payment_method
     ");
     while ($lpm = mysqli_fetch_assoc($legacy_pm)) {
@@ -107,9 +104,9 @@ if (!$has_payments) {
 
 // ============ DAILY SALES ============
 $daily_sales = mysqli_query($conn, "
-    SELECT DATE(sale_date) AS day, COUNT(*) AS count, SUM(grand_total) AS total
-    FROM sales WHERE DATE(sale_date) BETWEEN '$safe_from' AND '$safe_to'
-    GROUP BY DATE(sale_date) ORDER BY day DESC
+    SELECT DATE(created_at) AS day, COUNT(*) AS count, SUM(total_amount) AS total
+    FROM sales WHERE DATE(created_at) BETWEEN '$safe_from' AND '$safe_to'
+    GROUP BY DATE(created_at) ORDER BY day DESC
 ");
 
 $page_title = "Sales Reports";
@@ -240,9 +237,9 @@ $page_title = "Sales Reports";
                                         <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Cost</p>
                                         <p class="text-lg font-bold text-red-600 mt-1"><?= number_format($profit_stats['cost']) ?></p>
                                     </div>
-                                    <div class="text-center p-3 bg-indigo-50 rounded-xl">
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Profit</p>
-                                        <p class="text-lg font-bold text-indigo-600 mt-1"><?= number_format($profit_stats['profit']) ?></p>
+                                    <div class="text-center p-3 <?= $profit_stats['profit'] < 0 ? 'bg-red-50' : 'bg-indigo-50' ?> rounded-xl">
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium"><?= $profit_stats['profit'] < 0 ? 'Net Loss' : 'Profit' ?></p>
+                                        <p class="text-lg font-bold <?= $profit_stats['profit'] < 0 ? 'text-red-600' : 'text-indigo-600' ?> mt-1"><?= number_format($profit_stats['profit']) ?></p>
                                     </div>
                                 </div>
                                 <?php
@@ -273,8 +270,7 @@ $page_title = "Sales Reports";
                                     <?php
                                     $total_payment = array_sum($payment_totals);
                                     $payment_colors = ['Cash' => ['bg' => 'bg-emerald-100', 'text' => 'text-emerald-600', 'fill' => 'bg-emerald-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>'],
-                                        'Card' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-600', 'fill' => 'bg-blue-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>'],
-                                        'Transfer' => ['bg' => 'bg-purple-100', 'text' => 'text-purple-600', 'fill' => 'bg-purple-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>']
+                                        'KBZPay' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-600', 'fill' => 'bg-blue-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>']
                                     ];
                                     foreach ($payment_totals as $method => $amount):
                                         $pct = $total_payment > 0 ? ($amount / $total_payment) * 100 : 0;
@@ -341,7 +337,7 @@ $page_title = "Sales Reports";
                                         <td><?= htmlspecialchars($tp['sku'] ?? 'N/A') ?></td>
                                         <td class="num"><?= number_format($tp['total_qty']) ?></td>
                                         <td class="num"><?= number_format($tp['total_revenue']) ?> Ks</td>
-                                        <td class="num"><?= number_format($tp['total_profit']) ?> Ks</td>
+                                        <td class="num <?= $tp['total_profit'] < 0 ? 'text-red-600' : '' ?>"><?= ($tp['total_profit'] < 0 ? 'Loss ' : '') . number_format($tp['total_profit']) ?> Ks</td>
                                         <td>
                                             <div class="flex items-center gap-2">
                                                 <div class="progress-bar flex-1">

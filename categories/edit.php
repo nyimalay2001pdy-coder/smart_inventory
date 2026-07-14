@@ -93,13 +93,10 @@ if (isset($_POST['update'])) {
                             </div>
 
                             <div class="flex gap-3">
-                                <button type="submit" name="update" class="btn-primary">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
+                                <button type="submit" name="update" class="btn-primary py-1 px-3 rounded-lg">
                                     Update Category
                                 </button>
-                                <a href="index.php" class="btn-secondary">Cancel</a>
+                                <a href="index.php" class="btn-secondary py-1 px-3 rounded-lg">Cancel</a>
                             </div>
                         </form>
                     </div>

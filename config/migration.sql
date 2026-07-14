@@ -37,65 +37,86 @@ CREATE TABLE IF NOT EXISTS suppliers (
 ) ENGINE=InnoDB;
 
 -- Products
-CREATE TABLE IF NOT EXISTS products (
+CREATE TABLE products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     category_id INT NOT NULL,
-    supplier_id INT DEFAULT NULL,
     product_name VARCHAR(150) NOT NULL,
-    sku VARCHAR(100) UNIQUE,
-    barcode VARCHAR(100) DEFAULT NULL,
-    brand VARCHAR(100) DEFAULT NULL,
-    purchase_price DECIMAL(10,2) DEFAULT 0.00,
-    selling_price DECIMAL(10,2) DEFAULT 0.00,
-    quantity INT DEFAULT 0,
-    minimum_stock INT DEFAULT 5,
-    unit VARCHAR(50) DEFAULT 'pcs',
+    sku VARCHAR(50) NOT NULL UNIQUE,
+    barcode VARCHAR(100) UNIQUE NULL,
+    unit VARCHAR(30) NOT NULL DEFAULT 'pcs',
+    purchase_price DECIMAL(10,2) NOT NULL,
+    selling_price DECIMAL(10,2) NOT NULL,
+    current_stock INT NOT NULL DEFAULT 0,
+    reorder_level INT NOT NULL DEFAULT 10,
     image VARCHAR(255) DEFAULT NULL,
     description TEXT DEFAULT NULL,
-    status ENUM('Active', 'Inactive') DEFAULT 'Active',
+    status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id)
+        REFERENCES categories(id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+);
 
 -- Purchases (Stock In header)
-CREATE TABLE IF NOT EXISTS purchases (
+CREATE TABLE purchases (
     id INT AUTO_INCREMENT PRIMARY KEY,
     supplier_id INT NOT NULL,
-    invoice_no VARCHAR(50) DEFAULT NULL,
-    total_amount DECIMAL(10,2) DEFAULT 0.00,
-    payment_status ENUM('Paid', 'Unpaid') DEFAULT 'Unpaid',
-    purchase_date DATE DEFAULT NULL,
+    user_id INT NOT NULL,
+    purchase_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    payment_method ENUM('Cash','KBZPay','Mixed') NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    payment_status ENUM('Paid','Partial','Unpaid') DEFAULT 'Paid',
+    notes TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
-) ENGINE=InnoDB;
-
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 -- Purchase Details
-CREATE TABLE IF NOT EXISTS purchase_details (
+CREATE TABLE purchase_details (
     id INT AUTO_INCREMENT PRIMARY KEY,
     purchase_id INT NOT NULL,
     product_id INT NOT NULL,
-    quantity INT DEFAULT 0,
-    purchase_price DECIMAL(10,2) DEFAULT 0.00,
-    subtotal DECIMAL(10,2) DEFAULT 0.00,
-    FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    quantity INT NOT NULL,
+    purchase_price DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (purchase_id)
+        REFERENCES purchases(id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (product_id)
+        REFERENCES products(id)
+);
+-- Purchase Payments (supports multiple/partial payments)
+CREATE TABLE IF NOT EXISTS purchase_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    purchase_id INT NOT NULL,
+    payment_method ENUM('Cash','KBZPay') NOT NULL DEFAULT 'Cash',
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    payment_date DATE NOT NULL,
+    notes TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Sales
-CREATE TABLE IF NOT EXISTS sales (
+CREATE TABLE sales (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    invoice_no VARCHAR(50) NOT NULL,
-    user_id INT DEFAULT NULL,
-
-    grand_total DECIMAL(10,2) DEFAULT 0.00,
-    payment_method ENUM('Cash', 'Card', 'Transfer') DEFAULT 'Cash',
-    paid_amount DECIMAL(10,2) DEFAULT 0.00,
-    discount DECIMAL(10,2) DEFAULT 0.00,
+    invoice_no VARCHAR(30) NOT NULL UNIQUE,
+    user_id INT NOT NULL,
     sale_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    subtotal DECIMAL(10,2) NOT NULL,
+    discount DECIMAL(10,2) DEFAULT 0,
+    total_amount DECIMAL(10,2) NOT NULL,
+    payment_method ENUM('Cash','KBZPay','Mixed') NOT NULL,
+    paid_amount DECIMAL(10,2) NOT NULL,
+    change_amount DECIMAL(10,2) DEFAULT 0,
+    payment_status ENUM('Paid','Partial') DEFAULT 'Paid',
+    notes TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 
 -- Sale Details
 CREATE TABLE IF NOT EXISTS sale_details (
@@ -106,9 +127,19 @@ CREATE TABLE IF NOT EXISTS sale_details (
     purchase_price DECIMAL(10,2) DEFAULT 0.00,
     selling_price DECIMAL(10,2) DEFAULT 0.00,
     subtotal DECIMAL(10,2) DEFAULT 0.00,
+    profit DECIMAL(10,2) DEFAULT 0.00,
     FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+--sale payment table for mixed payment
+CREATE TABLE sale_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sale_id INT NOT NULL,
+    payment_method ENUM('Cash','KBZPay','Mixed') NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
+);
 
 -- Settings
 CREATE TABLE IF NOT EXISTS settings (
@@ -155,7 +186,7 @@ INSERT INTO suppliers (supplier_name, phone, email, address, status) VALUES
 ('City Wholesale', '0988888888', 'city@gmail.com', 'Mandalay', 'Active');
 
 -- Default products
-INSERT INTO products (category_id, supplier_id, product_name, sku, purchase_price, selling_price, quantity, minimum_stock, unit, status) VALUES
+INSERT INTO products (id, product_name, sku, purchase_price, selling_price, quantity, minimum_stock, unit, status) VALUES
 (2, 1, 'Coca Cola 330ml', 'DRK001', 900.00, 1200.00, 100, 20, 'pcs', 'Active'),
 (1, 2, 'HP Laptop 15s', 'ELE001', 450000.00, 520000.00, 10, 2, 'pcs', 'Active'),
 (2, 1, 'Pepsi 500ml', 'DRK002', 800.00, 1100.00, 80, 15, 'pcs', 'Active'),
@@ -168,17 +199,6 @@ INSERT INTO products (category_id, supplier_id, product_name, sku, purchase_pric
 INSERT INTO settings (shop_name, phone, email, address, currency, tax_rate) VALUES
 ('Smart Inventory', '09987654321', 'info@smartinventory.com', '123 Main Street, Yangon', 'Ks', 0.00);
 
--- Payments table for multi-payment support
-CREATE TABLE IF NOT EXISTS payments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    sale_id INT NOT NULL,
-    payment_method ENUM('Cash', 'Card', 'Transfer') NOT NULL,
-    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    payment_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
 -- Add contact_person to suppliers
 ALTER TABLE suppliers ADD COLUMN contact_person VARCHAR(150) DEFAULT NULL AFTER supplier_name;
 
@@ -188,3 +208,6 @@ CREATE TABLE IF NOT EXISTS stock_in_details LIKE purchase_details;
 
 -- Add theme preference to users
 ALTER TABLE users ADD COLUMN theme ENUM('light', 'dark', 'system') DEFAULT 'system' AFTER status;
+
+-- Add profit column to sale_details
+ALTER TABLE sale_details ADD COLUMN profit DECIMAL(10,2) DEFAULT 0.00 AFTER subtotal;

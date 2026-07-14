@@ -3,10 +3,7 @@ include "../includes/auth_check.php";
 include "../config/database.php";
 include "../config/helpers.php";
 
-if (!isStaff() && !isCashier()) {
-    header("Location: ../dashboard/index.php");
-    exit;
-}
+// All authenticated users can access POS
 
 if (!isset($_SESSION['sale_cart'])) {
     $_SESSION['sale_cart'] = [];
@@ -38,9 +35,9 @@ if (isset($_POST['add_cart'])) {
     if (!$found) {
         $p = mysqli_fetch_assoc(mysqli_query(
             $conn,
-            "SELECT id, product_name, selling_price, purchase_price, quantity FROM products WHERE id='$product_id' AND status='Active'"
+            "SELECT id, product_name, selling_price, purchase_price, current_stock AS stock FROM products WHERE id='$product_id' AND status='Active'"
         ));
-        if ($p && $p['quantity'] >= $qty) {
+        if ($p && $p['stock'] >= $qty) {
             $_SESSION['sale_cart'][] = [
                 'product_id' => $p['id'],
                 'product_name' => $p['product_name'],
@@ -112,10 +109,10 @@ if (isset($_POST['complete_sale'])) {
         foreach ($_SESSION['sale_cart'] as $item) {
             $prod = mysqli_fetch_assoc(mysqli_query(
                 $conn,
-                "SELECT product_name, quantity FROM products WHERE id='{$item['product_id']}'"
+                "SELECT product_name, current_stock FROM products WHERE id='{$item['product_id']}'"
             ));
-            if ($prod && $prod['quantity'] < $item['quantity']) {
-                $insufficient[] = $prod['product_name'] . " (available: {$prod['quantity']})";
+            if ($prod && $prod['current_stock'] < $item['quantity']) {
+                $insufficient[] = $prod['product_name'] . " (available: {$prod['current_stock']})";
             }
         }
 
@@ -127,10 +124,19 @@ if (isset($_POST['complete_sale'])) {
             $grand_total -= $discount;
             if ($grand_total < 0) $grand_total = 0;
 
+            $payment_method = $_POST['payment_method'] ?? 'Cash';
             $payment_cash = (float)($_POST['payment_cash'] ?? 0);
-            $payment_card = (float)($_POST['payment_card'] ?? 0);
-            $payment_transfer = (float)($_POST['payment_transfer'] ?? 0);
-            $total_paid = $payment_cash + $payment_card + $payment_transfer;
+            $payment_kbzpay = (float)($_POST['payment_kbzpay'] ?? 0);
+            $mixed_cash = (float)($_POST['mixed_cash'] ?? 0);
+            $mixed_kbzpay = (float)($_POST['mixed_kbzpay'] ?? 0);
+
+            if ($payment_method === 'Cash') {
+                $total_paid = $payment_cash;
+            } elseif ($payment_method === 'KBZPay') {
+                $total_paid = $payment_kbzpay;
+            } else {
+                $total_paid = $mixed_cash + $mixed_kbzpay;
+            }
 
             if (abs($total_paid - $grand_total) > 0.01) {
                 $error = $total_paid < $grand_total
@@ -140,17 +146,15 @@ if (isset($_POST['complete_sale'])) {
                 $invoice_no = generateInvoiceNo($conn);
                 $user_id = $_SESSION['user_id'] ?? null;
 
-                $methods_map = [
-                    'Cash' => $payment_cash,
-                    'Card' => $payment_card,
-                    'Transfer' => $payment_transfer
-                ];
-                arsort($methods_map);
-                $primary_method = key($methods_map);
+                if ($payment_method === 'Mixed') {
+                    $primary_method = 'Mixed';
+                } else {
+                    $primary_method = $payment_method;
+                }
 
                 mysqli_begin_transaction($conn);
                 try {
-                    $stmt = $conn->prepare("INSERT INTO sales (invoice_no, user_id, grand_total, payment_method, paid_amount, discount, sale_date)
+                    $stmt = $conn->prepare("INSERT INTO sales (invoice_no, user_id, total_amount, payment_method, paid_amount, discount, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, NOW())");
                     $stmt->bind_param("sidddd", $invoice_no, $user_id, $grand_total, $primary_method, $total_paid, $discount);
                     $stmt->execute();
@@ -159,23 +163,36 @@ if (isset($_POST['complete_sale'])) {
                     if (!$sale_id) throw new Exception("Failed to create sale record.");
 
                     foreach ($_SESSION['sale_cart'] as $item) {
-                        $subtotal = $item['quantity'] * $item['price'];
-                        $sd_stmt = $conn->prepare("INSERT INTO sale_details (sale_id, product_id, quantity, purchase_price, selling_price, subtotal)
-                            VALUES (?, ?, ?, ?, ?, ?)");
-                        $sd_stmt->bind_param("iiiddd", $sale_id, $item['product_id'], $item['quantity'], $item['purchase_price'], $item['price'], $subtotal);
+                        $prod = mysqli_fetch_assoc(mysqli_query($conn, "SELECT purchase_price, selling_price FROM products WHERE id=" . (int)$item['product_id']));
+                        $selling_price = $prod['selling_price'] ?? $item['price'];
+                        $purchase_price = $prod['purchase_price'] ?? 0;
+                        $subtotal = $item['quantity'] * $selling_price;
+                        $profit = ($selling_price - $purchase_price) * $item['quantity'];
+                        $sd_stmt = $conn->prepare("INSERT INTO sale_details (sale_id, product_id, quantity, purchase_price, selling_price, subtotal, profit)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)");
+                        $sd_stmt->bind_param("iiidddd", $sale_id, $item['product_id'], $item['quantity'], $purchase_price, $selling_price, $subtotal, $profit);
                         $sd_stmt->execute();
 
-                        $stock_stmt = $conn->prepare("UPDATE products SET quantity = quantity - ? WHERE id = ?");
+                        $stock_stmt = $conn->prepare("UPDATE products SET current_stock = current_stock - ? WHERE id = ?");
                         $stock_stmt->bind_param("ii", $item['quantity'], $item['product_id']);
                         $stock_stmt->execute();
                     }
 
-                    foreach ($methods_map as $method => $amount) {
-                        if ($amount > 0) {
-                            $pmt_stmt = $conn->prepare("INSERT INTO payments (sale_id, payment_method, amount) VALUES (?, ?, ?)");
-                            $pmt_stmt->bind_param("isd", $sale_id, $method, $amount);
+                    if ($payment_method === 'Mixed') {
+                        if ($mixed_cash > 0) {
+                            $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, amount) VALUES (?, 'Cash', ?)");
+                            $pmt_stmt->bind_param("id", $sale_id, $mixed_cash);
                             $pmt_stmt->execute();
                         }
+                        if ($mixed_kbzpay > 0) {
+                            $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, amount) VALUES (?, 'KBZPay', ?)");
+                            $pmt_stmt->bind_param("id", $sale_id, $mixed_kbzpay);
+                            $pmt_stmt->execute();
+                        }
+                    } else {
+                        $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, amount) VALUES (?, ?, ?)");
+                        $pmt_stmt->bind_param("isd", $sale_id, $primary_method, $total_paid);
+                        $pmt_stmt->execute();
                     }
 
                     mysqli_commit($conn);
@@ -253,6 +270,10 @@ $page_title = "New Sale (POS)";
 
         .cart-item:hover {
             background: #f9fafb;
+        }
+
+        .payment-method-btn:hover {
+            transform: translateY(-1px);
         }
 
         .payment-input {
@@ -383,8 +404,10 @@ $page_title = "New Sale (POS)";
                     <!-- Product Grid -->
                     <div class="product-grid">
                         <?php if (mysqli_num_rows($products) > 0): while ($p = mysqli_fetch_assoc($products)):
-                                $oos = $p['quantity'] <= 0;
-                                $low_stock = $p['quantity'] <= $p['minimum_stock'] && !$oos;
+                                $stock = $p['current_stock'] ?? 0;
+                                $reorder = $p['reorder_level'] ?? 10;
+                                $oos = $stock <= 0;
+                                $low_stock = $stock <= $reorder && !$oos;
                         ?>
                                 <div class="bg-white rounded-xl border border-gray-200 p-3 product-card slide-up <?= $oos ? 'out-of-stock' : '' ?>">
                                     <div class="h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-2 flex items-center justify-center">
@@ -397,13 +420,13 @@ $page_title = "New Sale (POS)";
                                     <h3 class="font-semibold text-xs text-gray-800 truncate" title="<?= htmlspecialchars($p['product_name']) ?>"><?= htmlspecialchars($p['product_name']) ?></h3>
                                     <p class="text-[11px] text-gray-400 mt-0.5">SKU: <?= htmlspecialchars($p['sku'] ?? 'N/A') ?></p>
                                     <p class="text-[11px] <?= $low_stock ? 'text-amber-500 font-medium' : ($oos ? 'text-red-500 font-medium' : 'text-gray-400') ?>">
-                                        Stock: <?= $p['quantity'] ?>
+                                        Stock: <?= $stock ?>
                                         <?= $oos ? ' (Out)' : ($low_stock ? ' (Low)' : '') ?>
                                     </p>
                                     <p class="text-indigo-600 font-bold text-sm mt-1"><?= number_format($p['selling_price']) ?> Ks</p>
                                     <form method="POST" class="mt-2 flex gap-1">
                                         <input type="hidden" name="product_id" value="<?= $p['id'] ?>">
-                                        <input type="number" name="quantity" value="1" min="1" max="<?= $p['quantity'] ?>" class="border border-gray-300 rounded-lg w-14 text-center p-1.5 text-xs focus:outline-none focus:border-indigo-400">
+                                        <input type="number" name="quantity" value="1" min="1" max="<?= $stock ?>" class="border border-gray-300 rounded-lg w-14 text-center p-1.5 text-xs focus:outline-none focus:border-indigo-400">
                                         <button name="add_cart" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700 flex-1 transition <?= $oos ? 'opacity-50' : '' ?>">+ Add</button>
                                     </form>
                                 </div>
@@ -520,23 +543,43 @@ $page_title = "New Sale (POS)";
                         <div class="text-emerald-600 text-2xl font-bold mt-1" id="modalTotal"><?= number_format($cart_subtotal) ?> Ks</div>
                     </div>
 
-                    <div class="border-t border-gray-100 pt-2 space-y-1">
-                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Payment Methods</label>
+                    <div class="border-t border-gray-100 pt-3 space-y-3">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Payment Method</label>
 
-                        <div class="flex items-center gap-3">
-                            <div class="w-20 text-sm font-medium text-gray-700">Cash</div>
-                            <input type="number" name="payment_cash" id="paymentCash" value="0" min="0" step="0.01" class="payment-input flex-1 border border-gray-200 rounded-xl p-2.5 text-sm" oninput="calculatePayments()">
-                            <span class="text-xs text-gray-400 w-8 text-right">Ks</span>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="selectPayment('Cash')" id="btnCash" class="payment-method-btn flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 border-emerald-500 bg-emerald-50 text-emerald-700 transition">Cash</button>
+                            <button type="button" onclick="selectPayment('KBZPay')" id="btnKBZPay" class="payment-method-btn flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 bg-white text-gray-600 transition">KBZPay</button>
+                            <button type="button" onclick="selectPayment('Mixed')" id="btnMixed" class="payment-method-btn flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 bg-white text-gray-600 transition">Mixed</button>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-20 text-sm font-medium text-gray-700">Card</div>
-                            <input type="number" name="payment_card" id="paymentCard" value="0" min="0" step="0.01" class="payment-input flex-1 border border-gray-200 rounded-xl p-2.5 text-sm" oninput="calculatePayments()">
-                            <span class="text-xs text-gray-400 w-8 text-right">Ks</span>
+                        <input type="hidden" name="payment_method" id="paymentMethod" value="Cash">
+
+                        <div id="cashSection">
+                            <div class="flex items-center gap-3">
+                                <div class="w-16 text-sm font-medium text-gray-700">Cash</div>
+                                <input type="number" name="payment_cash" id="paymentCash" value="0" min="0" step="0.01" class="payment-input flex-1 border border-gray-200 rounded-xl p-2.5 text-sm" oninput="calculatePayments()">
+                                <span class="text-xs text-gray-400 w-8 text-right">Ks</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-20 text-sm font-medium text-gray-700">Transfer</div>
-                            <input type="number" name="payment_transfer" id="paymentTransfer" value="0" min="0" step="0.01" class="payment-input flex-1 border border-gray-200 rounded-xl p-2.5 text-sm" oninput="calculatePayments()">
-                            <span class="text-xs text-gray-400 w-8 text-right">Ks</span>
+
+                        <div id="kbzSection" class="hidden">
+                            <div class="flex items-center gap-3">
+                                <div class="w-16 text-sm font-medium text-gray-700">KBZPay</div>
+                                <input type="number" name="payment_kbzpay" id="paymentKBZPay" value="0" min="0" step="0.01" class="payment-input flex-1 border border-gray-200 rounded-xl p-2.5 text-sm" oninput="calculatePayments()">
+                                <span class="text-xs text-gray-400 w-8 text-right">Ks</span>
+                            </div>
+                        </div>
+
+                        <div id="mixedSection" class="hidden space-y-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-16 text-sm font-medium text-gray-700">Cash</div>
+                                <input type="number" name="mixed_cash" id="mixedCash" value="0" min="0" step="0.01" class="payment-input flex-1 border border-gray-200 rounded-xl p-2.5 text-sm" oninput="calculatePayments()">
+                                <span class="text-xs text-gray-400 w-8 text-right">Ks</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-16 text-sm font-medium text-gray-700">KBZPay</div>
+                                <input type="number" name="mixed_kbzpay" id="mixedKBZPay" value="0" min="0" step="0.01" class="payment-input flex-1 border border-gray-200 rounded-xl p-2.5 text-sm" oninput="calculatePayments()">
+                                <span class="text-xs text-gray-400 w-8 text-right">Ks</span>
+                            </div>
                         </div>
                     </div>
 
@@ -617,26 +660,59 @@ $page_title = "New Sale (POS)";
 
         function showPaymentModal() {
             document.getElementById('paymentModal').classList.remove('hidden');
-            document.getElementById('paymentCash').value = '0';
-            document.getElementById('paymentCard').value = '0';
-            document.getElementById('paymentTransfer').value = '0';
+            selectPayment('Cash');
             calculatePayments();
-            document.getElementById('paymentCash').focus();
         }
 
         function hidePaymentModal() {
             document.getElementById('paymentModal').classList.add('hidden');
         }
 
-        function calculatePayments() {
+        function selectPayment(method) {
+            document.getElementById('paymentMethod').value = method;
+            document.querySelectorAll('.payment-method-btn').forEach(function(btn) {
+                btn.className = 'payment-method-btn flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 bg-white text-gray-600 transition';
+            });
+            var activeBtn = document.getElementById('btn' + method);
+            if (activeBtn) {
+                activeBtn.className = 'payment-method-btn flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 border-emerald-500 bg-emerald-50 text-emerald-700 transition';
+            }
+            document.getElementById('cashSection').classList.toggle('hidden', method !== 'Cash');
+            document.getElementById('kbzSection').classList.toggle('hidden', method !== 'KBZPay');
+            document.getElementById('mixedSection').classList.toggle('hidden', method !== 'Mixed');
+
+            if (method === 'Cash') {
+                var total = getTotal();
+                document.getElementById('paymentCash').value = total;
+            } else if (method === 'KBZPay') {
+                var total = getTotal();
+                document.getElementById('paymentKBZPay').value = total;
+            } else if (method === 'Mixed') {
+                document.getElementById('mixedCash').value = '0';
+                document.getElementById('mixedKBZPay').value = '0';
+            }
+            calculatePayments();
+        }
+
+        function getTotal() {
             const subtotal = calculateSubtotal();
             const discount = parseFloat(document.getElementById('discountInput').value) || 0;
-            const total = Math.max(0, subtotal - discount);
+            return Math.max(0, subtotal - discount);
+        }
 
-            const cash = parseFloat(document.getElementById('paymentCash').value) || 0;
-            const card = parseFloat(document.getElementById('paymentCard').value) || 0;
-            const transfer = parseFloat(document.getElementById('paymentTransfer').value) || 0;
-            const totalPaid = cash + card + transfer;
+        function calculatePayments() {
+            const total = getTotal();
+            const method = document.getElementById('paymentMethod').value;
+            var totalPaid = 0;
+
+            if (method === 'Cash') {
+                totalPaid = parseFloat(document.getElementById('paymentCash').value) || 0;
+            } else if (method === 'KBZPay') {
+                totalPaid = parseFloat(document.getElementById('paymentKBZPay').value) || 0;
+            } else if (method === 'Mixed') {
+                totalPaid = (parseFloat(document.getElementById('mixedCash').value) || 0) +
+                            (parseFloat(document.getElementById('mixedKBZPay').value) || 0);
+            }
 
             document.getElementById('totalPaidDisplay').textContent = totalPaid.toLocaleString() + ' Ks';
 

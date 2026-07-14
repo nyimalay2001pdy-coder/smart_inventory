@@ -14,7 +14,7 @@ if (isset($_GET['delete_id']) && isAdmin()) {
     while ($row = mysqli_fetch_assoc($details)) {
         $pid = $row['product_id'];
         $qty = $row['quantity'];
-        mysqli_query($conn, "UPDATE products SET quantity = quantity - $qty WHERE id='$pid'");
+        mysqli_query($conn, "UPDATE products SET current_stock = current_stock - $qty WHERE id='$pid'");
     }
     mysqli_query($conn, "DELETE FROM purchase_details WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchases WHERE id='$id'");

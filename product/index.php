@@ -35,13 +35,9 @@ if ($action === 'edit' && isset($_POST['update'])) {
     $product_name = mysqli_real_escape_string($conn, $_POST['product_name']);
     $sku = mysqli_real_escape_string($conn, $_POST['sku']);
     $barcode = mysqli_real_escape_string($conn, $_POST['barcode']);
-    $brand = mysqli_real_escape_string($conn, $_POST['brand']);
     $unit = mysqli_real_escape_string($conn, $_POST['unit']);
-    $supplier_id = !empty($_POST['supplier_id']) ? (int)$_POST['supplier_id'] : 'NULL';
-    $minimum_stock = (int)$_POST['minimum_stock'];
-    $purchase_price = (float)$_POST['purchase_price'];
+    $reorder_level = (int)$_POST['reorder_level'];
     $selling_price = (float)$_POST['selling_price'];
-    $description = mysqli_real_escape_string($conn, $_POST['description']);
     $status = mysqli_real_escape_string($conn, $_POST['status']);
     $old = mysqli_fetch_assoc(mysqli_query($conn, "SELECT image FROM products WHERE id=$id"));
     $image = $old['image'] ?? '';
@@ -52,7 +48,7 @@ if ($action === 'edit' && isset($_POST['update'])) {
         move_uploaded_file($_FILES['image']['tmp_name'], "../img/" . $image);
     }
 
-    mysqli_query($conn, "UPDATE products SET category_id=$category_id, product_name='$product_name', sku='$sku', barcode='$barcode', brand='$brand', unit='$unit', supplier_id=$supplier_id, minimum_stock=$minimum_stock, purchase_price=$purchase_price, selling_price=$selling_price, description='$description', image='$image', status='$status' WHERE id=$id");
+    mysqli_query($conn, "UPDATE products SET category_id=$category_id, product_name='$product_name', sku='$sku', barcode='$barcode', unit='$unit', reorder_level=$reorder_level, selling_price=$selling_price, image='$image', status='$status' WHERE id=$id");
     header("Location:index.php");
     exit;
 }
@@ -62,13 +58,9 @@ if ($action === 'add' && isset($_POST['save'])) {
     $product_name = mysqli_real_escape_string($conn, $_POST['product_name']);
     $sku = mysqli_real_escape_string($conn, $_POST['sku']);
     $barcode = mysqli_real_escape_string($conn, $_POST['barcode']);
-    $brand = mysqli_real_escape_string($conn, $_POST['brand']);
     $unit = mysqli_real_escape_string($conn, $_POST['unit']);
-    $supplier_id = !empty($_POST['supplier_id']) ? (int)$_POST['supplier_id'] : 'NULL';
-    $minimum_stock = (int)$_POST['minimum_stock'];
-    $purchase_price = (float)$_POST['purchase_price'];
+    $reorder_level = (int)$_POST['reorder_level'];
     $selling_price = (float)$_POST['selling_price'];
-    $description = mysqli_real_escape_string($conn, $_POST['description']);
     $status = 'Active';
     $image = "";
 
@@ -78,7 +70,7 @@ if ($action === 'add' && isset($_POST['save'])) {
         move_uploaded_file($_FILES['image']['tmp_name'], "../img/" . $image);
     }
 
-    mysqli_query($conn, "INSERT INTO products (category_id, product_name, sku, barcode, brand, unit, supplier_id, minimum_stock, purchase_price, selling_price, description, image, status) VALUES ($category_id, '$product_name', '$sku', '$barcode', '$brand', '$unit', $supplier_id, $minimum_stock, $purchase_price, $selling_price, '$description', '$image', '$status')");
+    mysqli_query($conn, "INSERT INTO products (category_id, product_name, sku, barcode, unit, reorder_level, selling_price, image, status) VALUES ($category_id, '$product_name', '$sku', '$barcode', '$unit', $reorder_level, $selling_price, '$image', '$status')");
     header("Location:index.php");
     exit;
 }
@@ -120,10 +112,10 @@ if ($action === 'edit' && isset($_GET['id'])) {
                     $view_id = (int)($_GET['id'] ?? 0);
                     $view_product = mysqli_fetch_assoc(mysqli_query($conn, "SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = $view_id"));
                     if (!$view_product) {
-                        echo '<div class="text-center py-20"><h2 class="text-2xl font-bold text-gray-400">Product not found</h2><a href="index.php" class="text-indigo-600 mt-4 inline-block">← Back to Products</a></div>';
+                        echo '<div class="text-center py-20"><h2 class="text-2xl font-bold text-gray-400">Product not found</h2><a href="index.php" class="text-indigo-600 mt-4 inline-block">&larr; Back to Products</a></div>';
                     } else {
-                        $vqty = (int)$view_product['quantity'];
-                        $vmin = (int)$view_product['minimum_stock'];
+                        $vqty = (int)$view_product['current_stock'];
+                        $vmin = (int)$view_product['reorder_level'];
                         if ($vqty == 0) {
                             $vstockLabel = 'Out of Stock';
                             $vstockClass = 'bg-red-100 text-red-700';
@@ -134,81 +126,233 @@ if ($action === 'edit' && isset($_GET['id'])) {
                             $vstockLabel = 'In Stock';
                             $vstockClass = 'bg-green-100 text-green-700';
                         }
-                    ?>
-                        <div class="min-h-screen flex items-center justify-center">
-                            <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-3xl">
 
-                                <div class="grid grid-cols-2 gap-6">
-                                    <div class="col-span-2 flex items-center gap-6">
+                        // Recent purchases
+                        $recent_purchases = [];
+                        $rp_res = mysqli_query($conn, "SELECT pd.*, pu.invoice_no, pu.purchase_date, s.supplier_name FROM purchase_details pd JOIN purchases pu ON pd.purchase_id=pu.id LEFT JOIN suppliers s ON pu.supplier_id=s.id WHERE pd.product_id=$view_id ORDER BY pu.purchase_date DESC LIMIT 5");
+                        while ($r = mysqli_fetch_assoc($rp_res)) $recent_purchases[] = $r;
+
+                        // Recent sales
+                        $recent_sales = [];
+                        $rs_res = mysqli_query($conn, "SELECT sd.*, sa.invoice_no, sa.created_at FROM sale_details sd JOIN sales sa ON sd.sale_id=sa.id WHERE sd.product_id=$view_id ORDER BY sa.created_at DESC LIMIT 5");
+                        while ($r = mysqli_fetch_assoc($rs_res)) $recent_sales[] = $r;
+
+                        // Total purchased & sold
+                        $total_purchased = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(quantity),0) AS qty, COALESCE(SUM(subtotal),0) AS amount FROM purchase_details WHERE product_id=$view_id"));
+                        $total_sold = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(quantity),0) AS qty, COALESCE(SUM(subtotal),0) AS amount, COALESCE(SUM(profit),0) AS profit FROM sale_details WHERE product_id=$view_id"));
+                    ?>
+                        <!-- Breadcrumb -->
+                        <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-6">
+                            <a href="index.php" class="hover:text-indigo-600 transition">Products</a>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            <span class="text-gray-900 dark:text-white font-semibold"><?= htmlspecialchars($view_product['product_name']) ?></span>
+                        </div>
+
+                        <div class="max-w-5xl mx-auto space-y-6">
+
+                            <!-- Product Header -->
+                            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+                                <div class="flex flex-col md:flex-row gap-6">
+                                    <!-- Image -->
+                                    <div class="flex-shrink-0">
                                         <?php if ($view_product['image']): ?>
-                                            <img src="../img/<?= htmlspecialchars($view_product['image']) ?>" class="w-24 h-24 rounded-xl object-cover shadow">
+                                            <img src="../img/<?= htmlspecialchars($view_product['image']) ?>" class="w-40 h-40 object-cover rounded-2xl shadow-lg">
                                         <?php else: ?>
-                                            <div class="w-24 h-24 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400">No Image</div>
+                                            <div class="w-40 h-40 rounded-2xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-gray-400">
+                                                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
                                         <?php endif; ?>
-                                        <div>
-                                            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($view_product['product_name']) ?></h2>
-                                            <p class="text-gray-500 dark:text-gray-400"><?= htmlspecialchars($view_product['brand'] ?? '') ?> · <?= htmlspecialchars($view_product['unit']) ?></p>
+                                    </div>
+
+                                    <!-- Info -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                                            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold"><?= htmlspecialchars($view_product['category_name'] ?? '—') ?></span>
+                                            <?php if ($view_product['status'] === 'Active'): ?>
+                                                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
+                                            <?php else: ?>
+                                                <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-semibold">Inactive</span>
+                                            <?php endif; ?>
+                                            <span class="<?= $vstockClass ?> px-3 py-1 rounded-full text-xs font-semibold"><?= $vstockLabel ?></span>
+                                        </div>
+                                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1"><?= htmlspecialchars($view_product['product_name']) ?></h1>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4"><?= htmlspecialchars($view_product['sku']) ?> <?= $view_product['barcode'] ? ' &middot; ' . htmlspecialchars($view_product['barcode']) : '' ?></p>
+
+                                        <?php if (!empty($view_product['description'])): ?>
+                                            <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed"><?= nl2br(htmlspecialchars($view_product['description'])) ?></p>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Price -->
+                                    <div class="flex-shrink-0 text-right">
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Selling Price</p>
+                                        <p class="text-3xl font-bold text-emerald-600 mt-1"><?= number_format($view_product['selling_price']) ?> Ks</p>
+                                        <p class="text-xs text-gray-400 mt-1">Purchase: <?= number_format($view_product['purchase_price']) ?> Ks</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Info Grid -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 text-center">
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Stock</p>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1"><?= $vqty ?></p>
+                                    <p class="text-xs text-gray-400 mt-0.5"><?= htmlspecialchars($view_product['unit']) ?></p>
+                                </div>
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 text-center">
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reorder Level</p>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1"><?= $view_product['reorder_level'] ?></p>
+                                    <p class="text-xs text-gray-400 mt-0.5">Minimum</p>
+                                </div>
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 text-center">
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Purchased</p>
+                                    <p class="text-2xl font-bold text-blue-600 mt-1"><?= number_format($total_purchased['qty']) ?></p>
+                                    <p class="text-xs text-gray-400 mt-0.5"><?= number_format($total_purchased['amount']) ?> Ks</p>
+                                </div>
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 text-center">
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Sold</p>
+                                    <p class="text-2xl font-bold text-emerald-600 mt-1"><?= number_format($total_sold['qty']) ?></p>
+                                    <p class="text-xs text-gray-400 mt-0.5">Profit: <?= number_format($total_sold['profit']) ?> Ks</p>
+                                </div>
+                            </div>
+
+                            <!-- Details Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Product Details -->
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                                    <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
+                                        <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Product Details</h3>
+                                    </div>
+                                    <div class="p-6 space-y-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-slate-700">
+                                            <span class="text-sm text-gray-500">SKU</span>
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white font-mono"><?= htmlspecialchars($view_product['sku']) ?></span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-slate-700">
+                                            <span class="text-sm text-gray-500">Barcode</span>
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white font-mono"><?= htmlspecialchars($view_product['barcode'] ?: '—') ?></span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-slate-700">
+                                            <span class="text-sm text-gray-500">Unit</span>
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($view_product['unit']) ?></span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-slate-700">
+                                            <span class="text-sm text-gray-500">Category</span>
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($view_product['category_name'] ?? '—') ?></span>
+                                        </div>
+                                        <div class="flex justify-between py-2">
+                                            <span class="text-sm text-gray-500">Created</span>
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white"><?= date('d M Y', strtotime($view_product['created_at'])) ?></span>
                                         </div>
                                     </div>
-
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">SKU</label>
-                                        <p class="text-gray-900 dark:text-gray-100 font-mono mt-1"><?= htmlspecialchars($view_product['sku']) ?></p>
-                                    </div>
-
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Category</label>
-                                        <p class="mt-1"><span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm"><?= htmlspecialchars($view_product['category_name'] ?? '—') ?></span></p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Supplier</label>
-                                        <p class="text-gray-900 dark:text-gray-100 mt-1"><?= htmlspecialchars($view_product['supplier_id'] ? 'ID: ' . $view_product['supplier_id'] : '—') ?></p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Purchase Price</label>
-                                        <p class="text-gray-900 dark:text-gray-100 mt-1"><?= number_format($view_product['purchase_price']) ?> Ks</p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Selling Price</label>
-                                        <p class="text-green-600 font-bold mt-1"><?= number_format($view_product['selling_price']) ?> Ks</p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Stock Quantity</label>
-                                        <p class="mt-1">
-                                            <span class="<?= $vstockClass ?> px-3 py-1 rounded-full text-sm font-semibold"><?= $vstockLabel ?></span>
-                                            <span class="text-gray-500 dark:text-gray-400 ml-2">(<?= $vqty ?> <?= htmlspecialchars($view_product['unit']) ?>)</span>
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Minimum Stock</label>
-                                        <p class="text-gray-900 dark:text-gray-100 mt-1"><?= $view_product['minimum_stock'] ?></p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Status</label>
-                                        <p class="mt-1">
-                                            <?php if ($view_product['status'] === 'Active'): ?>
-                                                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">Active</span>
-                                            <?php else: ?>
-                                                <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold">Inactive</span>
-                                            <?php endif; ?>
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Created Date</label>
-                                        <p class="text-gray-900 dark:text-gray-100 mt-1"><?= date('d M Y', strtotime($view_product['created_at'])) ?></p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-semibold text-gray-500 dark:text-gray-400">Description</label>
-                                        <p class="text-gray-900 dark:text-gray-100 mt-1 whitespace-pre-wrap"><?= htmlspecialchars($view_product['description'] ?? '—') ?></p>
-                                    </div>
                                 </div>
 
-                                <div class="flex justify-end gap-4 mt-8 border-t pt-6">
-                                    <a href="index.php" class="px-6 py-3 bg-gray-200 rounded-lg font-semibold hover:bg-gray-300 transition">Close</a>
-                                    <?php if ($is_admin): ?>
-                                        <a href="?action=edit&id=<?= $view_product['id'] ?>" class="px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition">Edit Product</a>
-                                    <?php endif; ?>
+                                <!-- Pricing -->
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                                    <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
+                                        <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Pricing</h3>
+                                    </div>
+                                    <div class="p-6 space-y-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-slate-700">
+                                            <span class="text-sm text-gray-500">Selling Price</span>
+                                            <span class="text-sm font-bold text-emerald-600"><?= number_format($view_product['selling_price']) ?> Ks</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-slate-700">
+                                            <span class="text-sm text-gray-500">Purchase Price</span>
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white"><?= number_format($view_product['purchase_price']) ?> Ks</span>
+                                        </div>
+                                        <?php if ($view_product['purchase_price'] > 0): ?>
+                                        <div class="flex justify-between py-2">
+                                            <span class="text-sm text-gray-500">Margin</span>
+                                            <span class="text-sm font-semibold text-emerald-600"><?= number_format($view_product['selling_price'] - $view_product['purchase_price']) ?> Ks (<?= number_format((($view_product['selling_price'] - $view_product['purchase_price']) / $view_product['purchase_price']) * 100, 1) ?>%)</span>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <!-- Recent Purchases -->
+                            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
+                                    <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Recent Purchases</h3>
+                                </div>
+                                <?php if (empty($recent_purchases)): ?>
+                                    <div class="p-8 text-center text-gray-400 text-sm">No purchase history</div>
+                                <?php else: ?>
+                                    <div class="table-wrap">
+                                        <table class="data-table w-full">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Invoice</th>
+                                                    <th>Supplier</th>
+                                                    <th class="num">Qty</th>
+                                                    <th class="num">Price</th>
+                                                    <th class="num">Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($recent_purchases as $rp): ?>
+                                                <tr>
+                                                    <td class="px-4 py-3 text-sm"><?= date('d M Y', strtotime($rp['purchase_date'])) ?></td>
+                                                    <td class="px-4 py-3 text-sm font-mono"><?= htmlspecialchars($rp['invoice_no']) ?></td>
+                                                    <td class="px-4 py-3 text-sm"><?= htmlspecialchars($rp['supplier_name'] ?? '—') ?></td>
+                                                    <td class="px-4 py-3 text-sm num"><?= $rp['quantity'] ?></td>
+                                                    <td class="px-4 py-3 text-sm num"><?= number_format($rp['purchase_price']) ?> Ks</td>
+                                                    <td class="px-4 py-3 text-sm num font-semibold"><?= number_format($rp['subtotal']) ?> Ks</td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Recent Sales -->
+                            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
+                                    <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Recent Sales</h3>
+                                </div>
+                                <?php if (empty($recent_sales)): ?>
+                                    <div class="p-8 text-center text-gray-400 text-sm">No sales history</div>
+                                <?php else: ?>
+                                    <div class="table-wrap">
+                                        <table class="data-table w-full">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Invoice</th>
+                                                    <th class="num">Qty</th>
+                                                    <th class="num">Price</th>
+                                                    <th class="num">Subtotal</th>
+                                                    <th class="num">Profit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($recent_sales as $rs): ?>
+                                                <tr>
+                                                    <td class="px-4 py-3 text-sm"><?= date('d M Y', strtotime($rs['created_at'])) ?></td>
+                                                    <td class="px-4 py-3 text-sm font-mono"><?= htmlspecialchars($rs['invoice_no']) ?></td>
+                                                    <td class="px-4 py-3 text-sm num"><?= $rs['quantity'] ?></td>
+                                                    <td class="px-4 py-3 text-sm num"><?= number_format($rs['selling_price']) ?> Ks</td>
+                                                    <td class="px-4 py-3 text-sm num font-semibold"><?= number_format($rs['subtotal']) ?> Ks</td>
+                                                    <td class="px-4 py-3 text-sm num text-emerald-600 font-semibold"><?= number_format($rs['profit']) ?> Ks</td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex justify-end gap-3 pb-6">
+                                <a href="index.php" class="px-6 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 transition">Back to Products</a>
+                                <?php if ($is_admin): ?>
+                                    <a href="?action=edit&id=<?= $view_product['id'] ?>" class="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition shadow-sm">Edit Product</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php } ?>
@@ -216,105 +360,199 @@ if ($action === 'edit' && isset($_GET['id'])) {
                 <?php elseif ($action === 'add' || $action === 'edit'): ?>
 
                     <?php $is_edit = ($action === 'edit' && $product); ?>
-                    <div class="min-h-screen flex items-center justify-center">
-                        <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-3xl">
-                            <form method="POST" enctype="multipart/form-data" data-form-guard="true">
+                    <div class="max-w-5xl mx-auto">
+                        <form method="POST" enctype="multipart/form-data" data-form-guard="true">
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 border-b pb-2">Product Information</h2>
-                                <div class="grid grid-cols-2 gap-5">
-                                    <div>
-                                        <label class="font-semibold">Image</label>
-                                        <input type="file" name="image" class="w-full border rounded-lg p-3 mt-2">
-                                        <?php if ($is_edit && $product['image']): ?>
-                                            <div class="flex gap-3 items-center mt-3">
-                                                <img src="../img/<?= $product['image'] ?>" class="w-16 h-16 rounded-lg object-cover">
-                                                <p class="text-sm text-gray-400">Leave empty to keep current image</p>
+                                <!-- Left Column: Product Information -->
+                                <div class="lg:col-span-2 space-y-6">
+                                    <!-- Product Information Card -->
+                                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                                        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
+                                            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                </svg>
+                                                Product Information
+                                            </h3>
+                                        </div>
+                                        <div class="p-6">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                <!-- Product Image -->
+                                                <div class="md:col-span-2">
+                                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Product Image</label>
+                                                    <div class="flex items-center gap-4">
+                                                        <div class="relative">
+                                                            <input type="file" name="image" id="imageInput" accept="image/*" class="hidden" onchange="previewImage(this)">
+                                                            <label for="imageInput" class="cursor-pointer block w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 hover:border-indigo-400 transition-colors overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-slate-700">
+                                                                <?php if ($is_edit && $product['image']): ?>
+                                                                    <img id="imagePreview" src="../img/<?= htmlspecialchars($product['image']) ?>" class="w-full h-full object-cover">
+                                                                <?php else: ?>
+                                                                    <img id="imagePreview" class="hidden w-full h-full object-cover">
+                                                                    <div id="imagePlaceholder" class="text-center">
+                                                                        <svg class="w-8 h-8 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                                        </svg>
+                                                                    </div>
+                                                                <?php endif; ?>
+                                                            </label>
+                                                        </div>
+                                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                            <p>Click to upload image</p>
+                                                            <p class="text-xs mt-1">PNG, JPG up to 5MB</p>
+                                                            <?php if ($is_edit && $product['image']): ?>
+                                                                <p class="text-xs text-amber-500 mt-1">Leave empty to keep current image</p>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Product Name -->
+                                                <div class="md:col-span-2">
+                                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Product Name <span class="text-red-500">*</span></label>
+                                                    <input type="text" name="product_name" value="<?= $is_edit ? htmlspecialchars($product['product_name']) : '' ?>" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition" placeholder="Enter product name" required>
+                                                </div>
+
+                                                <!-- SKU -->
+                                                <div>
+                                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">SKU <span class="text-red-500">*</span></label>
+                                                    <input type="text" name="sku" value="<?= $is_edit ? htmlspecialchars($product['sku']) : '' ?>" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white font-mono transition" placeholder="e.g. DRK001" required>
+                                                </div>
+
+                                                <!-- Barcode -->
+                                                <div>
+                                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Barcode</label>
+                                                    <input type="text" name="barcode" value="<?= $is_edit ? htmlspecialchars($product['barcode']) : '' ?>" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white font-mono transition" placeholder="Enter barcode">
+                                                </div>
+
+                                                <!-- Category -->
+                                                <div>
+                                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Category <span class="text-red-500">*</span></label>
+                                                    <select name="category_id" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition" required>
+                                                        <option value="">Select Category</option>
+                                                        <?php
+                                                        $cat_sql = "SELECT * FROM categories WHERE status='Active' ORDER BY name ASC";
+                                                        $categories = mysqli_query($conn, $cat_sql);
+                                                        while ($cat = mysqli_fetch_assoc($categories)) {
+                                                            $sel = ($is_edit && $cat['id'] == $product['category_id']) ? 'selected' : '';
+                                                        ?>
+                                                            <option value="<?= $cat['id'] ?>" <?= $sel ?>><?= htmlspecialchars($cat['name']) ?></option>
+                                                        <?php } ?>
+                                                    </select>
+                                                </div>
+
+                                                <!-- Unit -->
+                                                <div>
+                                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Unit <span class="text-red-500">*</span></label>
+                                                    <select name="unit" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition" required>
+                                                        <?php $units = ['pcs', 'box', 'kg', 'liter', 'pack', 'bottle', 'can'];
+                                                        foreach ($units as $u) {
+                                                            $sel = ($is_edit && $product['unit'] == $u) ? 'selected' : '';
+                                                        ?>
+                                                            <option value="<?= $u ?>" <?= $sel ?>><?= $u ?></option>
+                                                        <?php } ?>
+                                                    </select>
+                                                </div>
                                             </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div>
-                                        <label class="font-semibold">Product Name</label>
-                                        <input type="text" name="product_name" value="<?= $is_edit ? $product['product_name'] : '' ?>" class="w-full border rounded-lg p-3 mt-2" placeholder="Enter product name">
-                                    </div>
-                                    <div>
-                                        <label class="font-semibold">SKU</label>
-                                        <input type="text" name="sku" value="<?= $is_edit ? $product['sku'] : '' ?>" class="w-full border rounded-lg p-3 mt-2" placeholder="Example: DRK001">
-                                    </div>
-                                    <div>
-                                        <label class="font-semibold">Barcode</label>
-                                        <input type="text" name="barcode" value="<?= $is_edit ? $product['barcode'] : '' ?>" class="w-full border rounded-lg p-3 mt-2" placeholder="Enter barcode">
-                                    </div>
-                                    <div>
-                                        <label class="font-semibold">Category</label>
-                                        <select name="category_id" class="w-full border rounded-lg p-3 mt-2">
-                                            <option>Select Category</option>
-                                            <?php
-                                            $cat_sql = "SELECT * FROM categories ORDER BY name ASC";
-                                            $categories = mysqli_query($conn, $cat_sql);
-                                            while ($cat = mysqli_fetch_assoc($categories)) {
-                                                $sel = ($is_edit && $cat['id'] == $product['category_id']) ? 'selected' : '';
-                                            ?>
-                                                <option value="<?= $cat['id'] ?>" <?= $sel ?>><?= $cat['name'] ?></option>
-                                            <?php } ?>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="font-semibold">Unit</label>
-                                        <select name="unit" class="w-full border rounded-lg p-3 mt-2">
-                                            <?php $units = ['pcs', 'box', 'kg', 'liter'];
-                                            foreach ($units as $u) {
-                                                $sel = ($is_edit && $product['unit'] == $u) ? 'selected' : '';
-                                            ?>
-                                                <option <?= $sel ?>><?= $u ?></option>
-                                            <?php } ?>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="font-semibold">Selling Price</label>
-                                        <input type="number" name="selling_price" id="selling_price" value="<?= $is_edit ? $product['selling_price'] : '' ?>" class="w-full border rounded-lg p-3 mt-2" oninput="calcProfit()">
-                                    </div>
-                                    <div>
-                                        <label class="font-semibold">Minimum Stock</label>
-                                        <input type="number" name="minimum_stock" value="<?= $is_edit ? $product['minimum_stock'] : '' ?>" class="w-full border rounded-lg p-3 mt-2" placeholder="Alert threshold">
+                                        </div>
                                     </div>
                                 </div>
 
-                                <?php if ($is_edit): ?>
-                                    <div>
-                                        <label class="font-semibold">Status</label>
-                                        <select name="status" class="w-full border rounded-lg p-3 mt-2">
-                                            <option value="Active" <?= ($product['status'] == 'Active') ? 'selected' : '' ?>>Active</option>
-                                            <option value="Inactive" <?= ($product['status'] == 'Inactive') ? 'selected' : '' ?>>Inactive</option>
-                                        </select>
+                                <!-- Right Column: Pricing & Inventory -->
+                                <div class="space-y-6">
+                                    <!-- Pricing Card -->
+                                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                                        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
+                                            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Pricing
+                                            </h3>
+                                        </div>
+                                        <div class="p-6 space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Selling Price <span class="text-red-500">*</span></label>
+                                                <div class="relative">
+                                                    <input type="number" name="selling_price" value="<?= $is_edit ? $product['selling_price'] : '' ?>" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition" placeholder="0" min="0" step="0.01" required>
+                                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">Ks</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                <?php endif; ?>
-                                <div class="flex justify-end gap-4 mt-8">
-                                    <a href="index.php" class="px-6 py-3 bg-gray-200 rounded-lg">Cancel</a>
-                                    <button name="<?= $is_edit ? 'update' : 'save' ?>" class="px-6 py-3 bg-indigo-600 text-white rounded-lg">
-                                        <?= $is_edit ? 'Update Product' : 'Save Product' ?>
-                                    </button>
-                                </div>
-                        </div>
 
+                                    <!-- Inventory Card -->
+                                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                                        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
+                                            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                </svg>
+                                                Inventory
+                                            </h3>
+                                        </div>
+                                        <div class="p-6 space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Reorder Level <span class="text-red-500">*</span></label>
+                                                <input type="number" name="reorder_level" value="<?= $is_edit ? $product['reorder_level'] : '10' ?>" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition" placeholder="10" min="0" required>
+                                                <p class="text-xs text-gray-400 mt-1.5">Alert when stock falls below this level</p>
+                                            </div>
+                                            <?php if ($is_edit): ?>
+                                                <div>
+                                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Status <span class="text-red-500">*</span></label>
+                                                    <select name="status" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition" required>
+                                                        <option value="Active" <?= ($product['status'] == 'Active') ? 'selected' : '' ?>>Active</option>
+                                                        <option value="Inactive" <?= ($product['status'] == 'Inactive') ? 'selected' : '' ?>>Inactive</option>
+                                                    </select>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <!-- Info Note -->
+                                    <div class="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-2xl p-4">
+                                        <div class="flex gap-3">
+                                            <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <div class="text-sm text-blue-700 dark:text-blue-300">
+                                                <p class="font-semibold">Stock Management</p>
+                                                <p class="mt-1 text-xs">Stock quantity and purchase price are managed through the <strong>Stock In (Purchase)</strong> module.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-slate-700">
+                                <a href="index.php" class="px-6 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 transition">Cancel</a>
+                                <button name="<?= $is_edit ? 'update' : 'save' ?>" class="px-8 py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition shadow-sm shadow-indigo-200 dark:shadow-indigo-500/20">
+                                    <?= $is_edit ? 'Update Product' : 'Save Product' ?>
+                                </button>
+                            </div>
                         </form>
                     </div>
-        </div>
 
-        <script>
-            function calcProfit() {
-                var purchase = parseFloat(document.getElementById('purchase_price').value) || 0;
-                var selling = parseFloat(document.getElementById('selling_price').value) || 0;
-                document.getElementById('profit').value = (selling - purchase).toFixed(2);
-            }
-            <?php if ($is_edit): ?>
-                calcProfit();
-            <?php endif; ?>
-        </script>
+                    <script>
+                        function previewImage(input) {
+                            if (input.files && input.files[0]) {
+                                var reader = new FileReader();
+                                reader.onload = function(e) {
+                                    var preview = document.getElementById('imagePreview');
+                                    var placeholder = document.getElementById('imagePlaceholder');
+                                    preview.src = e.target.result;
+                                    preview.classList.remove('hidden');
+                                    if (placeholder) placeholder.classList.add('hidden');
+                                }
+                                reader.readAsDataURL(input.files[0]);
+                            }
+                        }
+                    </script>
 
-    <?php else: ?>
+                <?php else: ?>
 
-        <?php
+                    <?php
                     $search = mysqli_real_escape_string($conn, $_GET['search'] ?? '');
                     $category = mysqli_real_escape_string($conn, $_GET['category'] ?? '');
                     $status = mysqli_real_escape_string($conn, $_GET['status'] ?? '');
@@ -340,151 +578,153 @@ WHERE 1=1
                     $total_product = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM products"));
                     $active_product = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM products WHERE status='Active'"));
                     $inactive_product = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM products WHERE status='Inactive'"));
-                    $total_quantity = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(quantity) AS total FROM products"));
-        ?>
+                    $total_quantity = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(current_stock) AS total FROM products"));
+                    ?>
 
-        <div class="flex justify-end mb-6">
-            <?php if ($is_admin) { ?>
-                <a href="?action=add" class="bg-indigo-600 text-white px-6 py-3 rounded-xl">＋ Add Product</a>
-            <?php } ?>
-        </div>
-
-        <form method="GET" class="bg-white p-5 rounded-2xl shadow mb-6 flex gap-4">
-            <input type="text" name="search" value="<?= $_GET['search'] ?? '' ?>" class="border rounded-xl px-5 py-3 flex-1" placeholder="Search product name, SKU...">
-            <select name="category" class="border rounded-xl px-5 py-3">
-                <option value="">All Categories</option>
-                <?php
-                    $cat = mysqli_query($conn, "SELECT * FROM categories");
-                    while ($c = mysqli_fetch_assoc($cat)) {
-                ?>
-                    <option value="<?= $c['id'] ?>" <?= (isset($_GET['category']) && $_GET['category'] == $c['id']) ? 'selected' : '' ?>><?= $c['name'] ?></option>
-                <?php } ?>
-            </select>
-            <select name="status" class="border rounded-xl px-5 py-3">
-                <option value="">All Status</option>
-                <option value="Active" <?= (($_GET['status'] ?? '') == 'Active') ? 'selected' : '' ?>>Active</option>
-                <option value="Inactive" <?= (($_GET['status'] ?? '') == 'Inactive') ? 'selected' : '' ?>>Inactive</option>
-            </select>
-            <button class="bg-indigo-600 text-white px-7 rounded-xl">Search</button>
-            <a href="index.php" class="border px-6 rounded-xl flex items-center">Reset</a>
-        </form>
-
-        <div class="grid grid-cols-4 gap-6 mt-8">
-            <div class="bg-white p-6 rounded-2xl shadow">
-                <p class="text-gray-500 dark:text-gray-400">Total Products</p>
-                <h2 class="text-3xl font-bold mt-2"><?= $total_product['total']; ?></h2>
-                <p class="text-sm text-gray-400">All product items</p>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow">
-                <p class="text-gray-500 dark:text-gray-400">Active Products</p>
-                <h2 class="text-3xl font-bold text-green-600 mt-2"><?= $active_product['total']; ?></h2>
-                <p class="text-sm text-gray-400">Currently active</p>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow">
-                <p class="text-gray-500 dark:text-gray-400">Inactive Products</p>
-                <h2 class="text-3xl font-bold text-red-500 mt-2"><?= $inactive_product['total']; ?></h2>
-                <p class="text-sm text-gray-400">Currently inactive</p>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow">
-                <p class="text-gray-500 dark:text-gray-400">Total Quantity</p>
-                <h2 class="text-3xl font-bold text-blue-600 mt-2"><?= $total_quantity['total'] ?? 0; ?></h2>
-                <p class="text-sm text-gray-400">In stock</p>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow mt-8 overflow-hidden">
-            <div class="table-wrap">
-                <table class="data-table w-full">
-                    <thead>
-                        <tr>
-                            <th class="w-12">#</th>
-                            <th class="center w-16">Image</th>
-                            <th>Product Name</th>
-                            <th>SKU</th>
-                            <th>Category</th>
-                            <th class="num">Selling Price</th>
-                            <th class="num">Stock</th>
-                            <th class="center">Status</th>
-                            <th class="center sticky right-0 bg-gray-50 z-10">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $count = 1;
-                        while ($row = mysqli_fetch_assoc($result)) {
-                            $qty = (int)$row['quantity'];
-                            $minStock = (int)$row['minimum_stock'];
-                            if ($qty == 0) {
-                                $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Out of Stock</span>';
-                            } elseif ($qty <= $minStock) {
-                                $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Low Stock</span>';
-                            } else {
-                                $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">In Stock</span>';
-                            }
-                        ?>
-                            <tr class="border-b hover:bg-gray-50 transition-colors">
-                                <td class="px-4 py-3 text-gray-500 dark:text-gray-400"><?= $count++ ?></td>
-                                <td class="px-4 py-3 center">
-                                    <?php if ($row['image']): ?>
-                                        <img src="../img/<?= htmlspecialchars($row['image']) ?>" class="w-10 h-10 rounded-lg object-cover" alt="Product">
-                                    <?php else: ?>
-                                        <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">N/A</div>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['product_name']) ?></div>
-                                    <p class="text-xs text-gray-400"><?= htmlspecialchars($row['unit']) ?></p>
-                                </td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 font-mono text-xs"><?= htmlspecialchars($row['sku']) ?></td>
-                                <td class="px-4 py-3">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"><?= htmlspecialchars($row['name']) ?></span>
-                                </td>
-                                <td class="px-4 py-3 num font-bold text-green-600"><?= number_format($row['selling_price']) ?> Ks</td>
-                                <td class="px-4 py-3 num">
-                                    <div class="flex flex-col items-center gap-1">
-                                        <?= $stockBadge ?>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400"><?= $qty ?> <?= htmlspecialchars($row['unit']) ?></span>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 center">
-                                    <?php if ($row['status'] === 'Active'): ?>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
-                                    <?php else: ?>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="px-4 py-3 center sticky right-0 bg-white z-10">
-                                    <div class="actions">
-                                        <a href="?action=view&id=<?= $row['id'] ?>" title="View" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                        </a>
-                                        <?php if ($is_admin): ?>
-                                            <a href="?action=edit&id=<?= $row['id'] ?>" title="Edit" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </a>
-                                            <a href="?action=delete&id=<?= $row['id'] ?>" title="Delete" onclick="return confirm('Are you sure you want to delete this product?')" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </a>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
+                    <div class="flex justify-end mb-6">
+                        <?php if ($is_admin) { ?>
+                            <a href="?action=add" class="bg-indigo-600 text-white px-6 py-3 rounded-xl">＋ Add Product</a>
                         <?php } ?>
-                    </tbody>
-                </table>
-            </div>
+                    </div>
+
+                    <form method="GET" class="bg-white p-5 rounded-2xl shadow mb-6 flex gap-4">
+                        <input type="text" name="search" value="<?= $_GET['search'] ?? '' ?>" class="border rounded-xl px-5 py-3 flex-1" placeholder="Search product name, SKU...">
+                        <select name="category" class="border rounded-xl px-5 py-3">
+                            <option value="">All Categories</option>
+                            <?php
+                            $cat = mysqli_query($conn, "SELECT * FROM categories");
+                            while ($c = mysqli_fetch_assoc($cat)) {
+                            ?>
+                                <option value="<?= $c['id'] ?>" <?= (isset($_GET['category']) && $_GET['category'] == $c['id']) ? 'selected' : '' ?>><?= $c['name'] ?></option>
+                            <?php } ?>
+                        </select>
+                        <select name="status" class="border rounded-xl px-5 py-3">
+                            <option value="">All Status</option>
+                            <option value="Active" <?= (($_GET['status'] ?? '') == 'Active') ? 'selected' : '' ?>>Active</option>
+                            <option value="Inactive" <?= (($_GET['status'] ?? '') == 'Inactive') ? 'selected' : '' ?>>Inactive</option>
+                        </select>
+                        <button class="bg-indigo-600 text-white px-7 rounded-xl">Search</button>
+                        <a href="index.php" class="border px-6 rounded-xl flex items-center">Reset</a>
+                    </form>
+
+                    <div class="grid grid-cols-4 gap-6 mt-8">
+                        <div class="bg-white p-6 rounded-2xl shadow">
+                            <p class="text-gray-500 dark:text-gray-400">Total Products</p>
+                            <h2 class="text-3xl font-bold mt-2"><?= $total_product['total']; ?></h2>
+                            <p class="text-sm text-gray-400">All product items</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow">
+                            <p class="text-gray-500 dark:text-gray-400">Active Products</p>
+                            <h2 class="text-3xl font-bold text-green-600 mt-2"><?= $active_product['total']; ?></h2>
+                            <p class="text-sm text-gray-400">Currently active</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow">
+                            <p class="text-gray-500 dark:text-gray-400">Inactive Products</p>
+                            <h2 class="text-3xl font-bold text-red-500 mt-2"><?= $inactive_product['total']; ?></h2>
+                            <p class="text-sm text-gray-400">Currently inactive</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow">
+                            <p class="text-gray-500 dark:text-gray-400">Total Quantity</p>
+                            <h2 class="text-3xl font-bold text-blue-600 mt-2"><?= $total_quantity['total'] ?? 0; ?></h2>
+                            <p class="text-sm text-gray-400">In stock</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow mt-8 overflow-hidden">
+                        <div class="table-wrap">
+                            <table class="data-table w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="w-12">#</th>
+                                        <th class="center w-16">Image</th>
+                                        <th>Product Name</th>
+                                        <th>SKU</th>
+                                        <th>Category</th>
+                                        <th class="num">Selling Price</th>
+                                        <th class="num">Stock</th>
+                                        <th class="num">Quantity</th>
+                                        <th class="center">Status</th>
+                                        <th class="center sticky right-0 bg-gray-50 z-10">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $count = 1;
+                                    while ($row = mysqli_fetch_assoc($result)) {
+                                        $qty = (int)$row['current_stock'];
+                                        $minStock = (int)$row['reorder_level'];
+                                        if ($qty == 0) {
+                                            $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Out of Stock</span>';
+                                        } elseif ($qty <= $minStock) {
+                                            $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Low Stock</span>';
+                                        } else {
+                                            $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">In Stock</span>';
+                                        }
+                                    ?>
+                                        <tr class="border-b hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400"><?= $count++ ?></td>
+                                            <td class="px-4 py-3 center">
+                                                <?php if ($row['image']): ?>
+                                                    <img src="../img/<?= htmlspecialchars($row['image']) ?>" class="w-10 h-10 rounded-lg object-cover" alt="Product">
+                                                <?php else: ?>
+                                                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">N/A</div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <div class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['product_name']) ?></div>
+                                                <p class="text-xs text-gray-400"><?= htmlspecialchars($row['unit']) ?></p>
+                                            </td>
+                                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400 font-mono text-xs"><?= htmlspecialchars($row['sku']) ?></td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"><?= htmlspecialchars($row['name']) ?></span>
+                                            </td>
+                                            <td class="px-4 py-3 num font-bold text-green-600"><?= number_format($row['selling_price']) ?> Ks</td>
+                                            <td class="px-4 py-3 num">
+                                                <div class="flex flex-col items-center gap-1">
+                                                    <?= $stockBadge ?>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400"><?= $qty ?> <?= htmlspecialchars($row['unit']) ?></span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 num font-semibold"><?= $row['current_stock'] ?></td>
+                                            <td class="px-4 py-3 center">
+                                                <?php if ($row['status'] === 'Active'): ?>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
+                                                <?php else: ?>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="px-4 py-3 center sticky right-0 bg-white z-10">
+                                                <div class="actions">
+                                                    <a href="?action=view&id=<?= $row['id'] ?>" title="View" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        </svg>
+                                                    </a>
+                                                    <?php if ($is_admin): ?>
+                                                        <a href="?action=edit&id=<?= $row['id'] ?>" title="Edit" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </a>
+                                                        <a href="?action=delete&id=<?= $row['id'] ?>" title="Delete" onclick="return confirm('Are you sure you want to delete this product?')" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php } ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                <?php endif; ?>
+
+            </main>
         </div>
-
-    <?php endif; ?>
-
-    </main>
-    </div>
     </div>
     <?php include "../includes/toast.php"; ?>
     <?php include "../includes/modal.php"; ?>
