@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS settings (
     address TEXT,
     currency VARCHAR(10) DEFAULT 'Ks',
     tax_rate DECIMAL(5,2) DEFAULT 0.00,
+    minimum_profit_margin DECIMAL(5,2) DEFAULT 10.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -202,12 +203,11 @@ INSERT INTO settings (shop_name, phone, email, address, currency, tax_rate) VALU
 -- Add contact_person to suppliers
 ALTER TABLE suppliers ADD COLUMN contact_person VARCHAR(150) DEFAULT NULL AFTER supplier_name;
 
--- Legacy tables for backward compatibility
-CREATE TABLE IF NOT EXISTS stock_in LIKE purchases;
-CREATE TABLE IF NOT EXISTS stock_in_details LIKE purchase_details;
-
 -- Add theme preference to users
 ALTER TABLE users ADD COLUMN theme ENUM('light', 'dark', 'system') DEFAULT 'system' AFTER status;
 
 -- Add profit column to sale_details
 ALTER TABLE sale_details ADD COLUMN profit DECIMAL(10,2) DEFAULT 0.00 AFTER subtotal;
+
+-- Add price_update_required flag to products
+ALTER TABLE products ADD COLUMN price_update_required TINYINT(1) NOT NULL DEFAULT 0 AFTER status;

@@ -13,17 +13,35 @@ if ($page_title !== 'Dashboard') {
 
 $notif_count = 0;
 $low_stock_products = [];
+$price_update_products = [];
 if (isset($conn)) {
-    $notif_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE current_stock <= reorder_level AND status='Active'");
-    if ($notif_result) {
-        $notif_count = (int)mysqli_fetch_assoc($notif_result)['count'];
+    // Low stock notifications
+    $ls_count_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE current_stock <= reorder_level AND status='Active'");
+    $ls_count = 0;
+    if ($ls_count_result) {
+        $ls_count = (int)mysqli_fetch_assoc($ls_count_result)['count'];
     }
-    if ($notif_count > 0) {
+    if ($ls_count > 0) {
         $ls_result = mysqli_query($conn, "SELECT id, product_name, current_stock, reorder_level FROM products WHERE current_stock <= reorder_level AND status='Active' ORDER BY current_stock ASC LIMIT 10");
         while ($row = mysqli_fetch_assoc($ls_result)) {
             $low_stock_products[] = $row;
         }
     }
+    $notif_count += $ls_count;
+
+    // Price update required notifications
+    $pu_count_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE price_update_required = 1 AND status='Active'");
+    $pu_count = 0;
+    if ($pu_count_result) {
+        $pu_count = (int)mysqli_fetch_assoc($pu_count_result)['count'];
+    }
+    if ($pu_count > 0) {
+        $pu_result = mysqli_query($conn, "SELECT id, product_name, purchase_price, selling_price FROM products WHERE price_update_required = 1 AND status='Active' ORDER BY product_name ASC LIMIT 10");
+        while ($row = mysqli_fetch_assoc($pu_result)) {
+            $price_update_products[] = $row;
+        }
+    }
+    $notif_count += $pu_count;
 }
 ?>
 <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border-b border-gray-200/60 dark:border-slate-700/60 shadow-sm">
@@ -96,7 +114,7 @@ if (isset($conn)) {
                         <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-sm ring-2 ring-white dark:ring-slate-800" style="min-width:18px;height:18px;padding:0 4px"><?= $notif_count ?></span>
                     <?php endif; ?>
                 </button>
-                <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 z-50 overflow-hidden">
+                <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 z-50 overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/30">
                         <div class="flex items-center justify-between">
                             <p class="text-sm font-semibold text-gray-800 dark:text-slate-200">Notifications</p>
@@ -105,29 +123,146 @@ if (isset($conn)) {
                             <?php endif; ?>
                         </div>
                     </div>
-                    <div class="max-h-72 overflow-y-auto">
+                    <div class="max-h-[28rem] overflow-y-auto divide-y divide-gray-50 dark:divide-slate-700/50">
                         <?php if (count($low_stock_products) > 0): ?>
+                            <div class="px-4 py-2 bg-orange-50/60 dark:bg-orange-500/5">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></span>
+                                    Low Stock Alerts
+                                    <span class="ml-auto bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full text-[10px] font-bold"><?= count($low_stock_products) ?></span>
+                                </p>
+                            </div>
                             <?php foreach ($low_stock_products as $item): ?>
-                                <a href="../product/index.php" class="block px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-700/50 border-b border-gray-50 dark:border-slate-700/50 transition-colors duration-150">
+                                <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors duration-150 group">
                                     <div class="flex items-start gap-3">
-                                        <div class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                        <div class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5 ring-1 ring-orange-200 dark:ring-orange-500/20">
+                                            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                             </svg>
                                         </div>
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-800 dark:text-slate-200 truncate"><?= htmlspecialchars($item['product_name']) ?></p>
-                                            <p class="text-xs text-red-500 dark:text-red-400 mt-0.5">Stock: <?= $item['current_stock'] ?> (min: <?= $item['reorder_level'] ?>)</p>
+                                            <div class="flex items-center gap-2">
+                                                <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 truncate"><?= htmlspecialchars($item['product_name']) ?></p>
+                                            </div>
+                                            <div class="flex items-center gap-3 mt-1">
+                                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-orange-600 dark:text-orange-400">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                                    Stock: <?= $item['current_stock'] ?>
+                                                </span>
+                                                <span class="text-gray-300 dark:text-slate-600">|</span>
+                                                <span class="text-[11px] font-medium text-gray-500 dark:text-slate-400">Min: <?= $item['reorder_level'] ?></span>
+                                            </div>
+                                            <a href="../purchase/add.php" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-orange-500 hover:bg-orange-600 text-white transition-all duration-150 shadow-sm hover:shadow">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                Restock
+                                            </a>
                                         </div>
                                     </div>
-                                </a>
+                                </div>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="px-4 py-8 text-center">
-                                <svg class="w-10 h-10 text-gray-300 dark:text-slate-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                </svg>
-                                <p class="text-sm text-gray-500 dark:text-slate-400">No notifications</p>
+                        <?php endif; ?>
+
+                        <?php if (count($price_update_products) > 0): ?>
+                            <?php
+                                $pp_items = [];
+                                $sp_items = [];
+                                foreach ($price_update_products as $item) {
+                                    $pp = (float)$item['purchase_price'];
+                                    $sp = (float)$item['selling_price'];
+                                    if ($pp == $sp) {
+                                        $pp_items[] = $item;
+                                    } else {
+                                        $sp_items[] = $item;
+                                    }
+                                }
+                            ?>
+                            <?php if (count($sp_items) > 0): ?>
+                                <div class="px-4 py-2 bg-red-50/60 dark:bg-red-500/5">
+                                    <p class="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-red-400 flex-shrink-0"></span>
+                                        Loss Risk
+                                        <span class="ml-auto bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-full text-[10px] font-bold"><?= count($sp_items) ?></span>
+                                    </p>
+                                </div>
+                                <?php foreach ($sp_items as $item): ?>
+                                    <?php
+                                        $pp = (float)$item['purchase_price'];
+                                        $sp = (float)$item['selling_price'];
+                                    ?>
+                                    <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors duration-150">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0 mt-0.5 ring-1 ring-red-200 dark:ring-red-500/20">
+                                                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                                </svg>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 truncate"><?= htmlspecialchars($item['product_name']) ?></p>
+                                                <div class="flex items-center gap-2 mt-1">
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400">Loss Risk</span>
+                                                </div>
+                                                <div class="flex items-center gap-3 mt-1.5 text-[11px]">
+                                                    <span class="text-gray-500 dark:text-slate-400">Purchase: <span class="font-bold text-red-600 dark:text-red-400"><?= number_format($pp) ?> Ks</span></span>
+                                                    <span class="text-gray-500 dark:text-slate-400">Selling: <span class="font-bold text-gray-700 dark:text-slate-300"><?= number_format($sp) ?> Ks</span></span>
+                                                </div>
+                                                <a href="../product/index.php?action=edit&id=<?= $item['id'] ?>" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-red-500 hover:bg-red-600 text-white transition-all duration-150 shadow-sm hover:shadow">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                    Update Price
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+
+                            <?php if (count($pp_items) > 0): ?>
+                                <div class="px-4 py-2 bg-amber-50/60 dark:bg-amber-500/5">
+                                    <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
+                                        No Profit
+                                        <span class="ml-auto bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full text-[10px] font-bold"><?= count($pp_items) ?></span>
+                                    </p>
+                                </div>
+                                <?php foreach ($pp_items as $item): ?>
+                                    <?php
+                                        $pp = (float)$item['purchase_price'];
+                                        $sp = (float)$item['selling_price'];
+                                    ?>
+                                    <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors duration-150">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center flex-shrink-0 mt-0.5 ring-1 ring-amber-200 dark:ring-amber-500/20">
+                                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                                </svg>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 truncate"><?= htmlspecialchars($item['product_name']) ?></p>
+                                                <div class="flex items-center gap-2 mt-1">
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">No Profit</span>
+                                                </div>
+                                                <div class="flex items-center gap-3 mt-1.5 text-[11px]">
+                                                    <span class="text-gray-500 dark:text-slate-400">Purchase: <span class="font-bold text-amber-600 dark:text-amber-400"><?= number_format($pp) ?> Ks</span></span>
+                                                    <span class="text-gray-500 dark:text-slate-400">Selling: <span class="font-bold text-gray-700 dark:text-slate-300"><?= number_format($sp) ?> Ks</span></span>
+                                                </div>
+                                                <a href="../product/index.php?action=edit&id=<?= $item['id'] ?>" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-amber-500 hover:bg-amber-600 text-white transition-all duration-150 shadow-sm hover:shadow">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                    Update Price
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        <?php endif; ?>
+
+                        <?php if ($notif_count === 0): ?>
+                            <div class="px-4 py-10 text-center">
+                                <div class="w-14 h-14 bg-gray-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                    <svg class="w-7 h-7 text-gray-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                </div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-slate-400">No notifications</p>
                                 <p class="text-xs text-gray-400 dark:text-slate-500 mt-0.5">All caught up!</p>
                             </div>
                         <?php endif; ?>

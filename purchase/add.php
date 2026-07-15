@@ -67,6 +67,8 @@ if (isset($_POST['save_purchase'])) {
         $error_msg = 'Please select a supplier.';
     } elseif (count($_SESSION['cart']) === 0) {
         $error_msg = 'Please add at least one product.';
+    } elseif (!in_array($payment_method, ['Cash', 'KBZPay'])) {
+        $error_msg = 'Please select a valid payment method.';
     } elseif ($paid_amount <= 0) {
         $error_msg = 'Please enter a valid paid amount.';
     } else {
@@ -111,7 +113,12 @@ if (isset($_POST['save_purchase'])) {
                 mysqli_query($conn, "INSERT INTO purchase_details(purchase_id, product_id, quantity, purchase_price, subtotal)
                     VALUES('$purchase_id', '$pid', '$qty', '$price', '$subtotal')");
 
-                mysqli_query($conn, "UPDATE products SET current_stock = current_stock + $qty, purchase_price = '$price' WHERE id='$pid'");
+                // Check if purchase price >= selling price and mark for update
+                $check = mysqli_fetch_assoc(mysqli_query($conn, "SELECT selling_price FROM products WHERE id='$pid'"));
+                $sp = $check ? (float)$check['selling_price'] : 0;
+                $needs_update = ($sp > 0 && $price >= $sp) ? 1 : 0;
+
+                mysqli_query($conn, "UPDATE products SET current_stock = current_stock + $qty, purchase_price = '$price', price_update_required = GREATEST(price_update_required, $needs_update) WHERE id='$pid'");
             }
 
             unset($_SESSION['cart']);
@@ -207,12 +214,12 @@ $page_title = "New Purchase";
                                             </div>
                                             <div>
                                                 <label class="form-label">Purchase Date</label>
-                                                <input type="date" name="purchase_date" value="<?= $old_date ?>" required
+                                                <input type="date" name="purchase_date" value="<?= $old_date ?>"
                                                     class="form-input text-sm">
                                             </div>
                                             <div>
                                                 <label class="form-label">Supplier <span class="text-red-500">*</span></label>
-                                                <select name="supplier_id" id="supplier_id" class="form-input text-sm" required>
+                                                <select name="supplier_id" id="supplier_id" class="form-input text-sm">
                                                     <option value="">-- Select Supplier --</option>
                                                     <?php mysqli_data_seek($suppliers, 0);
                                                     while ($s = mysqli_fetch_assoc($suppliers)) { ?>
@@ -336,7 +343,7 @@ $page_title = "New Purchase";
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                             <div>
                                                 <label class="form-label">Payment Method <span class="text-red-500">*</span></label>
-                                                <select name="payment_method" id="paymentMethod" class="form-input text-sm" required onchange="recalcTotals()">
+                                                <select name="payment_method" id="paymentMethod" class="form-input text-sm" onchange="recalcTotals()">
                                                     <option value="Cash" <?= $old_method == 'Cash' ? 'selected' : '' ?>>Cash</option>
                                                     <option value="KBZPay" <?= $old_method == 'KBZPay' ? 'selected' : '' ?>>KBZPay</option>
                                                 </select>
@@ -344,7 +351,7 @@ $page_title = "New Purchase";
                                             <div>
                                                 <label class="form-label">Paid Amount <span class="text-red-500">*</span></label>
                                                 <input type="number" name="paid_amount" id="paidAmount" value="<?= $old_paid ?>" min="0" step="0.01"
-                                                    class="form-input text-sm" oninput="recalcTotals()" placeholder="Enter paid amount" required>
+                                                    class="form-input text-sm" oninput="recalcTotals()" placeholder="Enter paid amount">
                                             </div>
                                         </div>
                                     </div>
@@ -542,34 +549,68 @@ $page_title = "New Purchase";
     <!-- ===== PRICE WARNING MODAL ===== -->
     <div id="priceWarningModal" class="modal-overlay hidden">
         <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" style="animation: modalIn 0.2s ease-out;">
+            <!-- Header -->
             <div class="flex items-center gap-4 mb-5">
-                <div class="w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div id="priceWarningIcon" class="w-12 h-12 bg-amber-100 dark:bg-amber-900/50 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Price Warning</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Purchase price exceeds selling price</p>
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200" id="priceWarningTitle">Price Warning</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400" id="priceWarningSubtitle">Review pricing before continuing</p>
                 </div>
             </div>
 
-            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-5">
-                <p class="text-sm text-red-700 dark:text-red-400">The purchase price is higher than the current selling price. Selling this product at the current price may result in a loss. Do you want to continue?</p>
+            <!-- Warning Message -->
+            <div id="priceWarningMessage" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-5">
+                <p class="text-sm text-amber-700 dark:text-amber-400" id="priceWarningText"></p>
             </div>
 
+            <!-- Affected Products Table -->
             <div id="priceWarningItems" class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 mb-5 max-h-48 overflow-y-auto">
                 <!-- Populated by JS -->
             </div>
 
-            <div class="flex gap-3">
+            <!-- Inline Update Section (hidden by default) -->
+            <div id="priceUpdateSection" class="hidden mb-5">
+                <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4">
+                    <h4 class="text-sm font-bold text-indigo-700 dark:text-indigo-400 mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Update Selling Price
+                    </h4>
+                    <div id="priceUpdateList" class="space-y-3">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div class="flex justify-end gap-2 mt-3">
+                        <button type="button" onclick="cancelPriceUpdate()" class="btn btn-secondary btn-sm">Cancel</button>
+                        <button type="button" onclick="savePriceUpdates()" class="btn btn-primary btn-sm gap-1.5" id="savePriceUpdateBtn">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Save & Continue
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-3" id="priceWarningButtons">
                 <button type="button" onclick="closePriceWarning()" class="btn btn-secondary flex-1 justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     Cancel
                 </button>
-                <button type="button" onclick="proceedWithPurchase()" class="btn bg-red-600 hover:bg-red-700 text-white flex-1 justify-center gap-2">
+                <button type="button" onclick="showPriceUpdateForm()" class="btn bg-indigo-600 hover:bg-indigo-700 text-white flex-1 justify-center gap-2" id="updatePriceBtn">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Update Selling Price
+                </button>
+                <button type="button" onclick="proceedWithPurchase()" class="btn bg-red-600 hover:bg-red-700 text-white flex-1 justify-center gap-2" id="continueAnywayBtn">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
@@ -587,15 +628,18 @@ $page_title = "New Purchase";
         // Product selling prices map: { product_id: selling_price }
         const sellingPrices = {
             <?php
-            mysqli_data_seek($products, 0);
+            $sp_res = @mysqli_query($conn, "SELECT id, selling_price FROM products WHERE status='Active'");
             $first = true;
-            while ($p = mysqli_fetch_assoc($products)) {
-                if (!$first) echo ',';
-                echo $p['id'] . ':' . (float)$p['selling_price'];
-                $first = false;
+            if ($sp_res) {
+                while ($p = mysqli_fetch_assoc($sp_res)) {
+                    if (!$first) echo ',';
+                    echo $p['id'] . ':' . (float)$p['selling_price'];
+                    $first = false;
+                }
             }
             ?>
         };
+    
 
         function autoFillPrice(el) {
             const price = el.options[el.selectedIndex]?.dataset.price;
@@ -606,6 +650,9 @@ $page_title = "New Purchase";
             }
         }
 
+        // Track which products had price warnings
+        let priceWarningProductIds = [];
+
         function checkPricesThenConfirm() {
             const rows = document.querySelectorAll('.data-table tbody tr');
             const hasItems = rows.length > 0 && !(rows.length === 1 && rows[0].querySelector('td[colspan]'));
@@ -614,8 +661,11 @@ $page_title = "New Purchase";
                 return;
             }
 
-            // Check each cart item for price > selling price
-            const warnings = [];
+            // Categorize cart items by price comparison
+            const equalWarnings = [];
+            const lossWarnings = [];
+            priceWarningProductIds = [];
+
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 4) return;
@@ -623,43 +673,174 @@ $page_title = "New Purchase";
                 const productName = cells[1]?.textContent?.trim() || '';
                 const purchasePrice = parseFloat(cells[3]?.textContent?.replace(/,/g, '')) || 0;
                 const sp = sellingPrices[productId] || 0;
-                if (sp > 0 && purchasePrice > sp) {
-                    warnings.push({ name: productName, purchase: purchasePrice, selling: sp });
+
+                if (sp > 0 && purchasePrice === sp) {
+                    equalWarnings.push({ id: productId, name: productName, purchase: purchasePrice, selling: sp });
+                } else if (sp > 0 && purchasePrice > sp) {
+                    lossWarnings.push({ id: productId, name: productName, purchase: purchasePrice, selling: sp });
                 }
             });
 
-            if (warnings.length > 0) {
-                let html = '<table class="w-full text-sm"><thead><tr class="border-b border-gray-200 dark:border-slate-600">';
-                html += '<th class="text-left py-2 font-semibold text-gray-600 dark:text-gray-400">Product</th>';
-                html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Purchase</th>';
-                html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Selling</th>';
-                html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Loss</th>';
-                html += '</tr></thead><tbody>';
-                warnings.forEach(w => {
-                    const loss = w.purchase - w.selling;
-                    html += '<tr class="border-b border-gray-100 dark:border-slate-700">';
-                    html += '<td class="py-2 font-medium text-gray-800 dark:text-gray-200">' + w.name + '</td>';
-                    html += '<td class="py-2 text-right text-red-600 font-semibold">' + w.purchase.toLocaleString() + ' Ks</td>';
-                    html += '<td class="py-2 text-right text-gray-600 dark:text-gray-400">' + w.selling.toLocaleString() + ' Ks</td>';
-                    html += '<td class="py-2 text-right text-red-600 font-bold">-' + loss.toLocaleString() + ' Ks</td>';
-                    html += '</tr>';
-                });
-                html += '</tbody></table>';
-                document.getElementById('priceWarningItems').innerHTML = html;
-                document.getElementById('priceWarningModal').classList.remove('hidden');
+            // If no warnings, proceed to confirm
+            if (equalWarnings.length === 0 && lossWarnings.length === 0) {
+                showConfirmModal();
                 return;
             }
 
-            showConfirmModal();
+            // Collect all affected product IDs
+            equalWarnings.forEach(w => priceWarningProductIds.push(w.id));
+            lossWarnings.forEach(w => priceWarningProductIds.push(w.id));
+
+            // Set modal appearance based on severity
+            const iconEl = document.getElementById('priceWarningIcon');
+            const titleEl = document.getElementById('priceWarningTitle');
+            const subtitleEl = document.getElementById('priceWarningSubtitle');
+            const messageEl = document.getElementById('priceWarningMessage');
+            const messageText = document.getElementById('priceWarningText');
+
+            const hasLoss = lossWarnings.length > 0;
+            const hasEqual = equalWarnings.length > 0;
+
+            if (hasLoss) {
+                iconEl.className = 'w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center flex-shrink-0';
+                iconEl.querySelector('svg').className.baseVal = 'w-6 h-6 text-red-600';
+                titleEl.textContent = 'Price Warning';
+                subtitleEl.textContent = 'Review pricing before continuing';
+                messageEl.className = 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-5';
+                messageText.className = 'text-sm text-red-700 dark:text-red-400';
+                messageText.textContent = 'Some products have a purchase price higher than the selling price, which will result in a loss.';
+            } else {
+                iconEl.className = 'w-12 h-12 bg-amber-100 dark:bg-amber-900/50 rounded-full flex items-center justify-center flex-shrink-0';
+                iconEl.querySelector('svg').className.baseVal = 'w-6 h-6 text-amber-600';
+                titleEl.textContent = 'Price Warning';
+                subtitleEl.textContent = 'Review pricing before continuing';
+                messageEl.className = 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-5';
+                messageText.className = 'text-sm text-amber-700 dark:text-amber-400';
+                messageText.textContent = 'Some products have a purchase price equal to the selling price, resulting in zero profit.';
+            }
+
+            // Build warning table
+            let html = '<table class="w-full text-sm"><thead><tr class="border-b border-gray-200 dark:border-slate-600">';
+            html += '<th class="text-left py-2 font-semibold text-gray-600 dark:text-gray-400">Product</th>';
+            html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Purchase</th>';
+            html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Selling</th>';
+            html += '<th class="text-right py-2 font-semibold text-gray-600 dark:text-gray-400">Status</th>';
+            html += '</tr></thead><tbody>';
+
+            lossWarnings.forEach(w => {
+                html += '<tr class="border-b border-gray-100 dark:border-slate-700">';
+                html += '<td class="py-2 font-medium text-gray-800 dark:text-gray-200">' + w.name + '</td>';
+                html += '<td class="py-2 text-right text-red-600 font-semibold">' + w.purchase.toLocaleString() + ' Ks</td>';
+                html += '<td class="py-2 text-right text-gray-600 dark:text-gray-400">' + w.selling.toLocaleString() + ' Ks</td>';
+                html += '<td class="py-2 text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Loss Risk</span></td>';
+                html += '</tr>';
+            });
+            equalWarnings.forEach(w => {
+                html += '<tr class="border-b border-gray-100 dark:border-slate-700">';
+                html += '<td class="py-2 font-medium text-gray-800 dark:text-gray-200">' + w.name + '</td>';
+                html += '<td class="py-2 text-right text-orange-600 font-semibold">' + w.purchase.toLocaleString() + ' Ks</td>';
+                html += '<td class="py-2 text-right text-gray-600 dark:text-gray-400">' + w.selling.toLocaleString() + ' Ks</td>';
+                html += '<td class="py-2 text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">No Profit</span></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+
+            document.getElementById('priceWarningItems').innerHTML = html;
+            document.getElementById('priceUpdateSection').classList.add('hidden');
+            document.getElementById('priceWarningButtons').classList.remove('hidden');
+            document.getElementById('priceWarningModal').classList.remove('hidden');
         }
 
         function closePriceWarning() {
             document.getElementById('priceWarningModal').classList.add('hidden');
+            document.getElementById('priceUpdateSection').classList.add('hidden');
+            document.getElementById('priceWarningButtons').classList.remove('hidden');
         }
 
         function proceedWithPurchase() {
             document.getElementById('priceWarningModal').classList.add('hidden');
             showConfirmModal();
+        }
+
+        function showPriceUpdateForm() {
+            const allWarnings = [];
+            priceWarningProductIds.forEach(id => {
+                const sp = sellingPrices[id] || 0;
+                // Find product name from the warning items
+                const row = document.querySelector('.data-table tbody tr[data-product-id="' + id + '"]');
+                const name = row ? row.querySelector('td:nth-child(2)')?.textContent?.trim() : 'Product';
+                const purchasePrice = row ? parseFloat(row.querySelector('td:nth-child(4)')?.textContent?.replace(/,/g, '')) || 0 : 0;
+                allWarnings.push({ id: id, name: name, purchase: purchasePrice, selling: sp });
+            });
+
+            let html = '';
+            allWarnings.forEach(w => {
+                const suggestedPrice = Math.ceil(w.purchase * 1.1);
+                html += '<div class="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-600">';
+                html += '<div class="flex-1 min-w-0">';
+                html += '<p class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">' + w.name + '</p>';
+                html += '<p class="text-xs text-gray-500 dark:text-gray-400">Purchase: ' + w.purchase.toLocaleString() + ' Ks</p>';
+                html += '</div>';
+                html += '<div class="relative">';
+                html += '<input type="number" data-product-id="' + w.id + '" value="' + suggestedPrice + '" min="0" step="100" class="form-input text-sm pr-8 price-update-input">';
+                html += '<span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Ks</span>';
+                html += '</div>';
+                html += '</div>';
+            });
+
+            document.getElementById('priceUpdateList').innerHTML = html;
+            document.getElementById('priceUpdateSection').classList.remove('hidden');
+            document.getElementById('priceWarningButtons').classList.add('hidden');
+        }
+
+        function cancelPriceUpdate() {
+            document.getElementById('priceUpdateSection').classList.add('hidden');
+            document.getElementById('priceWarningButtons').classList.remove('hidden');
+        }
+
+        async function savePriceUpdates() {
+            const inputs = document.querySelectorAll('.price-update-input');
+            const saveBtn = document.getElementById('savePriceUpdateBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Saving...';
+
+            let allSuccess = true;
+            for (const input of inputs) {
+                const productId = input.dataset.productId;
+                const newPrice = parseFloat(input.value) || 0;
+
+                if (newPrice <= 0) {
+                    allSuccess = false;
+                    continue;
+                }
+
+                try {
+                    const resp = await fetch('../ajax/update_selling_price.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ product_id: parseInt(productId), selling_price: newPrice })
+                    });
+                    const data = await resp.json();
+                    if (data.success) {
+                        sellingPrices[productId] = newPrice;
+                    } else {
+                        allSuccess = false;
+                        showToast('error', data.message || 'Failed to update price');
+                    }
+                } catch (e) {
+                    allSuccess = false;
+                    showToast('error', 'Network error updating price');
+                }
+            }
+
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> Save & Continue';
+
+            if (allSuccess) {
+                showToast('success', 'Selling prices updated successfully');
+                document.getElementById('priceWarningModal').classList.add('hidden');
+                showConfirmModal();
+            }
         }
 
         function handleFormSubmit(e) {
@@ -728,11 +909,17 @@ $page_title = "New Purchase";
         function showConfirmModal() {
             const supplierId = document.getElementById('supplier_id').value;
             if (!supplierId) {
-                document.getElementById('supplierError').classList.remove('hidden');
+                showToast('error', 'Please select a supplier.');
                 document.getElementById('supplier_id').focus();
                 return;
             }
-            document.getElementById('supplierError').classList.add('hidden');
+
+            const purchaseDate = document.querySelector('input[name="purchase_date"]').value;
+            if (!purchaseDate) {
+                showToast('error', 'Please select a purchase date.');
+                document.querySelector('input[name="purchase_date"]').focus();
+                return;
+            }
 
             const rows = document.querySelectorAll('.data-table tbody tr');
             const hasItems = rows.length > 0 && !(rows.length === 1 && rows[0].querySelector('td[colspan]'));
@@ -741,19 +928,25 @@ $page_title = "New Purchase";
                 return;
             }
 
+            const method = document.getElementById('paymentMethod').value;
+            if (!method) {
+                showToast('error', 'Please select a payment method.');
+                document.getElementById('paymentMethod').focus();
+                return;
+            }
+
             const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
             if (paidAmount <= 0) {
                 showToast('error', 'Please enter a valid paid amount.');
+                document.getElementById('paidAmount').focus();
                 return;
             }
 
             // Gather data
             const items = document.querySelectorAll('.data-table tbody tr:not(:has(td[colspan]))');
             const grand = parseFloat(document.getElementById('grandTotal').textContent.replace(/,/g, '')) || 0;
-            const method = document.getElementById('paymentMethod').value;
             const status = document.getElementById('paymentStatusInput').value;
             const supplierName = document.getElementById('supplier_id').options[document.getElementById('supplier_id').selectedIndex].text;
-            const purchaseDate = document.querySelector('input[name="purchase_date"]').value;
             const today = new Date();
             const invoiceNo = 'INV-' + today.getFullYear() + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0') + '-....';
 

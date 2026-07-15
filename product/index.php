@@ -48,7 +48,7 @@ if ($action === 'edit' && isset($_POST['update'])) {
         move_uploaded_file($_FILES['image']['tmp_name'], "../img/" . $image);
     }
 
-    mysqli_query($conn, "UPDATE products SET category_id=$category_id, product_name='$product_name', sku='$sku', barcode='$barcode', unit='$unit', reorder_level=$reorder_level, selling_price=$selling_price, image='$image', status='$status' WHERE id=$id");
+    mysqli_query($conn, "UPDATE products SET category_id=$category_id, product_name='$product_name', sku='$sku', barcode='$barcode', unit='$unit', reorder_level=$reorder_level, selling_price=$selling_price, price_update_required = CASE WHEN $selling_price > purchase_price THEN 0 ELSE price_update_required END, image='$image', status='$status' WHERE id=$id");
     header("Location:index.php");
     exit;
 }
@@ -422,7 +422,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                                 <!-- Barcode -->
                                                 <div>
                                                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Barcode</label>
-                                                    <input type="text" name="barcode" value="<?= $is_edit ? htmlspecialchars($product['barcode']) : '' ?>" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white font-mono transition" placeholder="Enter barcode">
+                                                    <input type="text" name="barcode" value="<?= $is_edit ? htmlspecialchars($product['barcode'] ?? '') : '' ?>" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white font-mono transition" placeholder="Enter barcode">
                                                 </div>
 
                                                 <!-- Category -->
@@ -672,6 +672,12 @@ WHERE 1=1
                                             <td class="px-4 py-3">
                                                 <div class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['product_name']) ?></div>
                                                 <p class="text-xs text-gray-400"><?= htmlspecialchars($row['unit']) ?></p>
+                                                <?php if (!empty($row['price_update_required'])): ?>
+                                                    <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                                                        Price Update Required
+                                                    </span>
+                                                <?php endif; ?>
                                             </td>
                                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400 font-mono text-xs"><?= htmlspecialchars($row['sku']) ?></td>
                                             <td class="px-4 py-3">
