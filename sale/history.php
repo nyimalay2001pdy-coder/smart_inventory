@@ -42,12 +42,15 @@ if (isset($_GET['view_id'])) {
     while ($d = mysqli_fetch_assoc($details)) $items[] = $d;
 
     // Payment info
+    $amtCol = getPaymentAmountCol($conn, 'sale_payments');
     $payments = mysqli_query($conn, "SELECT * FROM sale_payments WHERE sale_id = $vid");
     $total_paid = 0;
+    $payment_method = 'Cash';
     if (mysqli_num_rows($payments) > 0) {
-        while ($p = mysqli_fetch_assoc($payments)) $total_paid += $p['amount'];
-    } else {
-        $total_paid = floatval($sale['paid_amount'] ?? $sale['total_amount']);
+        while ($p = mysqli_fetch_assoc($payments)) {
+            $total_paid += $p[$amtCol];
+            $payment_method = $p['payment_method'] ?? 'Cash';
+        }
     }
     $grand_total = floatval($sale['total_amount']);
     $change = max(0, $total_paid - $grand_total);
@@ -56,6 +59,7 @@ if (isset($_GET['view_id'])) {
         'sale' => $sale,
         'items' => $items,
         'total_paid' => $total_paid,
+        'payment_method' => $payment_method,
         'change' => $change
     ]);
     exit;
@@ -71,13 +75,17 @@ $date_to = $_GET['date_to'] ?? '';
 $sql = "SELECT s.*, u.name AS cashier_name,
                COALESCE(d.items_count, 0) AS items_count,
                COALESCE(d.total_qty, 0) AS total_qty,
-               COALESCE(d.subtotal, 0) AS subtotal
+               COALESCE(d.subtotal, 0) AS subtotal,
+               COALESCE(sp.payment_method, 'Cash') AS payment_method
         FROM sales s
         LEFT JOIN users u ON s.user_id = u.id
         LEFT JOIN (
             SELECT sale_id, COUNT(*) AS items_count, SUM(quantity) AS total_qty, SUM(subtotal) AS subtotal
             FROM sale_details GROUP BY sale_id
         ) d ON d.sale_id = s.id
+        LEFT JOIN sale_payments sp ON sp.id = (
+            SELECT id FROM sale_payments WHERE sale_id = s.id ORDER BY id ASC LIMIT 1
+        )
         WHERE 1";
 
 if ($search !== '') {
@@ -90,7 +98,7 @@ if ($cashier !== '') {
 }
 if ($payment_method !== '') {
     $safe = mysqli_real_escape_string($conn, $payment_method);
-    $sql .= " AND s.payment_method = '$safe'";
+    $sql .= " AND COALESCE(sp.payment_method, 'Cash') = '$safe'";
 }
 if ($date_from !== '') {
     $sql .= " AND DATE(s.created_at) >= '$date_from'";
@@ -236,8 +244,8 @@ $page_title = "Sales History";
                                     <select name="payment_method" class="form-input text-sm">
                                         <option value="">All Methods</option>
                                         <option value="Cash" <?= $payment_method === 'Cash' ? 'selected' : '' ?>>Cash</option>
-                                        <option value="Card" <?= $payment_method === 'Card' ? 'selected' : '' ?>>Card</option>
-                                        <option value="Transfer" <?= $payment_method === 'Transfer' ? 'selected' : '' ?>>Transfer</option>
+                                        <option value="KBZPay" <?= $payment_method === 'KBZPay' ? 'selected' : '' ?>>KBZPay</option>
+                                        <option value="Mixed" <?= $payment_method === 'Mixed' ? 'selected' : '' ?>>Mixed</option>
                                     </select>
                                 </div>
                                 <div>
@@ -291,8 +299,8 @@ $page_title = "Sales History";
                                     <?php if (mysqli_num_rows($result) > 0): $count = 1; while ($row = mysqli_fetch_assoc($result)): 
                                         $method = $row['payment_method'] ?? 'Cash';
                                         $method_badge = match ($method) {
-                                            'Card' => 'badge-info',
-                                            'Transfer' => 'badge-purple',
+                                            'KBZPay' => 'badge-info',
+                                            'Mixed' => 'badge-purple',
                                             default => 'badge-success',
                                         };
                                     ?>
@@ -302,7 +310,7 @@ $page_title = "Sales History";
                                         <td><?= date('d M Y, h:i A', strtotime($row['created_at'])) ?></td>
                                         <td><?= htmlspecialchars($row['cashier_name'] ?? '—') ?></td>
                                         <td class="num"><?= number_format((float)$row['subtotal']) ?> Ks</td>
-                                        <td class="num text-red-500"><?= (float)$row['discount'] > 0 ? '-' . number_format((float)$row['discount']) . ' Ks' : '—' ?></td>
+                                        <td class="num text-red-500"><?= (float)$row['discount'] > 0 ? '-' . number_format((float)$row['discount'], 2) . '%' : '—' ?></td>
                                         <td class="num font-semibold"><?= number_format((float)$row['total_amount']) ?> Ks</td>
                                         <td class="center">
                                             <span class="badge <?= $method_badge ?> whitespace-nowrap text-xs">
@@ -376,7 +384,7 @@ $page_title = "Sales History";
                 html += '<div><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Invoice No</p><p class="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5">' + s.invoice_no + '</p></div>';
                 html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Time</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + new Date(s.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p></div>';
                 html += '<div><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cashier</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (s.cashier_name || '—') + '</p></div>';
-                html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Method</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (s.payment_method || 'Cash') + '</p></div>';
+                html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Method</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (data.payment_method || 'Cash') + '</p></div>';
                 html += '</div>';
 
                 // Items table
@@ -410,7 +418,7 @@ $page_title = "Sales History";
                 // Payment Summary
                 html += '<div class="border-t border-gray-200 dark:border-slate-600 pt-4 space-y-1.5 max-w-[280px] ml-auto">';
                 html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Subtotal</span><span class="font-semibold text-gray-800 dark:text-gray-200">' + subtotal.toLocaleString() + ' Ks</span></div>';
-                if (discount > 0) html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Discount</span><span class="font-semibold text-red-500">- ' + discount.toLocaleString() + ' Ks</span></div>';
+                if (discount > 0) html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Discount (' + discount.toFixed(2) + '%)</span><span class="font-semibold text-red-500">- ' + (subtotal * discount / 100).toLocaleString() + ' Ks</span></div>';
                 html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Tax</span><span class="text-gray-400">— Ks</span></div>';
                 html += '<div class="flex justify-between text-base pt-2 border-t border-gray-100 dark:border-slate-600"><span class="font-bold text-gray-900 dark:text-gray-100">Grand Total</span><span class="font-bold text-emerald-600">' + grandTotal.toLocaleString() + ' Ks</span></div>';
                 var profitLabel = totalProfit < 0 ? 'Loss' : 'Profit';

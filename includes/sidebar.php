@@ -87,6 +87,7 @@ HTML;
                 <div class="sidebar-group-items <?= $inv_active ? '' : 'collapsed' ?>">
                     <div class="ml-4 mt-1 space-y-0.5 border-l border-gray-200 dark:border-slate-600 pl-3">
                         <?= menuItem('../categories/index.php', 'Categories', ['category', 'categories']) ?>
+                        <?= menuItem('../units/index.php', 'Units', 'units') ?>
                         <?= menuItem('../product/index.php', 'Products', 'product') ?>
                         <?= menuItem('../supplier/index.php', 'Suppliers', 'supplier') ?>
                     </div>

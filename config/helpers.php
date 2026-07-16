@@ -47,3 +47,29 @@ function generateCSRFToken() {
 function verifyCSRFToken($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
+
+/**
+ * Get the payment amount column name for a given table.
+ * Handles both old schema (amount) and new schema (paid_amount).
+ */
+function getPaymentAmountCol($conn, $table) {
+    static $cache = [];
+    if (isset($cache[$table])) return $cache[$table];
+
+    $check = mysqli_query($conn, "SHOW COLUMNS FROM `$table` LIKE 'paid_amount'");
+    $cache[$table] = (mysqli_num_rows($check) > 0) ? 'paid_amount' : 'amount';
+    return $cache[$table];
+}
+
+/**
+ * Check if a column exists in a table.
+ */
+function columnExists($conn, $table, $column) {
+    static $cache = [];
+    $key = "$table.$column";
+    if (isset($cache[$key])) return $cache[$key];
+
+    $result = mysqli_query($conn, "SHOW COLUMNS FROM `$table` LIKE '$column'");
+    $cache[$key] = (mysqli_num_rows($result) > 0);
+    return $cache[$key];
+}

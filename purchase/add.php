@@ -95,14 +95,35 @@ if (isset($_POST['save_purchase'])) {
         }
 
         $user_id = (int)($_SESSION['user_id'] ?? 0);
-        mysqli_query($conn, "INSERT INTO purchases(supplier_id, user_id, invoice_no, purchase_date, total_amount, payment_status)
-            VALUES('$supplier_id', $user_id, '$invoice_no', '$purchase_date', '$total', '$payment_status')");
+        if (columnExists($conn, 'purchases', 'status')) {
+            mysqli_query($conn, "INSERT INTO purchases(invoice_no, supplier_id, user_id, purchase_date, total_amount, status)
+                VALUES('$invoice_no', '$supplier_id', $user_id, '$purchase_date', '$total', 'completed')");
+        } else {
+            mysqli_query($conn, "INSERT INTO purchases(invoice_no, supplier_id, user_id, purchase_date, total_amount)
+                VALUES('$invoice_no', '$supplier_id', $user_id, '$purchase_date', '$total')");
+        }
         $purchase_id = mysqli_insert_id($conn);
 
         if ($purchase_id) {
             // Insert payment record
-            mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, amount, payment_date)
-                VALUES('$purchase_id', '$payment_method', '$paid_amount', '$purchase_date')");
+            $remaining = $total - $paid_amount;
+            $p_status = ($paid_amount >= $total) ? 'Paid' : (($paid_amount > 0) ? 'Partial' : 'Unpaid');
+            $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+            $hasExtra = columnExists($conn, 'purchase_payments', 'remaining_balance');
+            if ($hasExtra) {
+                $cash_amt = ($payment_method === 'Cash') ? $paid_amount : 0;
+                $kbz_amt = ($payment_method === 'KBZPay') ? $paid_amount : 0;
+                if (columnExists($conn, 'purchase_payments', 'cash_amount')) {
+                    mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date)
+                        VALUES('$purchase_id', '$payment_method', '$cash_amt', '$kbz_amt', '$paid_amount', '$remaining', '$p_status', '$purchase_date')");
+                } else {
+                    mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date)
+                        VALUES('$purchase_id', '$payment_method', '$paid_amount', '$remaining', '$p_status', '$purchase_date')");
+                }
+            } else {
+                mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, payment_date)
+                    VALUES('$purchase_id', '$payment_method', '$paid_amount', '$purchase_date')");
+            }
 
             foreach ($_SESSION['cart'] as $item) {
                 $pid = (int)$item['product_id'];

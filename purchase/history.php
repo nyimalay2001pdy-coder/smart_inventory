@@ -16,6 +16,7 @@ if (isset($_GET['delete_id']) && isAdmin()) {
         $qty = $row['quantity'];
         mysqli_query($conn, "UPDATE products SET current_stock = current_stock - $qty WHERE id='$pid'");
     }
+    mysqli_query($conn, "DELETE FROM purchase_payments WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchase_details WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchases WHERE id='$id'");
     header("Location: history.php?success=deleted");
@@ -42,9 +43,9 @@ if ($supplier !== '') {
     $safe = mysqli_real_escape_string($conn, $supplier);
     $sql .= " AND s.supplier_name LIKE '%$safe%'";
 }
-if ($payment_status !== '') {
+if ($payment_status !== '' && columnExists($conn, 'purchases', 'status')) {
     $safe = mysqli_real_escape_string($conn, $payment_status);
-    $sql .= " AND p.payment_status = '$safe'";
+    $sql .= " AND p.status = '$safe'";
 }
 if ($date_from !== '') {
     $sql .= " AND DATE(p.purchase_date) >= '$date_from'";
@@ -225,7 +226,12 @@ $page_title = "Purchase History";
                                                 <td class="num"><?= number_format($row['total_amount'], 2) ?> Ks</td>
                                                 <td class="center">
                                                     <?php
-                                                    $status = $row['payment_status'] ?? 'Unpaid';
+                                                    $histAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+                                                    $hist_paid = (float)mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM($histAmtCol), 0) AS tp FROM purchase_payments WHERE purchase_id='{$row['id']}'"))['tp'];
+                                                    $hist_ta = (float)$row['total_amount'];
+                                                    if ($hist_ta > 0 && $hist_paid >= $hist_ta) $status = 'Paid';
+                                                    elseif ($hist_paid > 0) $status = 'Partial';
+                                                    else $status = 'Unpaid';
                                                     $badge = $status === 'Paid' ? 'badge-success' : 'badge-danger';
                                                     ?>
                                                     <span class="badge <?= $badge ?>">
@@ -282,6 +288,12 @@ $page_title = "Purchase History";
                  INNER JOIN products p ON d.product_id = p.id
                  WHERE d.purchase_id='$view_id'"
             );
+            $histViewAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+            $histViewPaid = (float)mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM($histViewAmtCol), 0) AS tp FROM purchase_payments WHERE purchase_id='$view_id'"))['tp'];
+            $histViewTa = (float)$view_purchase['total_amount'];
+            if ($histViewTa > 0 && $histViewPaid >= $histViewTa) $histViewStatus = 'Paid';
+            elseif ($histViewPaid > 0) $histViewStatus = 'Partial';
+            else $histViewStatus = 'Unpaid';
     ?>
             <div id="viewModal" class="modal-overlay">
                 <div class="bg-white rounded-2xl p-6 lg:p-8 w-full max-w-3xl relative mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -292,8 +304,8 @@ $page_title = "Purchase History";
                             <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Purchase Invoice</h2>
                             <p class="text-sm text-gray-500 dark:text-gray-400">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
                         </div>
-                        <span class="badge <?= $view_purchase['payment_status'] === 'Paid' ? 'badge-success' : 'badge-danger' ?>">
-                            <span class="badge-dot"></span><?= $view_purchase['payment_status'] ?>
+                        <span class="badge <?= $histViewStatus === 'Paid' ? 'badge-success' : 'badge-danger' ?>">
+                            <span class="badge-dot"></span><?= $histViewStatus ?>
                         </span>
                     </div>
 
@@ -397,9 +409,15 @@ $page_title = "Purchase History";
             <?php
             mysqli_data_seek($result, 0);
             $row_num = 1;
+            $expAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
             while ($row = mysqli_fetch_assoc($result)):
+                $exp_paid = (float)mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM($expAmtCol), 0) AS tp FROM purchase_payments WHERE purchase_id='{$row['id']}'"))['tp'];
+                $exp_ta = (float)$row['total_amount'];
+                if ($exp_ta > 0 && $exp_paid >= $exp_ta) $exp_status = 'Paid';
+                elseif ($exp_paid > 0) $exp_status = 'Partial';
+                else $exp_status = 'Unpaid';
             ?>
-            rows.push([<?= $row_num++ ?>, '<?= addslashes($row['invoice_no'] ?? '#' . $row['id']) ?>', '<?= date('d M Y', strtotime($row['purchase_date'])) ?>', '<?= addslashes($row['supplier_name'] ?? '-') ?>', <?= $row['total_amount'] ?>, '<?= $row['payment_status'] ?>']);
+            rows.push([<?= $row_num++ ?>, '<?= addslashes($row['invoice_no'] ?? '#' . $row['id']) ?>', '<?= date('d M Y', strtotime($row['purchase_date'])) ?>', '<?= addslashes($row['supplier_name'] ?? '-') ?>', <?= $row['total_amount'] ?>, '<?= $exp_status ?>']);
             <?php endwhile; ?>
 
             const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');

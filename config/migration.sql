@@ -36,6 +36,26 @@ CREATE TABLE IF NOT EXISTS suppliers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- Units
+CREATE TABLE IF NOT EXISTS units (
+    unit_id INT AUTO_INCREMENT PRIMARY KEY,
+    unit_name VARCHAR(50) NOT NULL,
+    unit_symbol VARCHAR(20) NOT NULL,
+    status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Default units
+INSERT INTO units (unit_name, unit_symbol, status) VALUES
+('Piece', 'pcs', 'Active'),
+('Box', 'box', 'Active'),
+('Kilogram', 'kg', 'Active'),
+('Liter', 'liter', 'Active'),
+('Pack', 'pack', 'Active'),
+('Bottle', 'bottle', 'Active'),
+('Can', 'can', 'Active');
+
 -- Products
 CREATE TABLE products (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -43,11 +63,12 @@ CREATE TABLE products (
     product_name VARCHAR(150) NOT NULL,
     sku VARCHAR(50) NOT NULL UNIQUE,
     barcode VARCHAR(100) UNIQUE NULL,
-    unit VARCHAR(30) NOT NULL DEFAULT 'pcs',
+    unit_id INT NOT NULL DEFAULT 1,
     purchase_price DECIMAL(10,2) NOT NULL,
     selling_price DECIMAL(10,2) NOT NULL,
     current_stock INT NOT NULL DEFAULT 0,
     reorder_level INT NOT NULL DEFAULT 10,
+    price_update_required TINYINT(1) DEFAULT 1,
     image VARCHAR(255) DEFAULT NULL,
     description TEXT DEFAULT NULL,
     status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
@@ -57,18 +78,25 @@ CREATE TABLE products (
     FOREIGN KEY (category_id)
         REFERENCES categories(id)
         ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    FOREIGN KEY (unit_id)
+        REFERENCES units(unit_id)
+        ON UPDATE CASCADE
         ON DELETE RESTRICT
 );
 
 -- Purchases (Stock In header)
 CREATE TABLE purchases (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_no VARCHAR(30) NOT NULL UNIQUE,
     supplier_id INT NOT NULL,
     user_id INT NOT NULL,
     purchase_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    payment_method ENUM('Cash','KBZPay','Mixed') NOT NULL,
+    subtotal DECIMAL(10,2) DEFAULT 0.00,
+    discount DECIMAL(10,2) DEFAULT 0,
+    tax DECIMAL(10,2) DEFAULT 0,
     total_amount DECIMAL(10,2) NOT NULL,
-    payment_status ENUM('Paid','Partial','Unpaid') DEFAULT 'Paid',
+    status ENUM('completed', 'pending', 'cancelled') DEFAULT 'completed',
     notes TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
@@ -88,13 +116,17 @@ CREATE TABLE purchase_details (
     FOREIGN KEY (product_id)
         REFERENCES products(id)
 );
--- Purchase Payments (supports multiple/partial payments)
-CREATE TABLE IF NOT EXISTS purchase_payments (
+-- Purchase Payments
+CREATE TABLE purchase_payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     purchase_id INT NOT NULL,
-    payment_method ENUM('Cash','KBZPay') NOT NULL DEFAULT 'Cash',
-    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    payment_date DATE NOT NULL,
+    payment_method ENUM('Cash','KBZPay','Mixed') NOT NULL,
+    cash_amount DECIMAL(10,2) DEFAULT 0.00,
+    kbzpay_amount DECIMAL(10,2) DEFAULT 0.00,
+    paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    remaining_balance DECIMAL(10,2) DEFAULT 0.00,
+    payment_status ENUM('Paid','Partial','Unpaid') DEFAULT 'Paid',
+    payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     notes TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE
@@ -105,14 +137,13 @@ CREATE TABLE sales (
     id INT AUTO_INCREMENT PRIMARY KEY,
     invoice_no VARCHAR(30) NOT NULL UNIQUE,
     user_id INT NOT NULL,
+    customer_id INT DEFAULT NULL,
     sale_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     subtotal DECIMAL(10,2) NOT NULL,
     discount DECIMAL(10,2) DEFAULT 0,
+    tax DECIMAL(10,2) DEFAULT 0,
     total_amount DECIMAL(10,2) NOT NULL,
-    payment_method ENUM('Cash','KBZPay','Mixed') NOT NULL,
-    paid_amount DECIMAL(10,2) NOT NULL,
-    change_amount DECIMAL(10,2) DEFAULT 0,
-    payment_status ENUM('Paid','Partial') DEFAULT 'Paid',
+    status ENUM('completed', 'pending', 'cancelled') DEFAULT 'completed',
     notes TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -132,12 +163,18 @@ CREATE TABLE IF NOT EXISTS sale_details (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
---sale payment table for mixed payment
+-- Sale Payments
 CREATE TABLE sale_payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sale_id INT NOT NULL,
     payment_method ENUM('Cash','KBZPay','Mixed') NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
+    cash_amount DECIMAL(10,2) DEFAULT 0.00,
+    kbzpay_amount DECIMAL(10,2) DEFAULT 0.00,
+    paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    change_amount DECIMAL(10,2) DEFAULT 0.00,
+    payment_status ENUM('Paid','Partial','Unpaid') DEFAULT 'Paid',
+    payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
 );
 

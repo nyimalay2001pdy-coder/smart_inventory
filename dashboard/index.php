@@ -1,6 +1,7 @@
 <?php
 include "../includes/auth_check.php";
 include "../config/database.php";
+include "../config/helpers.php";
 
 $role = $_SESSION['role'] ?? 'staff';
 $page_title = "Dashboard";
@@ -37,7 +38,7 @@ if ($role === 'admin') {
 
     // Recent sales
     $recent_sales = [];
-    $rs_res = mysqli_query($conn, "SELECT s.invoice_no, s.subtotal, s.payment_method, s.created_at, u.name AS user_name FROM sales s LEFT JOIN users u ON s.user_id=u.id ORDER BY s.created_at DESC LIMIT 5");
+    $rs_res = mysqli_query($conn, "SELECT s.invoice_no, s.subtotal, sp.payment_method, s.created_at, u.name AS user_name FROM sales s LEFT JOIN users u ON s.user_id=u.id LEFT JOIN sale_payments sp ON sp.id = (SELECT id FROM sale_payments WHERE sale_id = s.id ORDER BY id ASC LIMIT 1) ORDER BY s.created_at DESC LIMIT 5");
     while ($r = mysqli_fetch_assoc($rs_res)) $recent_sales[] = $r;
 }
 
@@ -47,8 +48,18 @@ if ($role === 'staff') {
     $forecast_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total, SUM(CASE WHEN demand_level='High' THEN 1 ELSE 0 END) AS high_d, SUM(CASE WHEN demand_level='Medium' THEN 1 ELSE 0 END) AS med_d, SUM(CASE WHEN demand_level='Low' THEN 1 ELSE 0 END) AS low_d FROM forecasts"));
 
     $recent_purchases = [];
-    $rp_res = mysqli_query($conn, "SELECT p.invoice_no, p.total_amount, p.payment_status, p.purchase_date, s.supplier_name FROM purchases p LEFT JOIN suppliers s ON p.supplier_id=s.id ORDER BY p.created_at DESC LIMIT 5");
-    while ($r = mysqli_fetch_assoc($rp_res)) $recent_purchases[] = $r;
+    $dashPurAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+    $rp_res = mysqli_query($conn, "SELECT p.invoice_no, p.total_amount, p.purchase_date, s.supplier_name,
+        COALESCE((SELECT SUM(pp.$dashPurAmtCol) FROM purchase_payments pp WHERE pp.purchase_id = p.id), 0) AS total_paid
+        FROM purchases p LEFT JOIN suppliers s ON p.supplier_id=s.id ORDER BY p.created_at DESC LIMIT 5");
+    while ($r = mysqli_fetch_assoc($rp_res)) {
+        $ta = (float)$r['total_amount'];
+        $tp = (float)$r['total_paid'];
+        if ($ta > 0 && $tp >= $ta) $r['status'] = 'Paid';
+        elseif ($tp > 0) $r['status'] = 'Partial';
+        else $r['status'] = 'Unpaid';
+        $recent_purchases[] = $r;
+    }
 
     // Stock movement data for chart (last 7 days)
     $stock_in_chart = [];
@@ -65,7 +76,7 @@ if ($role === 'cashier') {
     $today_stats = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS orders, COALESCE(SUM(total_amount),0) AS revenue FROM sales WHERE DATE(created_at)=CURDATE()"));
 
     $recent_sales = [];
-    $rs_res = mysqli_query($conn, "SELECT s.invoice_no, s.subtotal, s.payment_method, s.created_at FROM sales s ORDER BY s.created_at DESC LIMIT 5");
+    $rs_res = mysqli_query($conn, "SELECT s.invoice_no, s.subtotal, sp.payment_method, s.created_at FROM sales s LEFT JOIN sale_payments sp ON sp.id = (SELECT id FROM sale_payments WHERE sale_id = s.id ORDER BY id ASC LIMIT 1) ORDER BY s.created_at DESC LIMIT 5");
     while ($r = mysqli_fetch_assoc($rs_res)) $recent_sales[] = $r;
 
     $best_products = [];
@@ -684,8 +695,8 @@ if ($role === 'cashier') {
                                                         <td><?= htmlspecialchars($rp['supplier_name'] ?? '-') ?></td>
                                                         <td class="num font-semibold text-gray-900 dark:text-slate-100"><?= number_format($rp['total_amount']) ?></td>
                                                         <td class="center">
-                                                            <span class="badge <?= $rp['payment_status'] === 'Paid' ? 'badge-success' : 'badge-warning' ?>">
-                                                                <span class="badge-dot"></span><?= $rp['payment_status'] ?>
+                                                            <span class="badge <?= ($rp['status'] ?? 'Unpaid') === 'Paid' ? 'badge-success' : 'badge-warning' ?>">
+                                                                <span class="badge-dot"></span><?= $rp['status'] ?? 'Unpaid' ?>
                                                             </span>
                                                         </td>
                                                     </tr>

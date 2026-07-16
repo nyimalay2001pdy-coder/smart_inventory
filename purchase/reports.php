@@ -15,16 +15,25 @@ $purchase_summary = mysqli_fetch_assoc(mysqli_query($conn, "
     FROM purchases WHERE purchase_date BETWEEN '$safe_from' AND '$safe_to'
 "));
 
-// Paid vs Unpaid
+// Paid vs Unpaid - calculate from payment data
+$paid_stats = ['Paid' => ['count' => 0, 'amount' => 0], 'Partial' => ['count' => 0, 'amount' => 0], 'Unpaid' => ['count' => 0, 'amount' => 0]];
+$purAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
 $paid_summary = mysqli_query($conn, "
-    SELECT payment_status, COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS amount
-    FROM purchases WHERE purchase_date BETWEEN '$safe_from' AND '$safe_to'
-    GROUP BY payment_status
+    SELECT p.id, p.total_amount,
+           COALESCE(SUM(pp.$purAmtCol), 0) AS total_paid
+    FROM purchases p
+    LEFT JOIN purchase_payments pp ON pp.purchase_id = p.id
+    WHERE p.purchase_date BETWEEN '$safe_from' AND '$safe_to'
+    GROUP BY p.id, p.total_amount
 ");
-$paid_stats = ['Paid' => ['count' => 0, 'amount' => 0], 'Unpaid' => ['count' => 0, 'amount' => 0]];
 while ($ps = mysqli_fetch_assoc($paid_summary)) {
-    $paid_stats[$ps['payment_status']]['count'] = (int)$ps['count'];
-    $paid_stats[$ps['payment_status']]['amount'] = (float)$ps['amount'];
+    $ta = (float)$ps['total_amount'];
+    $tp = (float)$ps['total_paid'];
+    if ($ta > 0 && $tp >= $ta) $st = 'Paid';
+    elseif ($tp > 0) $st = 'Partial';
+    else $st = 'Unpaid';
+    $paid_stats[$st]['count']++;
+    $paid_stats[$st]['amount'] += $ta;
 }
 
 // Top suppliers

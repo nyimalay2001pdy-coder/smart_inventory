@@ -29,8 +29,7 @@ $month_stats = mysqli_fetch_assoc(mysqli_query($conn, "
 
 // ============ OVERALL REVENUE (filtered range) ============
 $revenue_stats = mysqli_fetch_assoc(mysqli_query($conn, "
-    SELECT COUNT(*) AS total_sales, COALESCE(SUM(total_amount), 0) AS total_revenue,
-           COALESCE(SUM(paid_amount), 0) AS total_paid
+    SELECT COUNT(*) AS total_sales, COALESCE(SUM(total_amount), 0) AS total_revenue
     FROM sales WHERE DATE(created_at) BETWEEN '$safe_from' AND '$safe_to'
 "));
 
@@ -72,35 +71,27 @@ $category_sales = mysqli_query($conn, "
 ");
 
 // ============ PAYMENT METHOD SUMMARY ============
+$spAmtCol = getPaymentAmountCol($conn, 'sale_payments');
 $payment_summary = mysqli_query($conn, "
-    SELECT sp.payment_method, COALESCE(SUM(sp.amount), 0) AS total, COUNT(*) AS count
-    FROM sale_payments sp
-    JOIN sales s ON sp.sale_id = s.id
+    SELECT COALESCE(sp.payment_method, 'Cash') AS payment_method,
+           COALESCE(SUM(sp.$spAmtCol), s.total_amount) AS total, COUNT(*) AS count
+    FROM sales s
+    LEFT JOIN sale_payments sp ON sp.id = (
+        SELECT id FROM sale_payments WHERE sale_id = s.id ORDER BY id ASC LIMIT 1
+    )
     WHERE DATE(s.created_at) BETWEEN '$safe_from' AND '$safe_to'
-    GROUP BY sp.payment_method
+    GROUP BY COALESCE(sp.payment_method, 'Cash')
 ");
-$payment_totals = ['Cash' => 0, 'KBZPay' => 0];
-$payment_counts = ['Cash' => 0, 'KBZPay' => 0];
+$payment_totals = ['Cash' => 0, 'KBZPay' => 0, 'Mixed' => 0];
+$payment_counts = ['Cash' => 0, 'KBZPay' => 0, 'Mixed' => 0];
 while ($pt = mysqli_fetch_assoc($payment_summary)) {
-    $pm = $pt['payment_method'];
-    if ($pm === '' || $pm === null) continue;
-    $payment_totals[$pm] = (float)$pt['total'];
-    $payment_counts[$pm] = (int)$pt['count'];
+    $pm = $pt['payment_method'] ?? 'Cash';
+    if (!isset($payment_totals[$pm])) $payment_totals[$pm] = 0;
+    if (!isset($payment_counts[$pm])) $payment_counts[$pm] = 0;
+    $payment_totals[$pm] += (float)$pt['total'];
+    $payment_counts[$pm] += (int)$pt['count'];
 }
 $has_payments = array_sum($payment_totals) > 0;
-if (!$has_payments) {
-    $legacy_pm = mysqli_query($conn, "
-        SELECT payment_method, COALESCE(SUM(paid_amount), 0) AS total, COUNT(*) AS count
-        FROM sales WHERE DATE(created_at) BETWEEN '$safe_from' AND '$safe_to'
-        GROUP BY payment_method
-    ");
-    while ($lpm = mysqli_fetch_assoc($legacy_pm)) {
-        if (isset($payment_totals[$lpm['payment_method']])) {
-            $payment_totals[$lpm['payment_method']] = (float)$lpm['total'];
-            $payment_counts[$lpm['payment_method']] = (int)$lpm['count'];
-        }
-    }
-}
 
 // ============ DAILY SALES ============
 $daily_sales = mysqli_query($conn, "
@@ -270,7 +261,8 @@ $page_title = "Sales Reports";
                                     <?php
                                     $total_payment = array_sum($payment_totals);
                                     $payment_colors = ['Cash' => ['bg' => 'bg-emerald-100', 'text' => 'text-emerald-600', 'fill' => 'bg-emerald-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>'],
-                                        'KBZPay' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-600', 'fill' => 'bg-blue-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>']
+                                        'KBZPay' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-600', 'fill' => 'bg-blue-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>'],
+                                        'Mixed' => ['bg' => 'bg-purple-100', 'text' => 'text-purple-600', 'fill' => 'bg-purple-500', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>']
                                     ];
                                     foreach ($payment_totals as $method => $amount):
                                         $pct = $total_payment > 0 ? ($amount / $total_payment) * 100 : 0;

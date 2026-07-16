@@ -1,6 +1,7 @@
 <?php
 include "../includes/auth_check.php";
 include "../config/database.php";
+include "../config/helpers.php";
 
 // All authenticated users can access invoices
 
@@ -37,26 +38,21 @@ while ($row = mysqli_fetch_assoc($items)) {
     $item_rows[] = $row;
 }
 
+$amtCol = getPaymentAmountCol($conn, 'sale_payments');
 $payments = mysqli_query($conn, "
     SELECT * FROM sale_payments
     WHERE sale_id='$sale_id'
-    ORDER BY FIELD(payment_method, 'Cash', 'Card', 'Transfer')
+    ORDER BY id ASC
 ");
 
 $payment_details = [];
 $total_paid = 0;
+$payment_method_display = 'Cash';
 if (mysqli_num_rows($payments) > 0) {
     while ($p = mysqli_fetch_assoc($payments)) {
         $payment_details[] = $p;
-        $total_paid += $p['amount'];
-    }
-} else {
-    $total_paid = floatval($sale['paid_amount'] ?? $sale['total_amount']);
-    if ($sale['payment_method']) {
-        $payment_details[] = [
-            'payment_method' => $sale['payment_method'],
-            'amount' => $total_paid
-        ];
+        $total_paid += $p[$amtCol];
+        $payment_method_display = $p['payment_method'] ?? 'Cash';
     }
 }
 
@@ -117,7 +113,7 @@ $change = max(0, $total_paid - $grand_total);
                         <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Payment</p>
                         <span class="inline-flex items-center gap-1.5 mt-0.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            <?= htmlspecialchars($sale['payment_method'] ?? 'Cash') ?>
+                            <?= htmlspecialchars($payment_method_display) ?>
                         </span>
                     </div>
                 </div>
@@ -169,8 +165,8 @@ $change = max(0, $total_paid - $grand_total);
                     </div>
                     <?php if ($discount > 0): ?>
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-500">Discount</span>
-                        <span class="font-semibold text-red-500">- <?= number_format($discount) ?> Ks</span>
+                        <span class="text-gray-500">Discount (<?= number_format($discount, 2) ?>%)</span>
+                        <span class="font-semibold text-red-500">- <?= number_format($subtotal * $discount / 100) ?> Ks</span>
                     </div>
                     <?php endif; ?>
                     <div class="flex justify-between text-sm">

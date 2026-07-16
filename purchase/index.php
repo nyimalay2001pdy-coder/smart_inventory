@@ -22,24 +22,44 @@ if (isset($_POST['add_payment'])) {
     $notes = $_POST['notes'] ?? '';
 
     if ($purchase_id > 0 && $payment_amount > 0) {
-        mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, amount, payment_date, notes)
-            VALUES('$purchase_id', '$payment_method', '$payment_amount', '$payment_date', '$notes')");
-
-        // Recalculate payment status
-        $total_paid_result = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(amount), 0) AS total_paid FROM purchase_payments WHERE purchase_id='$purchase_id'"));
-        $total_paid = (float)$total_paid_result['total_paid'];
         $purchase = mysqli_fetch_assoc(mysqli_query($conn, "SELECT total_amount FROM purchases WHERE id='$purchase_id'"));
         $grand_total = (float)$purchase['total_amount'];
 
-        if ($total_paid >= $grand_total) {
+        // Calculate remaining balance and new status
+        $amtCol = getPaymentAmountCol($conn, 'purchase_payments');
+        $total_paid_result = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM($amtCol), 0) AS total_paid FROM purchase_payments WHERE purchase_id='$purchase_id'"));
+        $existing_paid = (float)$total_paid_result['total_paid'];
+        $new_total_paid = $existing_paid + $payment_amount;
+        $remaining = max(0, $grand_total - $new_total_paid);
+        
+        if ($new_total_paid >= $grand_total) {
             $new_status = 'Paid';
-        } elseif ($total_paid > 0) {
+        } elseif ($new_total_paid > 0) {
             $new_status = 'Partial';
         } else {
             $new_status = 'Unpaid';
         }
 
-        mysqli_query($conn, "UPDATE purchases SET payment_status='$new_status' WHERE id='$purchase_id'");
+        $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+        $hasExtra = columnExists($conn, 'purchase_payments', 'remaining_balance');
+        if ($hasExtra) {
+            $cash_amount = ($payment_method === 'Cash') ? $payment_amount : 0;
+            $kbzpay_amount = ($payment_method === 'KBZPay') ? $payment_amount : 0;
+            if (columnExists($conn, 'purchase_payments', 'cash_amount')) {
+                mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date, notes)
+                    VALUES('$purchase_id', '$payment_method', '$cash_amount', '$kbzpay_amount', '$payment_amount', '$remaining', '$new_status', '$payment_date', '$notes')");
+            } else {
+                mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date, notes)
+                    VALUES('$purchase_id', '$payment_method', '$payment_amount', '$remaining', '$new_status', '$payment_date', '$notes')");
+            }
+        } else {
+            mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, payment_date, notes)
+                VALUES('$purchase_id', '$payment_method', '$payment_amount', '$payment_date', '$notes')");
+        }
+
+        if (columnExists($conn, 'purchases', 'status')) {
+            mysqli_query($conn, "UPDATE purchases SET status='$new_status' WHERE id='$purchase_id'");
+        }
         header("Location: index.php?view_id=$purchase_id&success=" . urlencode("Payment added successfully."));
         exit;
     }
@@ -93,7 +113,8 @@ if (isset($_POST['update'])) {
     mysqli_query($conn, "UPDATE purchases SET supplier_id='$supplier_id', total_amount='$new_total' WHERE id='$id'");
 
     // Recalculate payment status
-    $total_paid_result = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(amount), 0) AS total_paid FROM purchase_payments WHERE purchase_id='$id'"));
+    $editAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+    $total_paid_result = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM($editAmtCol), 0) AS total_paid FROM purchase_payments WHERE purchase_id='$id'"));
     $total_paid = (float)$total_paid_result['total_paid'];
     if ($new_total > 0) {
         if ($total_paid >= $new_total) $new_status = 'Paid';
@@ -102,7 +123,9 @@ if (isset($_POST['update'])) {
     } else {
         $new_status = 'Unpaid';
     }
-    mysqli_query($conn, "UPDATE purchases SET payment_status='$new_status' WHERE id='$id'");
+    if (columnExists($conn, 'purchases', 'status')) {
+        mysqli_query($conn, "UPDATE purchases SET status='$new_status' WHERE id='$id'");
+    }
 
     header("Location: index.php?success=" . urlencode("Purchase #$id updated successfully."));
     exit;
@@ -114,8 +137,8 @@ if ($search) {
     $safe = mysqli_real_escape_string($conn, $search);
     $sql .= " AND (s.supplier_name LIKE '%$safe%' OR p.invoice_no LIKE '%$safe%')";
 }
-if ($status_filter) {
-    $sql .= " AND p.payment_status = '$status_filter'";
+if ($status_filter && columnExists($conn, 'purchases', 'status')) {
+    $sql .= " AND p.status = '$status_filter'";
 }
 $sql .= " ORDER BY p.id DESC";
 $result = mysqli_query($conn, $sql);
@@ -234,7 +257,8 @@ $page_title = "Purchase Management";
                                 <tbody>
                                     <?php if (mysqli_num_rows($result) > 0): $count = 1;
                                         while ($row = mysqli_fetch_assoc($result)):
-                                            $total_paid_q = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(amount), 0) AS tp FROM purchase_payments WHERE purchase_id='{$row['id']}'"));
+                                            $amtCol = getPaymentAmountCol($conn, 'purchase_payments');
+                                            $total_paid_q = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM($amtCol), 0) AS tp FROM purchase_payments WHERE purchase_id='{$row['id']}'"));
                                             $total_paid = (float)$total_paid_q['tp'];
                                             $remaining = (float)$row['total_amount'] - $total_paid;
                                         ?>
@@ -251,7 +275,11 @@ $page_title = "Purchase Management";
                                                 </td>
                                                 <td class="center">
                                                     <?php
-                                                    $statusClass = match($row['payment_status']) {
+                                                    $ta = (float)$row['total_amount'];
+                                                    if ($ta > 0 && $total_paid >= $ta) $row_status = 'Paid';
+                                                    elseif ($total_paid > 0) $row_status = 'Partial';
+                                                    else $row_status = 'Unpaid';
+                                                    $statusClass = match($row_status) {
                                                         'Paid' => 'badge-success',
                                                         'Partial' => 'badge-warning',
                                                         default => 'badge-danger'
@@ -259,7 +287,7 @@ $page_title = "Purchase Management";
                                                     ?>
                                                     <span class="badge <?= $statusClass ?>">
                                                         <span class="badge-dot"></span>
-                                                        <?= $row['payment_status'] ?>
+                                                        <?= $row_status ?>
                                                     </span>
                                                 </td>
                                                 <td class="center">
@@ -323,7 +351,8 @@ $page_title = "Purchase Management";
     <?php if ($view_purchase): ?>
         <?php
         $vp_total_paid = 0;
-        while ($vp = mysqli_fetch_assoc($view_payments)) { $vp_total_paid += (float)$vp['amount']; }
+        $vpAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+        while ($vp = mysqli_fetch_assoc($view_payments)) { $vp_total_paid += (float)$vp[$vpAmtCol]; }
         mysqli_data_seek($view_payments, 0);
         $vp_balance = (float)$view_purchase['total_amount'] - $vp_total_paid;
         ?>
@@ -337,14 +366,18 @@ $page_title = "Purchase Management";
                         <p class="text-sm text-gray-500 dark:text-gray-400">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
                     </div>
                     <?php
-                    $vStatusClass = match($view_purchase['payment_status']) {
+                    $vp_ta = (float)$view_purchase['total_amount'];
+                    if ($vp_ta > 0 && $vp_total_paid >= $vp_ta) $vp_status = 'Paid';
+                    elseif ($vp_total_paid > 0) $vp_status = 'Partial';
+                    else $vp_status = 'Unpaid';
+                    $vStatusClass = match($vp_status) {
                         'Paid' => 'badge-success',
                         'Partial' => 'badge-warning',
                         default => 'badge-danger'
                     };
                     ?>
                     <span class="badge <?= $vStatusClass ?>">
-                        <span class="badge-dot"></span><?= $view_purchase['payment_status'] ?>
+                        <span class="badge-dot"></span><?= $vp_status ?>
                     </span>
                 </div>
 
@@ -430,7 +463,7 @@ $page_title = "Purchase Management";
                                             <?= $pmt['payment_method'] ?>
                                         </span>
                                     </td>
-                                    <td class="num font-semibold"><?= number_format($pmt['amount'], 2) ?></td>
+                                    <td class="num font-semibold"><?= number_format($pmt[$vpAmtCol], 2) ?></td>
                                     <td class="text-gray-500 text-sm"><?= htmlspecialchars($pmt['notes'] ?? '-') ?></td>
                                 </tr>
                             <?php endwhile; ?>

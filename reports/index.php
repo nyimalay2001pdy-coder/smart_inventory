@@ -2,6 +2,7 @@
 include "../includes/auth_check.php";
 requireAdmin();
 include "../config/database.php";
+include "../config/helpers.php";
 
 $page_title = "Reports";
 $tab = $_GET['tab'] ?? 'sales';
@@ -42,9 +43,10 @@ $categories = mysqli_query($conn, "SELECT id, name FROM categories WHERE status=
 
 // Sales Report
 $sales_report = mysqli_query($conn, "
-    SELECT DISTINCT s.*, u.name AS cashier
+    SELECT DISTINCT s.*, u.name AS cashier, sp.payment_method
     FROM sales s
     LEFT JOIN users u ON s.user_id = u.id
+    LEFT JOIN sale_payments sp ON sp.id = (SELECT id FROM sale_payments WHERE sale_id = s.id ORDER BY id ASC LIMIT 1)
     $category_join
     WHERE DATE(s.created_at) BETWEEN '$safe_from' AND '$safe_to'
     $category_where
@@ -53,8 +55,7 @@ $sales_report = mysqli_query($conn, "
 
 $sales_summary = mysqli_fetch_assoc(mysqli_query($conn, "
     SELECT COUNT(DISTINCT s.id) AS total_sales,
-           COALESCE(SUM(s.total_amount), 0) AS total_revenue,
-           COALESCE(SUM(s.paid_amount), 0) AS total_paid
+           COALESCE(SUM(s.total_amount), 0) AS total_revenue
     FROM sales s
     $category_join
     WHERE DATE(s.created_at) BETWEEN '$safe_from' AND '$safe_to'
@@ -96,37 +97,29 @@ $sales_daily = mysqli_query($conn, "
 ");
 
 // Payment method summaries (from sale_payments table)
+$spAmtCol = getPaymentAmountCol($conn, 'sale_payments');
 $payment_summary = mysqli_query($conn, "
-    SELECT sp.payment_method, COALESCE(SUM(sp.amount), 0) AS total
-    FROM sale_payments sp
-    JOIN sales s ON sp.sale_id = s.id
+    SELECT COALESCE(sp.payment_method, 'Cash') AS payment_method,
+           COALESCE(SUM(sp.$spAmtCol), s.total_amount) AS total
+    FROM sales s
+    LEFT JOIN sale_payments sp ON sp.id = (
+        SELECT id FROM sale_payments WHERE sale_id = s.id ORDER BY id ASC LIMIT 1
+    )
     WHERE DATE(s.created_at) BETWEEN '$safe_from' AND '$safe_to'
-    GROUP BY sp.payment_method
+    GROUP BY COALESCE(sp.payment_method, 'Cash')
 ");
-$payment_totals = ['Cash' => 0, 'KBZPay' => 0];
+$payment_totals = ['Cash' => 0, 'KBZPay' => 0, 'Mixed' => 0];
 while ($pt = mysqli_fetch_assoc($payment_summary)) {
-    $payment_totals[$pt['payment_method']] = (float)$pt['total'];
+    $pm = $pt['payment_method'] ?? 'Cash';
+    if (!isset($payment_totals[$pm])) $payment_totals[$pm] = 0;
+    $payment_totals[$pm] += (float)$pt['total'];
 }
 
-// Legacy fallback: if no sale_payments records, use sales table
-$has_payments = array_sum($payment_totals) > 0;
-if (!$has_payments) {
-    $legacy_pm = mysqli_query($conn, "
-        SELECT payment_method, COALESCE(SUM(paid_amount), 0) AS total
-        FROM sales
-        WHERE DATE(created_at) BETWEEN '$safe_from' AND '$safe_to'
-        GROUP BY payment_method
-    ");
-    while ($lpm = mysqli_fetch_assoc($legacy_pm)) {
-        if (isset($payment_totals[$lpm['payment_method']])) {
-            $payment_totals[$lpm['payment_method']] = (float)$lpm['total'];
-        }
-    }
-}
-
-// Purchase Report
+// Purchase Report - calculate status from payment data
+$rptPurAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
 $purchase_report = mysqli_query($conn, "
-    SELECT p.*, s.supplier_name
+    SELECT p.*, s.supplier_name,
+           COALESCE((SELECT SUM(pp.$rptPurAmtCol) FROM purchase_payments pp WHERE pp.purchase_id = p.id), 0) AS total_paid
     FROM purchases p
     LEFT JOIN suppliers s ON p.supplier_id = s.id
     WHERE p.purchase_date BETWEEN '$safe_from' AND '$safe_to'
@@ -357,9 +350,16 @@ $top_products = mysqli_query($conn, "
                                 <td><?= htmlspecialchars($p['supplier_name']) ?></td>
                                 <td class="num"><?= number_format($p['total_amount']) ?> Ks</td>
                                 <td class="center">
-                                    <span class="badge <?= $p['payment_status'] == 'Paid' ? 'badge-success' : 'badge-danger' ?>">
+                                    <?php
+                                    $rpt_ta = (float)$p['total_amount'];
+                                    $rpt_tp = (float)$p['total_paid'];
+                                    if ($rpt_ta > 0 && $rpt_tp >= $rpt_ta) $rpt_st = 'Paid';
+                                    elseif ($rpt_tp > 0) $rpt_st = 'Partial';
+                                    else $rpt_st = 'Unpaid';
+                                    ?>
+                                    <span class="badge <?= $rpt_st == 'Paid' ? 'badge-success' : 'badge-danger' ?>">
                                         <span class="badge-dot"></span>
-                                        <?= $p['payment_status'] ?>
+                                        <?= $rpt_st ?>
                                     </span>
                                 </td>
                             </tr>

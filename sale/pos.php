@@ -121,7 +121,9 @@ if (isset($_POST['complete_sale'])) {
         } else {
             $grand_total = array_sum(array_column($_SESSION['sale_cart'], 'total'));
             $discount = (float)($_POST['discount'] ?? 0);
-            $grand_total -= $discount;
+            $discount = min(100, max(0, $discount));
+            $discount_amount = $grand_total * ($discount / 100);
+            $grand_total -= $discount_amount;
             if ($grand_total < 0) $grand_total = 0;
 
             $payment_method = $_POST['payment_method'] ?? 'Cash';
@@ -138,10 +140,10 @@ if (isset($_POST['complete_sale'])) {
                 $total_paid = $mixed_cash + $mixed_kbzpay;
             }
 
-            if (abs($total_paid - $grand_total) > 0.01) {
-                $error = $total_paid < $grand_total
-                    ? "Payment amount is not enough."
-                    : "Payment amount exceeds total.";
+            if ($total_paid < $grand_total - 0.01) {
+                $error = "Payment amount is not enough.";
+            } elseif ($payment_method !== 'Cash' && $total_paid > $grand_total + 0.01) {
+                $error = "Payment amount exceeds total.";
             } else {
                 $invoice_no = generateInvoiceNo($conn);
                 $user_id = $_SESSION['user_id'] ?? null;
@@ -154,9 +156,10 @@ if (isset($_POST['complete_sale'])) {
 
                 mysqli_begin_transaction($conn);
                 try {
-                    $stmt = $conn->prepare("INSERT INTO sales (invoice_no, user_id, total_amount, payment_method, paid_amount, discount, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, NOW())");
-                    $stmt->bind_param("sidddd", $invoice_no, $user_id, $grand_total, $primary_method, $total_paid, $discount);
+                    $subtotal = array_sum(array_column($_SESSION['sale_cart'], 'total'));
+                    $stmt = $conn->prepare("INSERT INTO sales (invoice_no, user_id, subtotal, total_amount, discount, created_at)
+                        VALUES (?, ?, ?, ?, ?, NOW())");
+                    $stmt->bind_param("siddd", $invoice_no, $user_id, $subtotal, $grand_total, $discount);
                     $stmt->execute();
                     $sale_id = $conn->insert_id;
 
@@ -178,20 +181,29 @@ if (isset($_POST['complete_sale'])) {
                         $stock_stmt->execute();
                     }
 
+                    $insAmtCol = getPaymentAmountCol($conn, 'sale_payments');
+                    $hasSaleExtra = columnExists($conn, 'sale_payments', 'change_amount');
                     if ($payment_method === 'Mixed') {
-                        if ($mixed_cash > 0) {
-                            $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, amount) VALUES (?, 'Cash', ?)");
-                            $pmt_stmt->bind_param("id", $sale_id, $mixed_cash);
-                            $pmt_stmt->execute();
+                        $change = max(0, $mixed_cash + $mixed_kbzpay - $grand_total);
+                        if ($hasSaleExtra && columnExists($conn, 'sale_payments', 'cash_amount')) {
+                            $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, change_amount, payment_status) VALUES (?, 'Mixed', ?, ?, ?, ?, 'Paid')");
+                            $pmt_stmt->bind_param("idddd", $sale_id, $mixed_cash, $mixed_kbzpay, $total_paid, $change);
+                        } else {
+                            $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, $insAmtCol) VALUES (?, 'Mixed', ?)");
+                            $pmt_stmt->bind_param("id", $sale_id, $total_paid);
                         }
-                        if ($mixed_kbzpay > 0) {
-                            $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, amount) VALUES (?, 'KBZPay', ?)");
-                            $pmt_stmt->bind_param("id", $sale_id, $mixed_kbzpay);
-                            $pmt_stmt->execute();
-                        }
+                        $pmt_stmt->execute();
                     } else {
-                        $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, amount) VALUES (?, ?, ?)");
-                        $pmt_stmt->bind_param("isd", $sale_id, $primary_method, $total_paid);
+                        $change = max(0, $total_paid - $grand_total);
+                        if ($hasSaleExtra && columnExists($conn, 'sale_payments', 'cash_amount')) {
+                            $cash = ($payment_method === 'Cash') ? $total_paid : 0;
+                            $kbz = ($payment_method === 'KBZPay') ? $total_paid : 0;
+                            $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, change_amount, payment_status) VALUES (?, ?, ?, ?, ?, ?, 'Paid')");
+                            $pmt_stmt->bind_param("isiddd", $sale_id, $primary_method, $cash, $kbz, $total_paid, $change);
+                        } else {
+                            $pmt_stmt = $conn->prepare("INSERT INTO sale_payments (sale_id, payment_method, $insAmtCol) VALUES (?, ?, ?)");
+                            $pmt_stmt->bind_param("isd", $sale_id, $primary_method, $total_paid);
+                        }
                         $pmt_stmt->execute();
                     }
 
@@ -499,8 +511,11 @@ $page_title = "New Sale (POS)";
                                 <span class="font-semibold text-gray-800" id="cartSubtotal"><?= number_format($cart_subtotal) ?> Ks</span>
                             </div>
                             <div class="flex justify-between text-sm items-center">
-                                <span class="text-gray-500">Discount</span>
-                                <input type="number" form="paymentForm" name="discount" id="discountInput" value="0" min="0" class="border border-gray-200 rounded-lg w-24 text-right p-1.5 text-sm focus:outline-none focus:border-indigo-400" oninput="updateTotals()">
+                                <span class="text-gray-500">Discount (%)</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" form="paymentForm" name="discount" id="discountInput" value="0" min="0" max="100" step="0.01" class="border border-gray-200 rounded-lg w-20 text-right p-1.5 text-sm focus:outline-none focus:border-indigo-400" oninput="updateTotals()">
+                                    <span class="text-gray-400 text-xs">%</span>
+                                </div>
                             </div>
                             <div class="border-t border-gray-100 pt-2 flex justify-between items-center">
                                 <span class="font-bold text-gray-900 dark:text-gray-100">Total</span>
@@ -629,8 +644,9 @@ $page_title = "New Sale (POS)";
         function updateTotals() {
             const subtotal = calculateSubtotal();
             document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString() + ' Ks';
-            const discount = parseFloat(document.getElementById('discountInput').value) || 0;
-            const total = Math.max(0, subtotal - discount);
+            const discountPercent = parseFloat(document.getElementById('discountInput').value) || 0;
+            const discountAmount = subtotal * (discountPercent / 100);
+            const total = Math.max(0, subtotal - discountAmount);
             document.getElementById('grandTotalDisplay').textContent = total.toLocaleString() + ' Ks';
             document.getElementById('modalTotal').textContent = total.toLocaleString() + ' Ks';
             if (!document.getElementById('paymentModal').classList.contains('hidden')) {
@@ -696,8 +712,9 @@ $page_title = "New Sale (POS)";
 
         function getTotal() {
             const subtotal = calculateSubtotal();
-            const discount = parseFloat(document.getElementById('discountInput').value) || 0;
-            return Math.max(0, subtotal - discount);
+            const discountPercent = parseFloat(document.getElementById('discountInput').value) || 0;
+            const discountAmount = subtotal * (discountPercent / 100);
+            return Math.max(0, subtotal - discountAmount);
         }
 
         function calculatePayments() {

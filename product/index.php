@@ -35,7 +35,7 @@ if ($action === 'edit' && isset($_POST['update'])) {
     $product_name = mysqli_real_escape_string($conn, $_POST['product_name']);
     $sku = mysqli_real_escape_string($conn, $_POST['sku']);
     $barcode = mysqli_real_escape_string($conn, $_POST['barcode']);
-    $unit = mysqli_real_escape_string($conn, $_POST['unit']);
+    $unit_id = (int)$_POST['unit_id'];
     $reorder_level = (int)$_POST['reorder_level'];
     $selling_price = (float)$_POST['selling_price'];
     $status = mysqli_real_escape_string($conn, $_POST['status']);
@@ -48,7 +48,7 @@ if ($action === 'edit' && isset($_POST['update'])) {
         move_uploaded_file($_FILES['image']['tmp_name'], "../img/" . $image);
     }
 
-    mysqli_query($conn, "UPDATE products SET category_id=$category_id, product_name='$product_name', sku='$sku', barcode='$barcode', unit='$unit', reorder_level=$reorder_level, selling_price=$selling_price, price_update_required = CASE WHEN $selling_price > purchase_price THEN 0 ELSE price_update_required END, image='$image', status='$status' WHERE id=$id");
+    mysqli_query($conn, "UPDATE products SET category_id=$category_id, product_name='$product_name', sku='$sku', barcode='$barcode', unit_id=$unit_id, reorder_level=$reorder_level, selling_price=$selling_price, price_update_required = CASE WHEN $selling_price > purchase_price THEN 0 ELSE price_update_required END, image='$image', status='$status' WHERE id=$id");
     header("Location:index.php");
     exit;
 }
@@ -58,7 +58,7 @@ if ($action === 'add' && isset($_POST['save'])) {
     $product_name = mysqli_real_escape_string($conn, $_POST['product_name']);
     $sku = mysqli_real_escape_string($conn, $_POST['sku']);
     $barcode = mysqli_real_escape_string($conn, $_POST['barcode']);
-    $unit = mysqli_real_escape_string($conn, $_POST['unit']);
+    $unit_id = (int)$_POST['unit_id'];
     $reorder_level = (int)$_POST['reorder_level'];
     $selling_price = (float)$_POST['selling_price'];
     $status = 'Active';
@@ -70,7 +70,7 @@ if ($action === 'add' && isset($_POST['save'])) {
         move_uploaded_file($_FILES['image']['tmp_name'], "../img/" . $image);
     }
 
-    mysqli_query($conn, "INSERT INTO products (category_id, product_name, sku, barcode, unit, reorder_level, selling_price, image, status) VALUES ($category_id, '$product_name', '$sku', '$barcode', '$unit', $reorder_level, $selling_price, '$image', '$status')");
+    mysqli_query($conn, "INSERT INTO products (category_id, product_name, sku, barcode, unit_id, reorder_level, selling_price, image, status) VALUES ($category_id, '$product_name', '$sku', '$barcode', $unit_id, $reorder_level, $selling_price, '$image', '$status')");
     header("Location:index.php");
     exit;
 }
@@ -110,7 +110,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                 <?php if ($action === 'view'): ?>
                     <?php
                     $view_id = (int)($_GET['id'] ?? 0);
-                    $view_product = mysqli_fetch_assoc(mysqli_query($conn, "SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = $view_id"));
+                    $view_product = mysqli_fetch_assoc(mysqli_query($conn, "SELECT p.*, c.name AS category_name, u.unit_name, u.unit_symbol FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN units u ON p.unit_id = u.unit_id WHERE p.id = $view_id"));
                     if (!$view_product) {
                         echo '<div class="text-center py-20"><h2 class="text-2xl font-bold text-gray-400">Product not found</h2><a href="index.php" class="text-indigo-600 mt-4 inline-block">&larr; Back to Products</a></div>';
                     } else {
@@ -199,7 +199,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 text-center">
                                     <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Stock</p>
                                     <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1"><?= $vqty ?></p>
-                                    <p class="text-xs text-gray-400 mt-0.5"><?= htmlspecialchars($view_product['unit']) ?></p>
+                                    <p class="text-xs text-gray-400 mt-0.5"><?= htmlspecialchars($view_product['unit_symbol'] ?? '') ?></p>
                                 </div>
                                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 text-center">
                                     <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reorder Level</p>
@@ -236,7 +236,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                         </div>
                                         <div class="flex justify-between py-2 border-b border-gray-100 dark:border-slate-700">
                                             <span class="text-sm text-gray-500">Unit</span>
-                                            <span class="text-sm font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($view_product['unit']) ?></span>
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($view_product['unit_name'] ?? '') ?></span>
                                         </div>
                                         <div class="flex justify-between py-2 border-b border-gray-100 dark:border-slate-700">
                                             <span class="text-sm text-gray-500">Category</span>
@@ -444,12 +444,15 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                                 <!-- Unit -->
                                                 <div>
                                                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Unit <span class="text-red-500">*</span></label>
-                                                    <select name="unit" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition" required>
-                                                        <?php $units = ['pcs', 'box', 'kg', 'liter', 'pack', 'bottle', 'can'];
-                                                        foreach ($units as $u) {
-                                                            $sel = ($is_edit && $product['unit'] == $u) ? 'selected' : '';
+                                                    <select name="unit_id" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition" required>
+                                                        <option value="">Select Unit</option>
+                                                        <?php
+                                                        $unit_sql = "SELECT * FROM units WHERE status='Active' ORDER BY unit_name ASC";
+                                                        $units_result = mysqli_query($conn, $unit_sql);
+                                                        while ($u = mysqli_fetch_assoc($units_result)) {
+                                                            $sel = ($is_edit && $product['unit_id'] == $u['unit_id']) ? 'selected' : '';
                                                         ?>
-                                                            <option value="<?= $u ?>" <?= $sel ?>><?= $u ?></option>
+                                                            <option value="<?= $u['unit_id'] ?>" <?= $sel ?>><?= htmlspecialchars($u['unit_name']) ?> (<?= htmlspecialchars($u['unit_symbol']) ?>)</option>
                                                         <?php } ?>
                                                     </select>
                                                 </div>
@@ -558,9 +561,10 @@ if ($action === 'edit' && isset($_GET['id'])) {
                     $status = mysqli_real_escape_string($conn, $_GET['status'] ?? '');
 
                     $sql = "
-SELECT products.*, categories.name
+SELECT products.*, categories.name, units.unit_name, units.unit_symbol
 FROM products
 INNER JOIN categories ON products.category_id = categories.id
+LEFT JOIN units ON products.unit_id = units.unit_id
 WHERE 1=1
 ";
                     if ($search != "") {
@@ -671,7 +675,7 @@ WHERE 1=1
                                             </td>
                                             <td class="px-4 py-3">
                                                 <div class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['product_name']) ?></div>
-                                                <p class="text-xs text-gray-400"><?= htmlspecialchars($row['unit']) ?></p>
+                                                <p class="text-xs text-gray-400"><?= htmlspecialchars($row['unit_symbol'] ?? '') ?></p>
                                                 <?php if (!empty($row['price_update_required'])): ?>
                                                     <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
                                                         <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
@@ -687,7 +691,7 @@ WHERE 1=1
                                             <td class="px-4 py-3 num">
                                                 <div class="flex flex-col items-center gap-1">
                                                     <?= $stockBadge ?>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400"><?= $qty ?> <?= htmlspecialchars($row['unit']) ?></span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400"><?= $qty ?> <?= htmlspecialchars($row['unit_symbol'] ?? '') ?></span>
                                                 </div>
                                             </td>
                                             <td class="px-4 py-3 num font-semibold"><?= $row['current_stock'] ?></td>
