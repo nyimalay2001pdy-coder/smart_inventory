@@ -58,11 +58,11 @@ if (mysqli_num_rows($payments) > 0) {
 
 $discount = (float)($sale['discount'] ?? 0);
 $grand_total = (float)$sale['total_amount'];
-$tax = 0;
 $change = max(0, $total_paid - $grand_total);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -72,14 +72,23 @@ $change = max(0, $total_paid - $grand_total);
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         @media print {
-            .no-print { display: none !important; }
-            body { background: #fff !important; }
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: #fff !important;
+            }
         }
+
         @media print {
-            @page { margin: 0.5in; }
+            @page {
+                margin: 0.5in;
+            }
         }
     </style>
 </head>
+
 <body class="bg-gray-100 dark:bg-slate-900 min-h-screen flex items-start justify-center p-4 sm:p-6 md:p-8">
 
     <div class="w-full max-w-[480px] flex flex-col items-center">
@@ -136,19 +145,20 @@ $change = max(0, $total_paid - $grand_total);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $row_idx = 0; foreach ($item_rows as $item): $row_idx++; ?>
-                            <tr>
-                                <td><?= $row_idx ?></td>
-                                <td><?= htmlspecialchars($item['product_name']) ?></td>
-                                <td><?= htmlspecialchars($item['sku'] ?? '—') ?></td>
-                                <td class="num"><?= (int)$item['quantity'] ?></td>
-                                <td class="num"><?= number_format((float)$item['selling_price']) ?> Ks</td>
-                                <td class="num"><?= number_format((float)$item['subtotal']) ?> Ks</td>
-                                <td class="num <?= (float)($item['profit'] ?? 0) < 0 ? 'text-red-600' : 'text-emerald-600' ?>">
-                                    <?php $p_val = (float)($item['profit'] ?? 0); ?>
-                                    <?= ($p_val < 0 ? 'Loss ' : '') . number_format($p_val) ?> Ks
-                                </td>
-                            </tr>
+                            <?php $row_idx = 0;
+                            foreach ($item_rows as $item): $row_idx++; ?>
+                                <tr>
+                                    <td><?= $row_idx ?></td>
+                                    <td><?= htmlspecialchars($item['product_name']) ?></td>
+                                    <td><?= htmlspecialchars($item['sku'] ?? '—') ?></td>
+                                    <td class="num"><?= (int)$item['quantity'] ?></td>
+                                    <td class="num"><?= number_format((float)$item['selling_price']) ?> Ks</td>
+                                    <td class="num"><?= number_format((float)$item['subtotal']) ?> Ks</td>
+                                    <td class="num <?= (float)($item['profit'] ?? 0) < 0 ? 'text-red-600' : 'text-emerald-600' ?>">
+                                        <?php $p_val = (float)($item['profit'] ?? 0); ?>
+                                        <?= ($p_val < 0 ? 'Loss ' : '') . number_format($p_val) ?> Ks
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -164,15 +174,11 @@ $change = max(0, $total_paid - $grand_total);
                         <span class="font-semibold text-gray-800"><?= number_format($subtotal) ?> Ks</span>
                     </div>
                     <?php if ($discount > 0): ?>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-500">Discount (<?= number_format($discount, 2) ?>%)</span>
-                        <span class="font-semibold text-red-500">- <?= number_format($subtotal * $discount / 100) ?> Ks</span>
-                    </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Discount (<?= number_format($discount, 2) ?>%)</span>
+                            <span class="font-semibold text-red-500">- <?= number_format($subtotal * $discount / 100) ?> Ks</span>
+                        </div>
                     <?php endif; ?>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-500">Tax</span>
-                        <span class="text-gray-400">— Ks</span>
-                    </div>
                     <div class="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
                         <span class="text-gray-900">Grand Total</span>
                         <span class="text-emerald-600"><?= number_format($grand_total) ?> Ks</span>
@@ -203,14 +209,19 @@ $change = max(0, $total_paid - $grand_total);
         <!-- Buttons -->
         <div class="flex gap-3 mt-5 w-full no-print">
             <button onclick="window.print()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-3 px-5 rounded-xl flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
                 Print Invoice
             </button>
             <a href="history.php" class="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold py-3 px-5 rounded-xl flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
                 Back
             </a>
         </div>
     </div>
 </body>
+
 </html>

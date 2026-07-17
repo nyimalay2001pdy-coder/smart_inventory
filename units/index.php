@@ -128,7 +128,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
         <div class="flex-1 flex flex-col">
-            <?php include "../includes/header.php"; ?>
+            <?php $page_title = 'Unit Management'; include "../includes/header.php"; ?>
             <main class="p-6">
 
                 <?php if ($action === 'add' || $action === 'edit'): ?>
@@ -181,8 +181,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
 
                 <?php else: ?>
 
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Unit Management</h2>
+                    <div class="flex justify-end items-center mb-6">
                         <a href="?action=add" class="bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition shadow-sm">＋ Add Unit</a>
                     </div>
 

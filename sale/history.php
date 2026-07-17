@@ -30,7 +30,10 @@ if (isset($_GET['view_id'])) {
         LEFT JOIN users u ON s.user_id = u.id
         WHERE s.id = $vid
     "));
-    if (!$sale) { echo json_encode(['error' => 'Sale not found']); exit; }
+    if (!$sale) {
+        echo json_encode(['error' => 'Sale not found']);
+        exit;
+    }
     $details = mysqli_query($conn, "
         SELECT sd.*, p.product_name, p.sku
         FROM sale_details sd
@@ -71,7 +74,6 @@ $cashier = $_GET['cashier'] ?? '';
 $payment_method = $_GET['payment_method'] ?? '';
 $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
-
 $sql = "SELECT s.*, u.name AS cashier_name,
                COALESCE(d.items_count, 0) AS items_count,
                COALESCE(d.total_qty, 0) AS total_qty,
@@ -125,12 +127,13 @@ $period_stats = mysqli_fetch_assoc(mysqli_query($conn, $period_sql));
 $avg_sale = $period_stats['total_sales'] > 0 ? round($period_stats['total_revenue'] / $period_stats['total_sales']) : 0;
 
 // Cashier list for filter dropdown
-$cashiers = mysqli_query($conn, "SELECT DISTINCT u.id, u.name FROM sales s JOIN users u ON s.user_id = u.id WHERE u.name IS NOT NULL ORDER BY u.name");
+$cashiers = mysqli_query($conn, "SELECT DISTINCT u.id, u.name, u.role FROM sales s JOIN users u ON s.user_id = u.id WHERE u.name IS NOT NULL ORDER BY u.name");
 
 $page_title = "Sales History";
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -139,11 +142,23 @@ $page_title = "Sales History";
     <?php include "../includes/theme-init.php"; ?>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        .table-header-sticky th { position: sticky; top: 0; z-index: 10; }
+        .stat-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .table-header-sticky th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
     </style>
 </head>
+
 <body class="bg-gray-50 dark:bg-slate-900">
     <div class="flex min-h-screen">
         <?php include "../includes/sidebar.php"; ?>
@@ -152,19 +167,25 @@ $page_title = "Sales History";
             <main class="p-4 lg:p-6">
                 <div class="max-w-7xl mx-auto">
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-5 py-4 rounded-xl flex items-start gap-3 shadow-sm">
-                        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        <span class="text-sm font-medium">Sale deleted successfully.</span>
-                    </div>
+                        <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-5 py-4 rounded-xl flex items-start gap-3 shadow-sm">
+                            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span class="text-sm font-medium">Sale deleted successfully.</span>
+                        </div>
                     <?php endif; ?>
 
-                    <div class="flex gap-2 mb-6">
+                    <div class="flex justify-end gap-2 mb-6">
                         <button onclick="exportExcel()" class="btn btn-outline gap-2 text-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
                             Export Excel
                         </button>
                         <a href="pos.php" class="btn btn-primary gap-2 text-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
                             New Sale
                         </a>
                     </div>
@@ -174,7 +195,9 @@ $page_title = "Sales History";
                         <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
                             <div class="flex items-center gap-4">
                                 <div class="w-11 h-11 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Today's Sales</p>
@@ -186,7 +209,9 @@ $page_title = "Sales History";
                         <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
                             <div class="flex items-center gap-4">
                                 <div class="w-11 h-11 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Revenue</p>
@@ -198,7 +223,9 @@ $page_title = "Sales History";
                         <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
                             <div class="flex items-center gap-4">
                                 <div class="w-11 h-11 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+                                    </svg>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Transactions</p>
@@ -210,7 +237,9 @@ $page_title = "Sales History";
                         <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
                             <div class="flex items-center gap-4">
                                 <div class="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                    </svg>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Average Sale</p>
@@ -225,7 +254,9 @@ $page_title = "Sales History";
                     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm mb-6 overflow-hidden">
                         <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
                             </div>
                             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Filters</h3>
                         </div>
@@ -252,8 +283,9 @@ $page_title = "Sales History";
                                     <label class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">Cashier</label>
                                     <select name="cashier" class="form-input text-sm">
                                         <option value="">All Cashiers</option>
-                                        <?php mysqli_data_seek($cashiers, 0); while ($ca = mysqli_fetch_assoc($cashiers)): ?>
-                                        <option value="<?= htmlspecialchars($ca['name']) ?>" <?= $cashier === $ca['name'] ? 'selected' : '' ?>><?= htmlspecialchars($ca['name']) ?></option>
+                                        <?php mysqli_data_seek($cashiers, 0);
+                                        while ($ca = mysqli_fetch_assoc($cashiers)): ?>
+                                            <option value="<?= htmlspecialchars($ca['name']) ?>" <?= $cashier === $ca['name'] ? 'selected' : '' ?>><?= htmlspecialchars($ca['name']) ?> (<?= htmlspecialchars($ca['role']) ?>)</option>
                                         <?php endwhile; ?>
                                     </select>
                                 </div>
@@ -261,17 +293,23 @@ $page_title = "Sales History";
                                     <label class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">Search Invoice</label>
                                     <div class="relative">
                                         <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Invoice no..." class="form-input text-sm pl-9">
-                                        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
                                     </div>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 mt-5 pt-4 border-t border-gray-100 dark:border-slate-700">
                                 <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-sm hover:shadow-md hover:shadow-indigo-500/25">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
                                     Search
                                 </button>
                                 <a href="history.php" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl transition-all duration-200">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
                                     Reset
                                 </a>
                             </div>
@@ -296,44 +334,48 @@ $page_title = "Sales History";
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if (mysqli_num_rows($result) > 0): $count = 1; while ($row = mysqli_fetch_assoc($result)): 
-                                        $method = $row['payment_method'] ?? 'Cash';
-                                        $method_badge = match ($method) {
-                                            'KBZPay' => 'badge-info',
-                                            'Mixed' => 'badge-purple',
-                                            default => 'badge-success',
-                                        };
+                                    <?php if (mysqli_num_rows($result) > 0): $count = 1;
+                                        while ($row = mysqli_fetch_assoc($result)):
+                                            $method = $row['payment_method'] ?? 'Cash';
+                                            $method_badge = match ($method) {
+                                                'KBZPay' => 'badge-info',
+                                                'Mixed' => 'badge-purple',
+                                                default => 'badge-success',
+                                            };
                                     ?>
-                                    <tr class="hover:bg-indigo-50/40 transition-colors border-b border-gray-100 last:border-0">
-                                        <td><?= $count++ ?></td>
-                                        <td><?= htmlspecialchars($row['invoice_no']) ?></td>
-                                        <td><?= date('d M Y, h:i A', strtotime($row['created_at'])) ?></td>
-                                        <td><?= htmlspecialchars($row['cashier_name'] ?? '—') ?></td>
-                                        <td class="num"><?= number_format((float)$row['subtotal']) ?> Ks</td>
-                                        <td class="num text-red-500"><?= (float)$row['discount'] > 0 ? '-' . number_format((float)$row['discount'], 2) . '%' : '—' ?></td>
-                                        <td class="num font-semibold"><?= number_format((float)$row['total_amount']) ?> Ks</td>
-                                        <td class="center">
-                                            <span class="badge <?= $method_badge ?> whitespace-nowrap text-xs">
-                                                <span class="badge-dot"></span>
-                                                <?= $method ?>
-                                            </span>
-                                        </td>
-                                        <td class="center">
-                                            <div class="actions">
-                                                <a href="invoice.php?id=<?= $row['id'] ?>" target="_blank" class="btn btn-sm bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg font-medium text-xs px-3">View</a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <?php endwhile; else: ?>
-                                    <tr>
-                                        <td colspan="9" class="text-center py-16">
-                                            <div class="flex flex-col items-center">
-                                                <svg class="w-14 h-14 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
-                                                <h3 class="text-base font-semibold text-gray-500 dark:text-gray-400">No sales found</h3>
-                                                <p class="text-sm text-gray-400 mt-1">No sales match your filters. Try adjusting the search criteria.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                            <tr class="hover:bg-indigo-50/40 transition-colors border-b border-gray-100 last:border-0">
+                                                <td><?= $count++ ?></td>
+                                                <td><?= htmlspecialchars($row['invoice_no']) ?></td>
+                                                <td><?= date('d M Y, h:i A', strtotime($row['created_at'])) ?></td>
+                                                <td><?= htmlspecialchars($row['cashier_name'] ?? '—') ?></td>
+                                                <td class="num"><?= number_format((float)$row['subtotal']) ?> Ks</td>
+                                                <td class="num text-red-500"><?= (float)$row['discount'] > 0 ? '-' . number_format((float)$row['discount'], 2) . '%' : '—' ?></td>
+                                                <td class="num font-semibold"><?= number_format((float)$row['total_amount']) ?> Ks</td>
+                                                <td class="center">
+                                                    <span class="badge <?= $method_badge ?> whitespace-nowrap text-xs">
+                                                        <span class="badge-dot"></span>
+                                                        <?= $method ?>
+                                                    </span>
+                                                </td>
+                                                <td class="center">
+                                                    <div class="actions">
+                                                        <a href="invoice.php?id=<?= $row['id'] ?>" target="_blank" class="btn btn-sm bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg font-medium text-xs px-3">View</a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endwhile;
+                                    else: ?>
+                                        <tr>
+                                            <td colspan="9" class="text-center py-16">
+                                                <div class="flex flex-col items-center">
+                                                    <svg class="w-14 h-14 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+                                                    </svg>
+                                                    <h3 class="text-base font-semibold text-gray-500 dark:text-gray-400">No sales found</h3>
+                                                    <p class="text-sm text-gray-400 mt-1">No sales match your filters. Try adjusting the search criteria.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -344,139 +386,169 @@ $page_title = "Sales History";
         </div>
     </div>
 
-     <style>
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
+    <style>
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 
     <?php include "../includes/toast.php"; ?>
     <?php include "../includes/footer.php"; ?>
 
     <script>
-    // ============ Invoice Modal ============
-    function viewInvoice(id) {
-        const modal = document.getElementById('invoiceModal');
-        const body = document.getElementById('modalBody');
-        modal.classList.remove('hidden');
-        body.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div><p class="text-sm">Loading invoice...</p></div>';
+        // ============ Invoice Modal ============
+        function viewInvoice(id) {
+            const modal = document.getElementById('invoiceModal');
+            const body = document.getElementById('modalBody');
+            modal.classList.remove('hidden');
+            body.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div><p class="text-sm">Loading invoice...</p></div>';
 
-        fetch('history.php?view_id=' + id)
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.error) { body.innerHTML = '<p class="text-center text-red-500 py-8">' + data.error + '</p>'; return; }
-                var s = data.sale, items = data.items;
-                document.getElementById('modalInvoiceNo').textContent = s.invoice_no;
+            fetch('history.php?view_id=' + id)
+                .then(function(r) {
+                    return r.json();
+                })
+                .then(function(data) {
+                    if (data.error) {
+                        body.innerHTML = '<p class="text-center text-red-500 py-8">' + data.error + '</p>';
+                        return;
+                    }
+                    var s = data.sale,
+                        items = data.items;
+                    document.getElementById('modalInvoiceNo').textContent = s.invoice_no;
 
-                var subtotal = 0;
-                var totalProfit = 0;
-                for (var i = 0; i < items.length; i++) {
-                    subtotal += parseFloat(items[i].subtotal) || 0;
-                    totalProfit += parseFloat(items[i].profit) || 0;
-                }
-                var discount = parseFloat(s.discount) || 0;
-                var grandTotal = parseFloat(s.total_amount) || 0;
-                var totalPaid = parseFloat(data.total_paid) || 0;
-                var change = parseFloat(data.change) || 0;
+                    var subtotal = 0;
+                    var totalProfit = 0;
+                    for (var i = 0; i < items.length; i++) {
+                        subtotal += parseFloat(items[i].subtotal) || 0;
+                        totalProfit += parseFloat(items[i].profit) || 0;
+                    }
+                    var discount = parseFloat(s.discount) || 0;
+                    var grandTotal = parseFloat(s.total_amount) || 0;
+                    var totalPaid = parseFloat(data.total_paid) || 0;
+                    var change = parseFloat(data.change) || 0;
 
-                var html = '';
-                // Info header
-                html += '<div class="grid grid-cols-2 gap-4 mb-5 pb-5 border-b border-gray-100 dark:border-slate-700">';
-                html += '<div><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Invoice No</p><p class="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5">' + s.invoice_no + '</p></div>';
-                html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Time</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + new Date(s.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p></div>';
-                html += '<div><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cashier</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (s.cashier_name || '—') + '</p></div>';
-                html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Method</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (data.payment_method || 'Cash') + '</p></div>';
-                html += '</div>';
+                    var html = '';
+                    // Info header
+                    html += '<div class="grid grid-cols-2 gap-4 mb-5 pb-5 border-b border-gray-100 dark:border-slate-700">';
+                    html += '<div><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Invoice No</p><p class="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5">' + s.invoice_no + '</p></div>';
+                    html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Time</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + new Date(s.created_at).toLocaleString('en-US', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }) + '</p></div>';
+                    html += '<div><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cashier</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (s.cashier_name || '—') + '</p></div>';
+                    html += '<div class="text-right"><p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Method</p><p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">' + (data.payment_method || 'Cash') + '</p></div>';
+                    html += '</div>';
 
-                // Items table
-                html += '<div class="overflow-x-auto mb-5"><table class="w-full text-sm">';
-                html += '<thead><tr class="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-200 dark:border-slate-600">';
-                html += '<th class="text-left py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">#</th>';
-                html += '<th class="text-left py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Product</th>';
-                html += '<th class="text-left py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">SKU</th>';
-                html += '<th class="text-center py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Qty</th>';
-                html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Unit Price</th>';
-                html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Subtotal</th>';
-                html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Profit</th>';
-                html += '</tr></thead><tbody>';
-                for (var i = 0; i < items.length; i++) {
-                    var it = items[i];
-                    html += '<tr class="border-b border-gray-50 dark:border-slate-700 hover:bg-gray-50/50 dark:hover:bg-slate-700/30">';
-                    html += '<td class="py-2.5 px-3 text-gray-400 font-mono">' + (i + 1) + '</td>';
-                    html += '<td class="py-2.5 px-3 font-medium text-gray-800 dark:text-gray-200">' + (it.product_name || 'Product #' + it.product_id) + '</td>';
-                    html += '<td class="py-2.5 px-3 text-gray-500 dark:text-gray-400 text-xs">' + (it.sku || '—') + '</td>';
-                    html += '<td class="py-2.5 px-3 text-center font-semibold text-gray-800 dark:text-gray-200">' + it.quantity + '</td>';
-                    html += '<td class="py-2.5 px-3 text-right text-gray-700 dark:text-gray-300">' + Number(it.selling_price).toLocaleString() + ' Ks</td>';
-                    html += '<td class="py-2.5 px-3 text-right font-semibold text-gray-800 dark:text-gray-200">' + Number(it.subtotal).toLocaleString() + ' Ks</td>';
-                    var pVal = parseFloat(it.profit) || 0;
-                    var pColor = pVal < 0 ? 'text-red-600' : 'text-emerald-600';
-                    var pLabel = pVal < 0 ? 'Loss ' : '';
-                    html += '<td class="py-2.5 px-3 text-right font-semibold ' + pColor + '">' + pLabel + pVal.toLocaleString() + ' Ks</td>';
-                    html += '</tr>';
-                }
-                html += '</tbody></table></div>';
+                    // Items table
+                    html += '<div class="overflow-x-auto mb-5"><table class="w-full text-sm">';
+                    html += '<thead><tr class="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-200 dark:border-slate-600">';
+                    html += '<th class="text-left py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">#</th>';
+                    html += '<th class="text-left py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Product</th>';
+                    html += '<th class="text-left py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">SKU</th>';
+                    html += '<th class="text-center py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Qty</th>';
+                    html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Unit Price</th>';
+                    html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Subtotal</th>';
+                    html += '<th class="text-right py-2.5 px-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase">Profit</th>';
+                    html += '</tr></thead><tbody>';
+                    for (var i = 0; i < items.length; i++) {
+                        var it = items[i];
+                        html += '<tr class="border-b border-gray-50 dark:border-slate-700 hover:bg-gray-50/50 dark:hover:bg-slate-700/30">';
+                        html += '<td class="py-2.5 px-3 text-gray-400 font-mono">' + (i + 1) + '</td>';
+                        html += '<td class="py-2.5 px-3 font-medium text-gray-800 dark:text-gray-200">' + (it.product_name || 'Product #' + it.product_id) + '</td>';
+                        html += '<td class="py-2.5 px-3 text-gray-500 dark:text-gray-400 text-xs">' + (it.sku || '—') + '</td>';
+                        html += '<td class="py-2.5 px-3 text-center font-semibold text-gray-800 dark:text-gray-200">' + it.quantity + '</td>';
+                        html += '<td class="py-2.5 px-3 text-right text-gray-700 dark:text-gray-300">' + Number(it.selling_price).toLocaleString() + ' Ks</td>';
+                        html += '<td class="py-2.5 px-3 text-right font-semibold text-gray-800 dark:text-gray-200">' + Number(it.subtotal).toLocaleString() + ' Ks</td>';
+                        var pVal = parseFloat(it.profit) || 0;
+                        var pColor = pVal < 0 ? 'text-red-600' : 'text-emerald-600';
+                        var pLabel = pVal < 0 ? 'Loss ' : '';
+                        html += '<td class="py-2.5 px-3 text-right font-semibold ' + pColor + '">' + pLabel + pVal.toLocaleString() + ' Ks</td>';
+                        html += '</tr>';
+                    }
+                    html += '</tbody></table></div>';
 
-                // Payment Summary
-                html += '<div class="border-t border-gray-200 dark:border-slate-600 pt-4 space-y-1.5 max-w-[280px] ml-auto">';
-                html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Subtotal</span><span class="font-semibold text-gray-800 dark:text-gray-200">' + subtotal.toLocaleString() + ' Ks</span></div>';
-                if (discount > 0) html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Discount (' + discount.toFixed(2) + '%)</span><span class="font-semibold text-red-500">- ' + (subtotal * discount / 100).toLocaleString() + ' Ks</span></div>';
-                html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Tax</span><span class="text-gray-400">— Ks</span></div>';
-                html += '<div class="flex justify-between text-base pt-2 border-t border-gray-100 dark:border-slate-600"><span class="font-bold text-gray-900 dark:text-gray-100">Grand Total</span><span class="font-bold text-emerald-600">' + grandTotal.toLocaleString() + ' Ks</span></div>';
-                var profitLabel = totalProfit < 0 ? 'Loss' : 'Profit';
-                var profitColor = totalProfit < 0 ? 'text-red-600' : 'text-emerald-600';
-                html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">' + profitLabel + '</span><span class="font-semibold ' + profitColor + '">' + totalProfit.toLocaleString() + ' Ks</span></div>';
-                html += '<div class="border-t border-dashed border-gray-300 dark:border-slate-600 my-2"></div>';
-                html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Amount Paid</span><span class="font-semibold text-gray-800 dark:text-gray-200">' + totalPaid.toLocaleString() + ' Ks</span></div>';
-                html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Change</span><span class="font-semibold ' + (change > 0 ? 'text-emerald-600' : 'text-gray-800 dark:text-gray-200') + '">' + change.toLocaleString() + ' Ks</span></div>';
-                html += '</div>';
+                    // Payment Summary
+                    html += '<div class="border-t border-gray-200 dark:border-slate-600 pt-4 space-y-1.5 max-w-[280px] ml-auto">';
+                    html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Subtotal</span><span class="font-semibold text-gray-800 dark:text-gray-200">' + subtotal.toLocaleString() + ' Ks</span></div>';
+                    if (discount > 0) html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Discount (' + discount.toFixed(2) + '%)</span><span class="font-semibold text-red-500">- ' + (subtotal * discount / 100).toLocaleString() + ' Ks</span></div>';
+                    html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Tax</span><span class="text-gray-400">— Ks</span></div>';
+                    html += '<div class="flex justify-between text-base pt-2 border-t border-gray-100 dark:border-slate-600"><span class="font-bold text-gray-900 dark:text-gray-100">Grand Total</span><span class="font-bold text-emerald-600">' + grandTotal.toLocaleString() + ' Ks</span></div>';
+                    var profitLabel = totalProfit < 0 ? 'Loss' : 'Profit';
+                    var profitColor = totalProfit < 0 ? 'text-red-600' : 'text-emerald-600';
+                    html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">' + profitLabel + '</span><span class="font-semibold ' + profitColor + '">' + totalProfit.toLocaleString() + ' Ks</span></div>';
+                    html += '<div class="border-t border-dashed border-gray-300 dark:border-slate-600 my-2"></div>';
+                    html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Amount Paid</span><span class="font-semibold text-gray-800 dark:text-gray-200">' + totalPaid.toLocaleString() + ' Ks</span></div>';
+                    html += '<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Change</span><span class="font-semibold ' + (change > 0 ? 'text-emerald-600' : 'text-gray-800 dark:text-gray-200') + '">' + change.toLocaleString() + ' Ks</span></div>';
+                    html += '</div>';
 
-                // Action buttons
-                html += '<div class="flex mt-6 pt-5 border-t border-gray-200 dark:border-slate-600">';
-                html += '<a href="history.php" class="w-full bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 text-sm font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-sm"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>Back</a>';
-                html += '</div>';
+                    // Action buttons
+                    html += '<div class="flex mt-6 pt-5 border-t border-gray-200 dark:border-slate-600">';
+                    html += '<a href="history.php" class="w-full bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 text-sm font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-sm"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>Back</a>';
+                    html += '</div>';
 
-                body.innerHTML = html;
-            })
-            .catch(function() {
-                body.innerHTML = '<p class="text-center text-red-500 py-8">Failed to load invoice. Please try again.</p>';
+                    body.innerHTML = html;
+                })
+                .catch(function() {
+                    body.innerHTML = '<p class="text-center text-red-500 py-8">Failed to load invoice. Please try again.</p>';
+                });
+        }
+
+        function closeInvoiceModal() {
+            document.getElementById('invoiceModal').classList.add('hidden');
+        }
+
+        // Close modal on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeInvoiceModal();
+        });
+
+        // ============ Export Excel ============
+        function exportExcel() {
+            const rows = [];
+            rows.push(['Sales Report']);
+            rows.push([]);
+            rows.push(['Summary']);
+            rows.push(['Today\'s Sales', <?= $today_stats['count'] ?>]);
+            rows.push(['Total Revenue', <?= $period_stats['total_revenue'] ?>]);
+            rows.push(['Total Transactions', <?= $period_stats['total_sales'] ?>]);
+            rows.push(['Average Sale', <?= $avg_sale ?>]);
+            rows.push([]);
+            rows.push(['No', 'Invoice No', 'Date', 'Cashier', 'Grand Total', 'Payment Method']);
+            <?php
+            mysqli_data_seek($result, 0);
+            $row_num = 1;
+            while ($row = mysqli_fetch_assoc($result)):
+            ?>
+                rows.push([<?= $row_num++ ?>, '<?= addslashes($row['invoice_no']) ?>', '<?= date('d M Y, h:i A', strtotime($row['created_at'])) ?>', '<?= addslashes($row['cashier_name'] ?? '—') ?>', <?= (float)$row['total_amount'] ?>, '<?= $row['payment_method'] ?? 'Cash' ?>']);
+            <?php endwhile; ?>
+
+            const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+            const blob = new Blob(['\uFEFF' + csv], {
+                type: 'text/csv;charset=utf-8;'
             });
-    }
-
-    function closeInvoiceModal() {
-        document.getElementById('invoiceModal').classList.add('hidden');
-    }
-
-    // Close modal on Escape
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeInvoiceModal();
-    });
-
-    // ============ Export Excel ============
-    function exportExcel() {
-        const rows = [];
-        rows.push(['Sales Report']);
-        rows.push([]);
-        rows.push(['Summary']);
-        rows.push(['Today\'s Sales', <?= $today_stats['count'] ?>]);
-        rows.push(['Total Revenue', <?= $period_stats['total_revenue'] ?>]);
-        rows.push(['Total Transactions', <?= $period_stats['total_sales'] ?>]);
-        rows.push(['Average Sale', <?= $avg_sale ?>]);
-        rows.push([]);
-        rows.push(['No', 'Invoice No', 'Date', 'Cashier', 'Grand Total', 'Payment Method']);
-        <?php
-        mysqli_data_seek($result, 0);
-        $row_num = 1;
-        while ($row = mysqli_fetch_assoc($result)):
-        ?>
-        rows.push([<?= $row_num++ ?>, '<?= addslashes($row['invoice_no']) ?>', '<?= date('d M Y, h:i A', strtotime($row['created_at'])) ?>', '<?= addslashes($row['cashier_name'] ?? '—') ?>', <?= (float)$row['total_amount'] ?>, '<?= $row['payment_method'] ?? 'Cash' ?>']);
-        <?php endwhile; ?>
-
-        const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
-        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'sales_report_<?= date('Y-m-d') ?>.csv';
-        link.click();
-    }
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'sales_report_<?= date('Y-m-d') ?>.csv';
+            link.click();
+        }
     </script>
 </body>
+
 </html>
