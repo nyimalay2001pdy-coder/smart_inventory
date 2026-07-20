@@ -422,11 +422,14 @@ $page_title = "New Sale (POS)";
                                 $low_stock = $stock <= $reorder && !$oos;
                         ?>
                                 <div class="bg-white rounded-xl border border-gray-200 p-3 product-card slide-up <?= $oos ? 'out-of-stock' : '' ?>">
-                                    <div class="h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-2 flex items-center justify-center">
-                                        <?php if ($p['image'] && file_exists('../uploads/' . $p['image'])): ?>
-                                            <img src="../uploads/<?= htmlspecialchars($p['image']) ?>" alt="" class="h-full w-full object-cover rounded-lg">
+                                    <div class="h-26 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                                        <?php if ($p['image']): ?>
+                                            <img src="../img/<?= htmlspecialchars($p['image']) ?>" alt="" class="h-full w-full object-cover rounded-lg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+
                                         <?php else: ?>
-                                            <span class="text-3xl">📦</span>
+                                            <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                            </svg>
                                         <?php endif; ?>
                                     </div>
                                     <h3 class="font-semibold text-xs text-gray-800 truncate" title="<?= htmlspecialchars($p['product_name']) ?>"><?= htmlspecialchars($p['product_name']) ?></h3>
@@ -664,14 +667,20 @@ $page_title = "New Sale (POS)";
 
         function autoUpdateCart(input) {
             let val = parseInt(input.value) || 1;
-            if (val < 1) { val = 1; input.value = 1; }
+            if (val < 1) {
+                val = 1;
+                input.value = 1;
+            }
             updateItemTotal(input);
             updateTotals();
             const formData = new FormData();
             formData.append('ajax_update_qty', '1');
             formData.append('item_key', input.dataset.key);
             formData.append('quantity', val);
-            fetch('pos.php', { method: 'POST', body: formData });
+            fetch('pos.php', {
+                method: 'POST',
+                body: formData
+            });
         }
 
         function showPaymentModal() {
@@ -728,7 +737,7 @@ $page_title = "New Sale (POS)";
                 totalPaid = parseFloat(document.getElementById('paymentKBZPay').value) || 0;
             } else if (method === 'Mixed') {
                 totalPaid = (parseFloat(document.getElementById('mixedCash').value) || 0) +
-                            (parseFloat(document.getElementById('mixedKBZPay').value) || 0);
+                    (parseFloat(document.getElementById('mixedKBZPay').value) || 0);
             }
 
             document.getElementById('totalPaidDisplay').textContent = totalPaid.toLocaleString() + ' Ks';
@@ -761,12 +770,18 @@ $page_title = "New Sale (POS)";
             document.querySelectorAll('.cart-qty').forEach(function(input) {
                 input.addEventListener('input', function() {
                     let val = parseInt(this.value) || 1;
-                    if (val < 1) { val = 1; this.value = 1; }
+                    if (val < 1) {
+                        val = 1;
+                        this.value = 1;
+                    }
                     autoUpdateCart(this);
                 });
                 input.addEventListener('change', function() {
                     let val = parseInt(this.value) || 1;
-                    if (val < 1) { val = 1; this.value = 1; }
+                    if (val < 1) {
+                        val = 1;
+                        this.value = 1;
+                    }
                     autoUpdateCart(this);
                 });
                 input.addEventListener('wheel', function(e) {

@@ -15,6 +15,12 @@ function executeQuery($conn, $sql, $params = [], $types = '') {
         $stmt->bind_param($types, ...$params);
     }
     $stmt->execute();
+
+    $trimmed = strtoupper(ltrim($sql));
+    if (preg_match('/^(INSERT|UPDATE|DELETE|REPLACE)\s/', $trimmed)) {
+        return $stmt->errno === 0;
+    }
+
     return $stmt->get_result();
 }
 

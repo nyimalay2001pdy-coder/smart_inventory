@@ -60,14 +60,41 @@ if (isset($_POST['add_payment'])) {
         if (columnExists($conn, 'purchases', 'status')) {
             mysqli_query($conn, "UPDATE purchases SET status='$new_status' WHERE id='$purchase_id'");
         }
+
+        // Update supplier outstanding balance
+        $sup_bal_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(
+            CASE WHEN IFNULL(pp.total_paid, 0) >= p.total_amount THEN 0
+                 ELSE p.total_amount - IFNULL(pp.total_paid, 0)
+            END
+        ), 0) AS outstanding
+        FROM purchases p
+        LEFT JOIN (
+            SELECT purchase_id, SUM(paid_amount) AS total_paid
+            FROM purchase_payments
+            GROUP BY purchase_id
+        ) pp ON p.id = pp.purchase_id
+        WHERE p.supplier_id = (SELECT supplier_id FROM purchases WHERE id = $purchase_id)"));
+        $outstanding = max(0, (float)$sup_bal_res['outstanding']);
+        $sup_id_for_bal = (int)mysqli_fetch_assoc(mysqli_query($conn, "SELECT supplier_id FROM purchases WHERE id = $purchase_id"))['supplier_id'];
+
+        if ($outstanding > 0) {
+            mysqli_query($conn, "UPDATE suppliers SET current_balance = $outstanding, balance_type = 'Payable' WHERE id = $sup_id_for_bal");
+        } else {
+            mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $sup_id_for_bal");
+        }
+
         header("Location: index.php?view_id=$purchase_id&success=" . urlencode("Payment added successfully."));
         exit;
     }
 }
 
 // ============ DELETE ============
-if (isset($_GET['delete_id'])) {
-    $id = (int)$_GET['delete_id'];
+if (isset($_GET['confirm_delete'])) {
+    $id = (int)$_GET['confirm_delete'];
+
+    // Get supplier_id before deletion
+    $del_sup = mysqli_fetch_assoc(mysqli_query($conn, "SELECT supplier_id FROM purchases WHERE id='$id'"));
+    $del_supplier_id = $del_sup ? (int)$del_sup['supplier_id'] : 0;
 
     $details = mysqli_query($conn, "SELECT * FROM purchase_details WHERE purchase_id='$id'");
     while ($row = mysqli_fetch_assoc($details)) {
@@ -79,6 +106,30 @@ if (isset($_GET['delete_id'])) {
     mysqli_query($conn, "DELETE FROM purchase_payments WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchase_details WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchases WHERE id='$id'");
+
+    // Recalculate supplier outstanding balance after deletion
+    if ($del_supplier_id > 0) {
+        $bal_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(
+            CASE WHEN IFNULL(pp.total_paid, 0) >= p.total_amount THEN 0
+                 ELSE p.total_amount - IFNULL(pp.total_paid, 0)
+            END
+        ), 0) AS outstanding
+        FROM purchases p
+        LEFT JOIN (
+            SELECT purchase_id, SUM(paid_amount) AS total_paid
+            FROM purchase_payments
+            GROUP BY purchase_id
+        ) pp ON p.id = pp.purchase_id
+        WHERE p.supplier_id = $del_supplier_id"));
+        $outstanding = max(0, (float)$bal_res['outstanding']);
+
+        if ($outstanding > 0) {
+            mysqli_query($conn, "UPDATE suppliers SET current_balance = $outstanding, balance_type = 'Payable' WHERE id = $del_supplier_id");
+        } else {
+            mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $del_supplier_id");
+        }
+    }
+
     header("Location: index.php?success=" . urlencode("Purchase deleted and stock rolled back."));
     exit;
 }
@@ -125,6 +176,27 @@ if (isset($_POST['update'])) {
     }
     if (columnExists($conn, 'purchases', 'status')) {
         mysqli_query($conn, "UPDATE purchases SET status='$new_status' WHERE id='$id'");
+    }
+
+    // Recalculate supplier outstanding balance
+    $sup_bal_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(
+        CASE WHEN IFNULL(pp.total_paid, 0) >= p.total_amount THEN 0
+             ELSE p.total_amount - IFNULL(pp.total_paid, 0)
+        END
+    ), 0) AS outstanding
+    FROM purchases p
+    LEFT JOIN (
+        SELECT purchase_id, SUM(paid_amount) AS total_paid
+        FROM purchase_payments
+        GROUP BY purchase_id
+    ) pp ON p.id = pp.purchase_id
+    WHERE p.supplier_id = $supplier_id"));
+    $outstanding = max(0, (float)$sup_bal_res['outstanding']);
+
+    if ($outstanding > 0) {
+        mysqli_query($conn, "UPDATE suppliers SET current_balance = $outstanding, balance_type = 'Payable' WHERE id = $supplier_id");
+    } else {
+        mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $supplier_id");
     }
 
     header("Location: index.php?success=" . urlencode("Purchase #$id updated successfully."));
@@ -295,7 +367,7 @@ $page_title = "Purchase Management";
                                                         <a href="?view_id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg">View</a>
                                                         <?php if ($is_admin): ?>
                                                             <a href="?edit_id=<?= $row['id'] ?>" class="btn btn-sm bg-green-50 text-green-600 hover:bg-green-100 rounded-lg">Edit</a>
-                                                            <button onclick="confirmDelete(<?= $row['id'] ?>)" class="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg">Delete</button>
+                                                            <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['invoice_no'])) ?>', 'index.php')" class="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg">Delete</button>
                                                         <?php endif; ?>
                                                     </div>
                                                 </td>
@@ -320,30 +392,6 @@ $page_title = "Purchase Management";
                     </div>
                 </div>
             </main>
-        </div>
-    </div>
-
-    <!-- ============ DELETE CONFIRM MODAL ============ -->
-    <div id="deleteModal" class="modal-overlay hidden">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <div class="text-center mb-5">
-                <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Delete Purchase</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Stock will be rolled back. This cannot be undone.</p>
-            </div>
-            <div class="flex gap-3">
-                <button onclick="closeDeleteModal()" class="btn btn-secondary flex-1 justify-center">Cancel</button>
-                <a href="#" id="deleteConfirmLink" class="btn btn-danger flex-1 justify-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete
-                </a>
-            </div>
         </div>
     </div>
 
@@ -592,18 +640,8 @@ $page_title = "Purchase Management";
     <?php endif; ?>
 
     <?php include "../includes/toast.php"; ?>
+    <?php include "../includes/modal.php"; ?>
     <?php include "../includes/footer.php"; ?>
-
-    <script>
-        function confirmDelete(id) {
-            document.getElementById('deleteConfirmLink').href = '?delete_id=' + id;
-            document.getElementById('deleteModal').classList.remove('hidden');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').classList.add('hidden');
-        }
-    </script>
 </body>
 
 </html>

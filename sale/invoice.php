@@ -30,11 +30,9 @@ $items = mysqli_query($conn, "
 ");
 
 $subtotal = 0;
-$total_profit = 0;
 $item_rows = [];
 while ($row = mysqli_fetch_assoc($items)) {
     $subtotal += $row['subtotal'];
-    $total_profit += $row['profit'] ?? 0;
     $item_rows[] = $row;
 }
 
@@ -141,7 +139,6 @@ $change = max(0, $total_paid - $grand_total);
                                 <th class="num">Qty</th>
                                 <th class="num">Unit Price</th>
                                 <th class="num">Subtotal</th>
-                                <th class="num">Profit</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -154,10 +151,6 @@ $change = max(0, $total_paid - $grand_total);
                                     <td class="num"><?= (int)$item['quantity'] ?></td>
                                     <td class="num"><?= number_format((float)$item['selling_price']) ?> Ks</td>
                                     <td class="num"><?= number_format((float)$item['subtotal']) ?> Ks</td>
-                                    <td class="num <?= (float)($item['profit'] ?? 0) < 0 ? 'text-red-600' : 'text-emerald-600' ?>">
-                                        <?php $p_val = (float)($item['profit'] ?? 0); ?>
-                                        <?= ($p_val < 0 ? 'Loss ' : '') . number_format($p_val) ?> Ks
-                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -182,10 +175,6 @@ $change = max(0, $total_paid - $grand_total);
                     <div class="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
                         <span class="text-gray-900">Grand Total</span>
                         <span class="text-emerald-600"><?= number_format($grand_total) ?> Ks</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-500"><?= $total_profit < 0 ? 'Loss' : 'Profit' ?></span>
-                        <span class="font-semibold <?= $total_profit < 0 ? 'text-red-600' : 'text-emerald-600' ?>"><?= number_format($total_profit) ?> Ks</span>
                     </div>
                     <div class="border-t border-dashed border-gray-300 my-2"></div>
                     <div class="flex justify-between text-sm">

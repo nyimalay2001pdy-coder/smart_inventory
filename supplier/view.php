@@ -1,0 +1,372 @@
+<?php
+include "../includes/auth_check.php";
+requireAdmin();
+include "../config/database.php";
+include "../config/helpers.php";
+
+$page_title = "Supplier Details";
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$supplier = fetchOne($conn, "SELECT * FROM suppliers WHERE id = ?", [$id], "i");
+
+if (!$supplier) {
+    header("Location: index.php?error=" . urlencode("Supplier not found."));
+    exit;
+}
+
+// ── Compute statistics ──
+$amtCol = getPaymentAmountCol($conn, 'purchase_payments');
+
+// Total Purchases
+$total_purchases = 0;
+$r = fetchOne($conn, "SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchases WHERE supplier_id = ?", [$id], "i");
+if ($r) $total_purchases = (float)$r['total'];
+
+// Total Payments
+$total_payments = 0;
+$r = fetchOne($conn, "SELECT COALESCE(SUM(pp.{$amtCol}), 0) AS total FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ?", [$id], "i");
+if ($r) $total_payments = (float)$r['total'];
+
+// Outstanding Balance (computed: purchases - payments)
+$outstanding = $total_purchases - $total_payments;
+
+// Last Purchase Date
+$last_purchase = fetchOne($conn, "SELECT purchase_date FROM purchases WHERE supplier_id = ? ORDER BY purchase_date DESC LIMIT 1", [$id], "i");
+
+// Recent Purchases (latest 5)
+$recent_purchases = fetchAll($conn, "SELECT * FROM purchases WHERE supplier_id = ? ORDER BY purchase_date DESC LIMIT 5", [$id], "i");
+
+// Recent Payments (latest 5)
+$recent_payments = fetchAll($conn, "SELECT pp.*, pu.invoice_no FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ? ORDER BY pp.payment_date DESC LIMIT 5", [$id], "i");
+
+$cur_bal = (float)($supplier['current_balance'] ?? 0);
+?>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $page_title ?> - Smart Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <?php include "../includes/theme-init.php"; ?>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+
+<body class="bg-gray-50 dark:bg-slate-900">
+    <div class="flex min-h-screen">
+        <?php include "../includes/sidebar.php"; ?>
+
+        <div class="flex-1 flex flex-col">
+            <?php include "../includes/header.php"; ?>
+
+            <main class="p-6">
+                <div class="max-w-6xl mx-auto">
+
+                    <!-- Back Button & Title -->
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <a href="index.php" class="btn btn-outline gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back
+                            </a>
+                            <div>
+                                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Supplier Details</h1>
+                                <p class="text-sm text-gray-500 dark:text-gray-400"><?= htmlspecialchars($supplier['supplier_name']) ?></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="edit.php?id=<?= $supplier['id'] ?>" class="btn btn-primary gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit Supplier
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Current Balance Banner -->
+                    <?php
+                    $cur_type = 'Clear';
+                    if ($cur_bal > 0) $cur_type = 'Payable';
+                    elseif ($cur_bal < 0) $cur_type = 'Advance';
+                    ?>
+                    <div class="card mb-6">
+                        <div class="card-body py-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 <?= $cur_type === 'Payable' ? 'bg-amber-100 dark:bg-amber-900/30' : ($cur_type === 'Advance' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30') ?>">
+                                        <svg class="w-5 h-5 <?= $cur_type === 'Payable' ? 'text-amber-600 dark:text-amber-400' : ($cur_type === 'Advance' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400') ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Balance</p>
+                                        <p class="text-2xl font-extrabold <?= $cur_type === 'Payable' ? 'text-amber-600 dark:text-amber-400' : ($cur_type === 'Advance' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400') ?>">
+                                            <?= $cur_bal == 0 ? '0' : number_format($cur_bal, 2) ?> MMK
+                                        </p>
+                                    </div>
+                                </div>
+                                <span class="badge <?= $cur_type === 'Payable' ? 'badge-warning' : ($cur_type === 'Advance' ? 'badge-info' : 'badge-success') ?> text-sm">
+                                    <span class="badge-dot"></span>
+                                    <?= htmlspecialchars($cur_type) ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Supplier Information -->
+                    <div class="card mb-6">
+                        <div class="card-header">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Supplier Information
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Name</p>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><?= htmlspecialchars($supplier['supplier_name']) ?></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Contact Person</p>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><?= htmlspecialchars($supplier['contact_person'] ?? '-') ?></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Phone</p>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><?= htmlspecialchars($supplier['phone'] ?? '-') ?></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Email</p>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><?= htmlspecialchars($supplier['email'] ?? '-') ?></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Address</p>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><?= htmlspecialchars($supplier['address'] ?? '-') ?></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                                    <?php if ($supplier['status'] === 'Active'): ?>
+                                        <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-danger"><span class="badge-dot"></span> Inactive</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="stat-card">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Balance</p>
+                                    <p class="text-lg font-bold <?= $cur_type === 'Payable' ? 'text-amber-600 dark:text-amber-400' : ($cur_type === 'Advance' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400') ?>">
+                                        <?= number_format($cur_bal, 2) ?> MMK
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Purchases</p>
+                                    <p class="text-lg font-bold text-gray-800 dark:text-gray-200"><?= number_format($total_purchases, 2) ?> MMK</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Payments</p>
+                                    <p class="text-lg font-bold text-gray-800 dark:text-gray-200"><?= number_format($total_payments, 2) ?> MMK</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 <?= $outstanding > 0 ? 'bg-amber-100 dark:bg-amber-900/30' : ($outstanding < 0 ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-800/30') ?> rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 <?= $outstanding > 0 ? 'text-amber-600 dark:text-amber-400' : ($outstanding < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400') ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Outstanding Balance</p>
+                                    <p class="text-lg font-bold <?= $outstanding > 0 ? 'text-amber-600 dark:text-amber-400' : ($outstanding < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-200') ?>">
+                                        <?= number_format($outstanding, 2) ?> MMK
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Last Purchase Date -->
+                    <div class="card mb-6">
+                        <div class="card-body py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Purchase Date</p>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                        <?= $last_purchase ? date('d M Y, h:i A', strtotime($last_purchase['purchase_date'])) : 'No purchases yet' ?>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Purchases -->
+                    <div class="card mb-6">
+                        <div class="card-header">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                Recent Purchases
+                            </h2>
+                            <span class="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full font-medium"><?= count($recent_purchases) ?> purchase(s)</span>
+                        </div>
+                        <div class="card-body">
+                            <?php if (count($recent_purchases) > 0): ?>
+                                <div class="table-wrap">
+                                    <table class="data-table w-full">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Invoice No</th>
+                                                <th>Date</th>
+                                                <th class="num">Total</th>
+                                                <th class="center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php $i = 1; foreach ($recent_purchases as $p): ?>
+                                                <tr>
+                                                    <td><?= $i++ ?></td>
+                                                    <td class="font-medium text-sm"><?= htmlspecialchars($p['invoice_no']) ?></td>
+                                                    <td class="text-sm"><?= date('d M Y', strtotime($p['purchase_date'])) ?></td>
+                                                    <td class="num text-sm font-semibold"><?= number_format($p['total_amount'], 2) ?></td>
+                                                    <td class="center">
+                                                        <?php if (($p['payment_status'] ?? '') === 'Paid'): ?>
+                                                            <span class="badge badge-success"><span class="badge-dot"></span> Paid</span>
+                                                        <?php elseif (($p['payment_status'] ?? '') === 'Partial'): ?>
+                                                            <span class="badge badge-warning"><span class="badge-dot"></span> Partial</span>
+                                                        <?php else: ?>
+                                                            <span class="badge badge-danger"><span class="badge-dot"></span> Unpaid</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php else: ?>
+                                <div class="text-center py-8">
+                                    <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                    <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400">No purchases yet</h3>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Recent Payments -->
+                    <div class="card mb-6">
+                        <div class="card-header">
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                Recent Payments
+                            </h2>
+                            <span class="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full font-medium"><?= count($recent_payments) ?> payment(s)</span>
+                        </div>
+                        <div class="card-body">
+                            <?php if (count($recent_payments) > 0): ?>
+                                <div class="table-wrap">
+                                    <table class="data-table w-full">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Invoice No</th>
+                                                <th>Date</th>
+                                                <th>Method</th>
+                                                <th class="num">Cash</th>
+                                                <th class="num">KBZ Pay</th>
+                                                <th class="num">Total Paid</th>
+                                                <th class="center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php $i = 1; foreach ($recent_payments as $pay): ?>
+                                                <tr>
+                                                    <td><?= $i++ ?></td>
+                                                    <td class="font-medium text-sm"><?= htmlspecialchars($pay['invoice_no']) ?></td>
+                                                    <td class="text-sm"><?= date('d M Y', strtotime($pay['payment_date'])) ?></td>
+                                                    <td>
+                                                        <span class="badge badge-info text-xs"><?= htmlspecialchars($pay['payment_method']) ?></span>
+                                                    </td>
+                                                    <td class="num text-sm"><?= number_format($pay['cash_amount'] ?? 0, 2) ?></td>
+                                                    <td class="num text-sm"><?= number_format($pay['kbzpay_amount'] ?? 0, 2) ?></td>
+                                                    <td class="num text-sm font-semibold"><?= number_format($pay['paid_amount'] ?? 0, 2) ?></td>
+                                                    <td class="center">
+                                                        <?php if (($pay['payment_status'] ?? '') === 'Paid'): ?>
+                                                            <span class="badge badge-success"><span class="badge-dot"></span> Paid</span>
+                                                        <?php elseif (($pay['payment_status'] ?? '') === 'Partial'): ?>
+                                                            <span class="badge badge-warning"><span class="badge-dot"></span> Partial</span>
+                                                        <?php else: ?>
+                                                            <span class="badge badge-danger"><span class="badge-dot"></span> Unpaid</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php else: ?>
+                                <div class="text-center py-8">
+                                    <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400">No payments yet</h3>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <?php include "../includes/toast.php"; ?>
+    <?php include "../includes/footer.php"; ?>
+</body>
+
+</html>

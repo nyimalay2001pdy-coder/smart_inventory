@@ -69,8 +69,6 @@ if (isset($_POST['save_purchase'])) {
         $error_msg = 'Please add at least one product.';
     } elseif (!in_array($payment_method, ['Cash', 'KBZPay'])) {
         $error_msg = 'Please select a valid payment method.';
-    } elseif ($paid_amount <= 0) {
-        $error_msg = 'Please enter a valid paid amount.';
     } else {
         $date_prefix = date('Ymd');
         $inv_result = mysqli_query($conn, "SELECT invoice_no FROM purchases WHERE invoice_no LIKE 'INV-$date_prefix-%' ORDER BY id DESC LIMIT 1");
@@ -87,11 +85,27 @@ if (isset($_POST['save_purchase'])) {
             $total += $item['subtotal'];
         }
 
-        // Auto-calculate payment status
-        if ($paid_amount >= $total) {
-            $payment_status = 'Paid';
+        // Previous Supplier Balance
+        $sup_bal = $supplier_balances[$supplier_id] ?? ['balance' => 0, 'type' => 'Clear'];
+        $previous_balance = $sup_bal['balance'];
+        $total_amount_due = $previous_balance + $total;
+
+        // Validate payment
+        if ($paid_amount < 0) {
+            $error_msg = 'Paid amount cannot be negative.';
+        } elseif ($paid_amount > $total_amount_due) {
+            $error_msg = 'Paid amount (' . number_format($paid_amount, 2) . ' MMK) cannot exceed total amount due (' . number_format($total_amount_due, 2) . ' MMK).';
         } else {
+
+        // Auto-calculate payment status and remaining balance
+        $remaining_balance = $total_amount_due - $paid_amount;
+        if ($remaining_balance <= 0) {
+            $payment_status = 'Paid';
+            $remaining_balance = 0;
+        } elseif ($paid_amount > 0) {
             $payment_status = 'Partial';
+        } else {
+            $payment_status = 'Unpaid';
         }
 
         $user_id = (int)($_SESSION['user_id'] ?? 0);
@@ -106,23 +120,30 @@ if (isset($_POST['save_purchase'])) {
 
         if ($purchase_id) {
             // Insert payment record
-            $remaining = $total - $paid_amount;
-            $p_status = ($paid_amount >= $total) ? 'Paid' : (($paid_amount > 0) ? 'Partial' : 'Unpaid');
-            $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
-            $hasExtra = columnExists($conn, 'purchase_payments', 'remaining_balance');
-            if ($hasExtra) {
-                $cash_amt = ($payment_method === 'Cash') ? $paid_amount : 0;
-                $kbz_amt = ($payment_method === 'KBZPay') ? $paid_amount : 0;
-                if (columnExists($conn, 'purchase_payments', 'cash_amount')) {
-                    mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date)
-                        VALUES('$purchase_id', '$payment_method', '$cash_amt', '$kbz_amt', '$paid_amount', '$remaining', '$p_status', '$purchase_date')");
+            if ($paid_amount > 0) {
+                $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+                $hasExtra = columnExists($conn, 'purchase_payments', 'remaining_balance');
+                if ($hasExtra) {
+                    $cash_amt = ($payment_method === 'Cash') ? $paid_amount : 0;
+                    $kbz_amt = ($payment_method === 'KBZPay') ? $paid_amount : 0;
+                    if (columnExists($conn, 'purchase_payments', 'cash_amount')) {
+                        mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date)
+                            VALUES('$purchase_id', '$payment_method', '$cash_amt', '$kbz_amt', '$paid_amount', '$remaining_balance', '$payment_status', '$purchase_date')");
+                    } else {
+                        mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date)
+                            VALUES('$purchase_id', '$payment_method', '$paid_amount', '$remaining_balance', '$payment_status', '$purchase_date')");
+                    }
                 } else {
-                    mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date)
-                        VALUES('$purchase_id', '$payment_method', '$paid_amount', '$remaining', '$p_status', '$purchase_date')");
+                    mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, payment_date)
+                        VALUES('$purchase_id', '$payment_method', '$paid_amount', '$purchase_date')");
                 }
+            }
+
+            // Update supplier balance
+            if ($remaining_balance > 0) {
+                mysqli_query($conn, "UPDATE suppliers SET current_balance = $remaining_balance, balance_type = 'Payable' WHERE id = $supplier_id");
             } else {
-                mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, payment_date)
-                    VALUES('$purchase_id', '$payment_method', '$paid_amount', '$purchase_date')");
+                mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $supplier_id");
             }
 
             foreach ($_SESSION['cart'] as $item) {
@@ -148,6 +169,7 @@ if (isset($_POST['save_purchase'])) {
         } else {
             $error_msg = 'Failed to create purchase. Please try again.';
         }
+        } // end else (validation passed)
     }
 }
 
@@ -155,6 +177,15 @@ if (isset($_POST['save_purchase'])) {
 $suppliers = mysqli_query($conn, "SELECT * FROM suppliers WHERE status='Active'");
 $products = mysqli_query($conn, "SELECT * FROM products WHERE status='Active'");
 $logged_user = $_SESSION['name'] ?? 'User';
+
+$supplier_balances = [];
+$sup_bal_query = mysqli_query($conn, "SELECT id, current_balance, balance_type FROM suppliers WHERE status='Active'");
+while ($sb = mysqli_fetch_assoc($sup_bal_query)) {
+    $supplier_balances[$sb['id']] = [
+        'balance' => (float)$sb['current_balance'],
+        'type' => $sb['balance_type']
+    ];
+}
 
 $cart_subtotal = 0;
 foreach ($_SESSION['cart'] as $item) {
@@ -240,7 +271,7 @@ $page_title = "New Purchase";
                                             </div>
                                             <div>
                                                 <label class="form-label">Supplier <span class="text-red-500">*</span></label>
-                                                <select name="supplier_id" id="supplier_id" class="form-input text-sm">
+                                                <select name="supplier_id" id="supplier_id" class="form-input text-sm" onchange="onSupplierChange()">
                                                     <option value="">-- Select Supplier --</option>
                                                     <?php mysqli_data_seek($suppliers, 0);
                                                     while ($s = mysqli_fetch_assoc($suppliers)) { ?>
@@ -361,6 +392,30 @@ $page_title = "New Purchase";
                                         </h2>
                                     </div>
                                     <div class="card-body">
+                                        <!-- Previous Supplier Balance Info (hidden by default) -->
+                                        <div id="prevBalanceSection" class="hidden mb-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                                            <h4 class="text-sm font-bold text-amber-700 dark:text-amber-400 mb-3 flex items-center gap-2">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Supplier Previous Balance
+                                            </h4>
+                                            <div class="grid grid-cols-3 gap-3 text-sm">
+                                                <div class="text-center">
+                                                    <p class="text-xs text-amber-600 dark:text-amber-400 mb-1">Previous Balance</p>
+                                                    <p class="font-bold text-amber-700 dark:text-amber-300" id="prevBalance">0.00</p>
+                                                </div>
+                                                <div class="text-center">
+                                                    <p class="text-xs text-amber-600 dark:text-amber-400 mb-1">New Purchase Total</p>
+                                                    <p class="font-bold text-amber-700 dark:text-amber-300" id="prevNewTotal">0.00</p>
+                                                </div>
+                                                <div class="text-center">
+                                                    <p class="text-xs text-amber-600 dark:text-amber-400 mb-1">Total Amount Due</p>
+                                                    <p class="font-bold text-amber-700 dark:text-amber-300" id="prevTotalDue">0.00</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                             <div>
                                                 <label class="form-label">Payment Method <span class="text-red-500">*</span></label>
@@ -489,10 +544,19 @@ $page_title = "New Purchase";
             <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 mb-4">
                 <h4 class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3">Payment Summary</h4>
                 <div class="space-y-2 text-sm">
+                    <div id="confirmPrevBalanceRow" class="flex justify-between hidden">
+                        <span class="text-gray-600 dark:text-gray-400">Previous Balance</span>
+                        <span class="font-semibold text-amber-600" id="confirmPrevBalance">0.00</span>
+                    </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Grand Total</span>
+                        <span class="text-gray-600 dark:text-gray-400">Purchase Total</span>
                         <span class="font-bold text-indigo-700 dark:text-indigo-400 text-lg" id="confirmTotal">0.00</span>
                     </div>
+                    <div id="confirmTotalDueRow" class="flex justify-between hidden">
+                        <span class="text-gray-600 dark:text-gray-400 font-bold">Total Amount Due</span>
+                        <span class="font-bold text-indigo-700 dark:text-indigo-400 text-lg" id="confirmTotalDue">0.00</span>
+                    </div>
+                    <div class="border-t border-indigo-200 dark:border-indigo-800 pt-2">
                     <div class="flex justify-between">
                         <span class="text-gray-600 dark:text-gray-400">Payment Method</span>
                         <span class="font-semibold text-gray-800 dark:text-gray-200" id="confirmMethod">Cash</span>
@@ -504,6 +568,7 @@ $page_title = "New Purchase";
                     <div class="flex justify-between">
                         <span class="text-gray-600 dark:text-gray-400">Remaining Balance</span>
                         <span class="font-semibold" id="confirmBalance">0.00</span>
+                    </div>
                     </div>
                     <div class="border-t border-indigo-200 dark:border-indigo-800 pt-2 flex justify-between">
                         <span class="font-bold text-gray-800 dark:text-gray-200">Payment Status</span>
@@ -660,7 +725,42 @@ $page_title = "New Purchase";
             }
             ?>
         };
-    
+
+        const supplierBalances = {
+            <?php
+            $first = true;
+            foreach ($supplier_balances as $sid => $sdata) {
+                if (!$first) echo ',';
+                echo $sid . ':{balance:' . $sdata['balance'] . ',type:"' . $sdata['type'] . '"}';
+                $first = false;
+            }
+            ?>
+        };
+
+        let selectedPrevBalance = 0;
+
+        function onSupplierChange() {
+            const supplierId = document.getElementById('supplier_id').value;
+            const section = document.getElementById('prevBalanceSection');
+            const prevBalEl = document.getElementById('prevBalance');
+            const prevNewTotalEl = document.getElementById('prevNewTotal');
+            const prevTotalDueEl = document.getElementById('prevTotalDue');
+            selectedPrevBalance = 0;
+
+            if (supplierId && supplierBalances[supplierId] && supplierBalances[supplierId].balance > 0) {
+                selectedPrevBalance = supplierBalances[supplierId].balance;
+                prevBalEl.textContent = parseFloat(selectedPrevBalance).toLocaleString('en', {minimumFractionDigits: 2});
+                prevNewTotalEl.textContent = '0.00';
+                prevTotalDueEl.textContent = parseFloat(selectedPrevBalance).toLocaleString('en', {minimumFractionDigits: 2});
+                section.classList.remove('hidden');
+            } else {
+                section.classList.add('hidden');
+                prevBalEl.textContent = '0.00';
+                prevNewTotalEl.textContent = '0.00';
+                prevTotalDueEl.textContent = '0.00';
+            }
+            recalcTotals();
+        }
 
         function autoFillPrice(el) {
             const price = el.options[el.selectedIndex]?.dataset.price;
@@ -876,15 +976,24 @@ $page_title = "New Purchase";
             const grand = parseFloat(subtotalTxt) || 0;
             document.getElementById('grandTotal').textContent = grand.toFixed(2);
 
+            // Previous balance info
+            const totalDue = selectedPrevBalance + grand;
+            if (selectedPrevBalance > 0) {
+                document.getElementById('prevNewTotal').textContent = grand.toLocaleString('en', {minimumFractionDigits: 2});
+                document.getElementById('prevTotalDue').textContent = totalDue.toLocaleString('en', {minimumFractionDigits: 2});
+            }
+
             const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
+            const remainingBalance = Math.max(0, totalDue - paidAmount);
+
             const statusDisplay = document.getElementById('paymentStatusDisplay');
             const statusInput = document.getElementById('paymentStatusInput');
             const changeSection = document.getElementById('changeAmountSection');
             const changeDisplay = document.getElementById('changeAmount');
 
             let status = 'Unpaid';
-            if (grand > 0) {
-                if (paidAmount >= grand) {
+            if (totalDue > 0) {
+                if (remainingBalance <= 0) {
                     status = 'Paid';
                 } else if (paidAmount > 0) {
                     status = 'Partial';
@@ -904,10 +1013,10 @@ $page_title = "New Purchase";
                 statusDisplay.className += 'text-red-600 bg-red-50';
             }
 
-            // Change amount (only for Cash)
+            // Change amount (only for Cash, when paid > total due)
             const method = document.getElementById('paymentMethod').value;
-            if (method === 'Cash' && paidAmount > grand && grand > 0) {
-                changeDisplay.textContent = (paidAmount - grand).toFixed(2);
+            if (method === 'Cash' && paidAmount > totalDue && totalDue > 0) {
+                changeDisplay.textContent = (paidAmount - totalDue).toFixed(2);
                 changeSection.classList.remove('hidden');
             } else {
                 changeSection.classList.add('hidden');
@@ -957,15 +1066,12 @@ $page_title = "New Purchase";
             }
 
             const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
-            if (paidAmount <= 0) {
-                showToast('error', 'Please enter a valid paid amount.');
-                document.getElementById('paidAmount').focus();
-                return;
-            }
 
             // Gather data
             const items = document.querySelectorAll('.data-table tbody tr:not(:has(td[colspan]))');
             const grand = parseFloat(document.getElementById('grandTotal').textContent.replace(/,/g, '')) || 0;
+            const totalDue = selectedPrevBalance + grand;
+            const remainingBalance = Math.max(0, totalDue - paidAmount);
             const status = document.getElementById('paymentStatusInput').value;
             const supplierName = document.getElementById('supplier_id').options[document.getElementById('supplier_id').selectedIndex].text;
             const today = new Date();
@@ -978,9 +1084,6 @@ $page_title = "New Purchase";
                 if (qtyCell) totalQty += parseInt(qtyCell.textContent) || 0;
             });
 
-            // Calculate balance
-            const balance = Math.max(0, grand - paidAmount);
-
             // Populate modal
             document.getElementById('confirmInvoice').textContent = invoiceNo;
             document.getElementById('confirmSupplier').textContent = supplierName || '-';
@@ -990,8 +1093,21 @@ $page_title = "New Purchase";
             document.getElementById('confirmTotal').textContent = grand.toFixed(2);
             document.getElementById('confirmPaid').textContent = paidAmount.toFixed(2);
             document.getElementById('confirmMethod').textContent = method;
-            document.getElementById('confirmBalance').textContent = balance.toFixed(2);
+            document.getElementById('confirmBalance').textContent = remainingBalance.toFixed(2);
             document.getElementById('confirmStatus').textContent = status;
+
+            // Show/hide previous balance rows
+            const prevBalRow = document.getElementById('confirmPrevBalanceRow');
+            const totalDueRow = document.getElementById('confirmTotalDueRow');
+            if (selectedPrevBalance > 0) {
+                prevBalRow.classList.remove('hidden');
+                document.getElementById('confirmPrevBalance').textContent = selectedPrevBalance.toFixed(2);
+                totalDueRow.classList.remove('hidden');
+                document.getElementById('confirmTotalDue').textContent = totalDue.toFixed(2);
+            } else {
+                prevBalRow.classList.add('hidden');
+                totalDueRow.classList.add('hidden');
+            }
 
             // Status badge styling
             const statusEl = document.getElementById('confirmStatus');

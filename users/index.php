@@ -9,8 +9,8 @@ $status_filter = $_GET['status'] ?? '';
 $alert = '';
 
 // Delete
-if (isset($_GET['delete_id'])) {
-    $id = (int)$_GET['delete_id'];
+if (isset($_GET['confirm_delete'])) {
+    $id = (int)$_GET['confirm_delete'];
     if ($id != $_SESSION['user_id']) {
         mysqli_query($conn, "DELETE FROM users WHERE id=$id");
         header("Location: index.php");
@@ -162,7 +162,7 @@ if (isset($_GET['edit_id'])) {
                                                 <div class="actions">
                                                     <a href="?edit_id=<?= $row['id'] ?>" class="bg-blue-100 text-blue-600 px-3 py-1.5 rounded text-sm">Edit</a>
                                                     <?php if ($row['id'] != $_SESSION['user_id']): ?>
-                                                        <a href="?delete_id=<?= $row['id'] ?>" onclick="return confirm('Delete user?')" class="bg-red-100 text-red-600 px-3 py-1.5 rounded text-sm">Delete</a>
+                                                        <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', 'index.php')" title="Delete" class="bg-red-100 text-red-600 px-3 py-1.5 rounded text-sm">Delete</button>
                                                     <?php endif; ?>
                                                 </div>
                                             </td>

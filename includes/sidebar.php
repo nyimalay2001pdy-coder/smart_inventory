@@ -89,7 +89,8 @@ HTML;
                         <?= menuItem('../categories/index.php', 'Categories', ['category', 'categories']) ?>
                         <?= menuItem('../units/index.php', 'Units', 'units') ?>
                         <?= menuItem('../product/index.php', 'Products', 'product') ?>
-                        <?= menuItem('../supplier/index.php', 'Suppliers', 'supplier') ?>
+                        <?= menuItem('../supplier/index.php', 'Suppliers', 'supplier', 'index.php') ?>
+                        <?= menuItem('../supplier/ledger.php', 'Supplier Ledger', 'supplier', 'ledger.php') ?>
                     </div>
                 </div>
             </div>

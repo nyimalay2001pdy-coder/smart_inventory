@@ -5,72 +5,30 @@ include "../config/database.php";
 $page_title = "Suppliers";
 
 
-// ADD SUPPLIER
-
-if (isset($_POST['add_supplier'])) {
-
-
-    $name = $_POST['supplier_name'];
-
-    $phone = $_POST['phone'];
-
-    $email = $_POST['email'];
-
-    $address = $_POST['address'];
-
-    $status = $_POST['status'];
-
-
-
-    $sql = "
-
-INSERT INTO suppliers
-
-(
-supplier_name,
-phone,
-email,
-address,
-status
-)
-
-VALUES
-
-(
-'$name',
-'$phone',
-'$email',
-'$address',
-'$status'
-)
-
-";
-
-
-    mysqli_query($conn, $sql);
-
-
-    header("Location:index.php");
-}
-
-
 
 
 
 // DELETE SUPPLIER
 
 
-if (isset($_GET['delete'])) {
+if (isset($_GET['confirm_delete'])) {
 
 
-    $id = $_GET['delete'];
+    $id = (int)$_GET['confirm_delete'];
 
+    // Check if supplier has purchases
+    $check = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM purchases WHERE supplier_id=$id");
+    $row = mysqli_fetch_assoc($check);
+    if ($row['cnt'] > 0) {
+        header("Location:index.php?error=" . urlencode("Cannot delete supplier: it has " . $row['cnt'] . " purchase(s)."));
+        exit;
+    }
 
     mysqli_query(
 
         $conn,
 
-        "DELETE FROM suppliers WHERE id='$id'"
+        "DELETE FROM suppliers WHERE id=$id"
 
 
 
@@ -78,7 +36,8 @@ if (isset($_GET['delete'])) {
 
 
 
-    header("Location:index.php");
+    header("Location:index.php?success=" . urlencode("Supplier deleted successfully"));
+    exit;
 }
 
 
@@ -235,6 +194,22 @@ $result = mysqli_query($conn, $sql);
         <div class="flex-1 flex flex-col">
             <?php include "../includes/header.php"; ?>
             <main class="p-6">
+                <?php if (isset($_GET['success'])): ?>
+                    <div class="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 px-5 py-4 rounded-xl flex items-start gap-3 shadow-sm">
+                        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-sm font-medium"><?= htmlspecialchars($_GET['success']) ?></span>
+                    </div>
+                <?php endif; ?>
+                <?php if (isset($_GET['error'])): ?>
+                    <div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl flex items-start gap-3 shadow-sm">
+                        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-sm font-medium"><?= htmlspecialchars($_GET['error']) ?></span>
+                    </div>
+                <?php endif; ?>
                 <div class="flex justify-end items-center">
                     <a href="add.php"
                         class="bg-indigo-600 text-white px-6 py-3 rounded-xl">
@@ -270,9 +245,8 @@ $result = mysqli_query($conn, $sql);
                                 <th>Supplier</th>
                                 <th>Contact Person</th>
                                 <th>Phone</th>
-                                <th>Email</th>
-                                <th>Address</th>
                                 <th class="center">Status</th>
+                                <th class="center">Current Balance</th>
                                 <th class="center">Action</th>
                             </tr>
                         </thead>
@@ -286,8 +260,6 @@ $result = mysqli_query($conn, $sql);
                                     <td class="font-semibold"><?= htmlspecialchars($row['supplier_name']) ?></td>
                                     <td><?= htmlspecialchars($row['contact_person'] ?? '') ?></td>
                                     <td><?= htmlspecialchars($row['phone']) ?></td>
-                                    <td><?= htmlspecialchars($row['email']) ?></td>
-                                    <td class="text-sm text-gray-500 max-w-xs truncate"><?= htmlspecialchars($row['address']) ?></td>
                                     <td class="center">
                                         <?php if ($row['status'] == "Active") { ?>
                                             <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
@@ -296,9 +268,24 @@ $result = mysqli_query($conn, $sql);
                                         <?php } ?>
                                     </td>
                                     <td class="center">
-                                        <div class="actions">
+                                        <?php
+                                        $bal = (float)($row['current_balance'] ?? 0);
+                                        if ($bal == 0) {
+                                        ?>
+                                            <span class="badge badge-success"><span class="badge-dot"></span> Clear (0 MMK)</span>
+                                        <?php } elseif ($bal > 0) { ?>
+                                            <span class="badge badge-warning"><span class="badge-dot"></span> Payable (<?= number_format($bal, 0) ?> MMK)</span>
+                                        <?php } else { ?>
+                                            <span class="badge badge-info"><span class="badge-dot"></span> Advance (<?= number_format(abs($bal), 0) ?> MMK)</span>
+                                        <?php } ?>
+                                    </td>
+                                    <td class="center">
+                                        <div class="actions flex gap-1">
+                                            <a href="view.php?id=<?= $row['id'] ?>" class="btn btn-sm bg-indigo-100 text-indigo-600 hover:bg-indigo-200 rounded-lg">View</a>
                                             <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg">Edit</a>
-                                            <a href="?delete=<?= $row['id'] ?>" onclick="return confirm('Delete supplier?')" class="btn btn-sm bg-red-100 text-red-600 hover:bg-red-200 rounded-lg">Delete</a>
+                                            <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['supplier_name'])) ?>', 'index.php')" title="Delete" class="btn btn-sm bg-red-100 text-red-600 hover:bg-red-200 rounded-lg">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

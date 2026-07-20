@@ -8,8 +8,8 @@ if (!isAdmin() && !isStaff()) {
 }
 
 // ============ DELETE PURCHASE ============
-if (isset($_GET['delete_id']) && isAdmin()) {
-    $id = (int)$_GET['delete_id'];
+if (isset($_GET['confirm_delete']) && isAdmin()) {
+    $id = (int)$_GET['confirm_delete'];
     $details = mysqli_query($conn, "SELECT * FROM purchase_details WHERE purchase_id='$id'");
     while ($row = mysqli_fetch_assoc($details)) {
         $pid = $row['product_id'];
@@ -243,7 +243,7 @@ $page_title = "Purchase History";
                                                     <div class="actions">
                                                         <a href="?view_id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg">View</a>
                                                         <?php if (isAdmin()): ?>
-                                                            <button onclick="confirmDelete(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['invoice_no'] ?? '#' . $row['id'])) ?>')" class="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg">Delete</button>
+                                                            <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['invoice_no'] ?? '#' . $row['id'])) ?>', 'history.php')" class="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg">Delete</button>
                                                         <?php endif; ?>
                                                     </div>
                                                 </td>
@@ -358,44 +358,11 @@ $page_title = "Purchase History";
     <?php endif;
     endif; ?>
 
-    <!-- Delete Confirmation Modal -->
-    <div id="deleteModal" class="modal-overlay hidden">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl" style="animation: modalIn 0.2s ease-out;">
-            <div class="text-center mb-5">
-                <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Delete Purchase</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" id="deleteInvoiceText">This purchase will be permanently deleted and stock will be rolled back.</p>
-            </div>
-            <div class="flex gap-3">
-                <button onclick="closeDeleteModal()" class="btn btn-secondary flex-1 justify-center">Cancel</button>
-                <a href="#" id="deleteConfirmLink" class="btn btn-danger flex-1 justify-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete
-                </a>
-            </div>
-        </div>
-    </div>
-
     <?php include "../includes/toast.php"; ?>
+    <?php include "../includes/modal.php"; ?>
     <?php include "../includes/footer.php"; ?>
 
     <script>
-        function confirmDelete(id, invoice) {
-            document.getElementById('deleteConfirmLink').href = 'history.php?delete_id=' + id;
-            document.getElementById('deleteInvoiceText').textContent = 'Delete purchase ' + invoice + '? Stock will be rolled back.';
-            document.getElementById('deleteModal').classList.remove('hidden');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').classList.add('hidden');
-        }
-
         function exportExcel() {
             const rows = [];
             rows.push(['Purchase History Report']);

@@ -12,34 +12,52 @@ $phone = '';
 $email = '';
 $address = '';
 $status = 'Active';
+$current_balance = 0.00;
+$balance_type = 'Clear';
 $errors = [];
 
-if (isset($_POST['save'])) {
-    $supplier_name = trim($_POST['supplier_name'] ?? '');
-    $contact_person = trim($_POST['contact_person'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $address = trim($_POST['address'] ?? '');
-    $status = $_POST['status'] ?? 'Active';
+// Handle POST request
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Prevent double submission using session token
+    if (!isset($_POST['save_token']) || !isset($_SESSION['supplier_save_token']) || $_POST['save_token'] !== $_SESSION['supplier_save_token']) {
+        $errors['general'] = 'Duplicate submission detected. Please refresh and try again.';
+    } else {
+        // Only consume token if validation succeeds or we are handling a real submit
+        $supplier_name = trim($_POST['supplier_name'] ?? '');
+        $contact_person = trim($_POST['contact_person'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $address = trim($_POST['address'] ?? '');
+        $status = $_POST['status'] ?? 'Active';
 
-    if ($supplier_name === '') {
-        $errors['supplier_name'] = 'Supplier name is required.';
-    }
+        if ($supplier_name === '') {
+            $errors['supplier_name'] = 'Supplier name is required.';
+        }
 
-    if ($phone === '') {
-        $errors['phone'] = 'Phone number is required.';
-    }
+        if ($phone === '') {
+            $errors['phone'] = 'Phone number is required.';
+        }
 
-    if (empty($errors)) {
-        $sql = "INSERT INTO suppliers (supplier_name, contact_person, phone, email, address, status) VALUES (?, ?, ?, ?, ?, ?)";
-        if (executeQuery($conn, $sql, [$supplier_name, $contact_person, $phone, $email, $address, $status], "ssssss")) {
-            header("Location: index.php?success=" . urlencode("Supplier has been saved successfully."));
-            exit;
-        } else {
-            $errors['general'] = 'Failed to save supplier. Please try again.';
+        if (empty($errors)) {
+            // Unset token only after successful validation & insertion
+            unset($_SESSION['supplier_save_token']);
+
+            $sql = "INSERT INTO suppliers (supplier_name, contact_person, phone, email, address, status, current_balance, balance_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            if (executeQuery($conn, $sql, [$supplier_name, $contact_person, $phone, $email, $address, $status, $current_balance, $balance_type], "ssssssds")) {
+                header("Location: index.php?success=" . urlencode("Supplier has been saved successfully."));
+                exit;
+            } else {
+                $errors['general'] = 'Failed to save supplier. Please try again.';
+            }
         }
     }
 }
+
+// Ensure token exists or regenerate if invalidated/consumed
+if (!isset($_SESSION['supplier_save_token'])) {
+    $_SESSION['supplier_save_token'] = bin2hex(random_bytes(16));
+}
+$save_token = $_SESSION['supplier_save_token'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -64,7 +82,13 @@ if (isset($_POST['save'])) {
                 <div class="max-w-2xl mx-auto">
                     <div class="card">
                         <div class="card-body">
-                            <form method="POST" novalidate data-form-guard="true">
+                            <?php if (isset($errors['general'])): ?>
+                                <div class="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+                                    <?= $errors['general'] ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <form method="POST" action="" novalidate data-form-guard="true" id="supplierForm">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
                                     <div>
@@ -73,7 +97,7 @@ if (isset($_POST['save'])) {
                                             placeholder="Enter supplier name"
                                             class="form-input <?= isset($errors['supplier_name']) ? 'error' : '' ?>">
                                         <?php if (isset($errors['supplier_name'])): ?>
-                                            <p class="form-error"><?= $errors['supplier_name'] ?></p>
+                                            <p class="form-error text-red-500 text-xs mt-1"><?= $errors['supplier_name'] ?></p>
                                         <?php endif; ?>
                                     </div>
 
@@ -90,7 +114,7 @@ if (isset($_POST['save'])) {
                                             placeholder="Enter phone number"
                                             class="form-input <?= isset($errors['phone']) ? 'error' : '' ?>">
                                         <?php if (isset($errors['phone'])): ?>
-                                            <p class="form-error"><?= $errors['phone'] ?></p>
+                                            <p class="form-error text-red-500 text-xs mt-1"><?= $errors['phone'] ?></p>
                                         <?php endif; ?>
                                     </div>
 
@@ -109,7 +133,7 @@ if (isset($_POST['save'])) {
                                     </div>
 
                                     <div class="md:col-span-2">
-                                        <label for=" status" class="form-label">Status</label>
+                                        <label for="status" class="form-label">Status</label>
                                         <select id="status" name="status" class="form-input">
                                             <option value="Active" <?= $status === 'Active' ? 'selected' : '' ?>>Active</option>
                                             <option value="Inactive" <?= $status === 'Inactive' ? 'selected' : '' ?>>Inactive</option>
@@ -118,19 +142,31 @@ if (isset($_POST['save'])) {
                                 </div>
 
                                 <div class="flex gap-3 mt-6">
-                                    <button type="submit" name="save" class="btn-primary p-2 rounded-lg text-sm">
+                                    <button type="submit" name="save" class="btn-primary p-2 rounded-lg text-sm" id="saveBtn">
                                         Save Supplier
                                     </button>
                                     <a href="index.php" class="btn-secondary p-2 rounded-lg text-sm">Cancel</a>
                                 </div>
+                                <input type="hidden" name="save_token" value="<?= htmlspecialchars($save_token) ?>">
                             </form>
                         </div>
                     </div>
+                </div>
             </main>
         </div>
     </div>
 
     <?php include "../includes/form_guard.php"; ?>
+    <script>
+        document.getElementById('supplierForm').addEventListener('submit', function() {
+            var btn = document.getElementById('saveBtn');
+            // Delay disabling slightly to allow button name/value submission to go through
+            setTimeout(function() {
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+            }, 10);
+        });
+    </script>
     <?php include "../includes/footer.php"; ?>
 </body>
 

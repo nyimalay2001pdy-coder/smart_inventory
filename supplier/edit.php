@@ -20,6 +20,8 @@ $phone = $supplier['phone'];
 $email = $supplier['email'];
 $address = $supplier['address'];
 $status = $supplier['status'];
+$current_balance = $supplier['current_balance'] ?? 0.00;
+$balance_type = $supplier['balance_type'] ?? 'Clear';
 $errors = [];
 
 if (isset($_POST['update'])) {
@@ -70,67 +72,70 @@ if (isset($_POST['update'])) {
 
             <main class="p-6">
                 <div class="max-w-2xl mx-auto">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <form method="POST" novalidate data-form-guard="true">
+                    <div class="card">
+                        <div class="card-body">
+                            <form method="POST" novalidate data-form-guard="true">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-                            <div class="mb-5">
-                                <label for="supplier_name" class="form-label">Supplier Name <span class="text-red-500">*</span></label>
-                                <input type="text" id="supplier_name" name="supplier_name" value="<?= htmlspecialchars($supplier_name) ?>"
-                                    placeholder="Enter supplier name"
-                                    class="form-input <?= isset($errors['supplier_name']) ? 'error' : '' ?>">
-                                <?php if (isset($errors['supplier_name'])): ?>
-                                    <p class="form-error"><?= $errors['supplier_name'] ?></p>
-                                <?php endif; ?>
-                            </div>
+                                    <div>
+                                        <label for="supplier_name" class="form-label">Supplier Name <span class="text-red-500">*</span></label>
+                                        <input type="text" id="supplier_name" name="supplier_name" value="<?= htmlspecialchars($supplier_name) ?>"
+                                            placeholder="Enter supplier name"
+                                            class="form-input <?= isset($errors['supplier_name']) ? 'error' : '' ?>">
+                                        <?php if (isset($errors['supplier_name'])): ?>
+                                            <p class="form-error"><?= $errors['supplier_name'] ?></p>
+                                        <?php endif; ?>
+                                    </div>
 
-                            <div class="mb-5">
-                                <label for="contact_person" class="form-label">Contact Person</label>
-                                <input type="text" id="contact_person" name="contact_person" value="<?= htmlspecialchars($contact_person) ?>"
-                                    placeholder="Enter contact person name"
-                                    class="form-input">
-                            </div>
+                                    <div>
+                                        <label for="contact_person" class="form-label">Contact Person</label>
+                                        <input type="text" id="contact_person" name="contact_person" value="<?= htmlspecialchars($contact_person) ?>"
+                                            placeholder="Enter contact person name"
+                                            class="form-input">
+                                    </div>
 
-                            <div class="mb-5">
-                                <label for="phone" class="form-label">Phone Number <span class="text-red-500">*</span></label>
-                                <input type="text" id="phone" name="phone" value="<?= htmlspecialchars($phone) ?>"
-                                    placeholder="Enter phone number"
-                                    class="form-input <?= isset($errors['phone']) ? 'error' : '' ?>">
-                                <?php if (isset($errors['phone'])): ?>
-                                    <p class="form-error"><?= $errors['phone'] ?></p>
-                                <?php endif; ?>
-                            </div>
+                                    <div>
+                                        <label for="phone" class="form-label">Phone Number <span class="text-red-500">*</span></label>
+                                        <input type="text" id="phone" name="phone" value="<?= htmlspecialchars($phone) ?>"
+                                            placeholder="Enter phone number"
+                                            class="form-input <?= isset($errors['phone']) ? 'error' : '' ?>">
+                                        <?php if (isset($errors['phone'])): ?>
+                                            <p class="form-error"><?= $errors['phone'] ?></p>
+                                        <?php endif; ?>
+                                    </div>
 
-                            <div class="mb-5">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" id="email" name="email" value="<?= htmlspecialchars($email) ?>"
-                                    placeholder="Enter email address"
-                                    class="form-input">
-                            </div>
+                                    <div>
+                                        <label for="email" class="form-label">Email</label>
+                                        <input type="email" id="email" name="email" value="<?= htmlspecialchars($email) ?>"
+                                            placeholder="Enter email address"
+                                            class="form-input">
+                                    </div>
 
-                            <div class="mb-5">
-                                <label for="address" class="form-label">Address</label>
-                                <textarea id="address" name="address" rows="4"
-                                    placeholder="Enter address"
-                                    class="form-input"><?= htmlspecialchars($address) ?></textarea>
-                            </div>
+                                    <div class="md:col-span-2">
+                                        <label for="address" class="form-label">Address</label>
+                                        <textarea id="address" name="address" rows="3"
+                                            placeholder="Enter address"
+                                            class="form-input"><?= htmlspecialchars($address) ?></textarea>
+                                    </div>
 
-                            <div class="mb-6">
-                                <label for="status" class="form-label">Status</label>
-                                <select id="status" name="status" class="form-input">
-                                    <option value="Active" <?= $status === 'Active' ? 'selected' : '' ?>>Active</option>
-                                    <option value="Inactive" <?= $status === 'Inactive' ? 'selected' : '' ?>>Inactive</option>
-                                </select>
-                            </div>
+                                    <div class="md:col-span-2">
+                                        <label for="status" class="form-label">Status</label>
+                                        <select id="status" name="status" class="form-input">
+                                            <option value="Active" <?= $status === 'Active' ? 'selected' : '' ?>>Active</option>
+                                            <option value="Inactive" <?= $status === 'Inactive' ? 'selected' : '' ?>>Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                            <div class="flex gap-3">
-                                <button type="submit" name="update" class=" btn-primary p-2 rounded-lg text-sm">
-                                    Update Supplier
-                                </button>
-                                <a href="index.php" class="btn-secondary p-2 rounded-lg text-sm">Cancel</a>
-                            </div>
-                        </form>
+                                <div class="flex gap-3 mt-6">
+                                    <button type="submit" name="update" class="btn-primary p-2 rounded-lg text-sm">
+                                        Update Supplier
+                                    </button>
+                                    <a href="index.php" class="btn-secondary p-2 rounded-lg text-sm">Cancel</a>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
             </main>
         </div>
     </div>

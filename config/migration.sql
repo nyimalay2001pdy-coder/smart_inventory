@@ -248,3 +248,9 @@ ALTER TABLE sale_details ADD COLUMN profit DECIMAL(10,2) DEFAULT 0.00 AFTER subt
 
 -- Add price_update_required flag to products
 ALTER TABLE products ADD COLUMN price_update_required TINYINT(1) NOT NULL DEFAULT 0 AFTER status;
+
+-- Add current_balance and balance_type to suppliers
+ALTER TABLE suppliers ADD COLUMN current_balance DECIMAL(10,2) DEFAULT 0.00 AFTER status;
+ALTER TABLE suppliers ADD COLUMN balance_type ENUM('Clear','Payable') DEFAULT 'Clear' AFTER current_balance;
+
+-- Previous Supplier Balance Management (Phase 3)

@@ -186,4 +186,14 @@ document.addEventListener('DOMContentLoaded', function () {
             overlay.classList.add('hidden');
         }
     });
+
+    // Close delete modal on ESC key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            const deleteModal = document.getElementById('deleteModal');
+            if (deleteModal && !deleteModal.classList.contains('hidden')) {
+                closeDeleteModal();
+            }
+        }
+    });
 });
