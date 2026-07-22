@@ -79,3 +79,39 @@ function columnExists($conn, $table, $column) {
     $cache[$key] = (mysqli_num_rows($result) > 0);
     return $cache[$key];
 }
+
+/**
+ * Recalculate a supplier's current_balance (unpaid purchase amounts) from all their purchases.
+ * This is the authoritative balance calculation — always use this instead of setting current_balance directly.
+ */
+function recalcSupplierBalance($conn, $supplier_id) {
+    $amtCol = getPaymentAmountCol($conn, 'purchase_payments');
+
+    // Calculate total outstanding across all purchases for this supplier
+    $bal_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(
+        CASE WHEN IFNULL(pp.total_paid, 0) >= p.total_amount THEN 0
+             ELSE p.total_amount - IFNULL(pp.total_paid, 0)
+        END
+    ), 0) AS outstanding
+    FROM purchases p
+    LEFT JOIN (
+        SELECT purchase_id, SUM($amtCol) AS total_paid
+        FROM purchase_payments
+        GROUP BY purchase_id
+    ) pp ON p.id = pp.purchase_id
+    WHERE p.supplier_id = $supplier_id"));
+    $outstanding = max(0, (float)$bal_res['outstanding']);
+
+    if ($outstanding > 0) {
+        mysqli_query($conn, "UPDATE suppliers SET current_balance = $outstanding, balance_type = 'Payable' WHERE id = $supplier_id");
+    } else {
+        // Check if advance_balance > 0 to determine correct type
+        $sup = mysqli_fetch_assoc(mysqli_query($conn, "SELECT advance_balance FROM suppliers WHERE id = $supplier_id"));
+        $adv = $sup ? (float)$sup['advance_balance'] : 0;
+        if ($adv > 0) {
+            mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Advance' WHERE id = $supplier_id");
+        } else {
+            mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $supplier_id");
+        }
+    }
+}

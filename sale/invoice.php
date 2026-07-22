@@ -1,9 +1,8 @@
 <?php
 include "../includes/auth_check.php";
+protectSales('view');
 include "../config/database.php";
 include "../config/helpers.php";
-
-// All authenticated users can access invoices
 
 $sale_id = (int)($_GET['id'] ?? 0);
 if ($sale_id <= 0) {

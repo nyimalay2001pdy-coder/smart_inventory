@@ -1,5 +1,6 @@
 <?php
 include "../includes/auth_check.php";
+requirePermission('dashboard', 'view');
 include "../config/database.php";
 include "../config/helpers.php";
 

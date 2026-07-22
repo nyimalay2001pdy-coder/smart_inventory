@@ -1,13 +1,10 @@
 <?php
 include "../includes/auth_check.php";
+protectPurchases('view');
 include "../config/database.php";
 include "../config/helpers.php";
 
 $is_admin = isAdmin();
-if (!$is_admin) {
-    requireAdmin();
-}
-
 $search = $_GET['search'] ?? '';
 $status_filter = $_GET['status'] ?? '';
 $show_edit_id = isset($_GET['edit_id']) ? (int)$_GET['edit_id'] : null;
@@ -61,27 +58,9 @@ if (isset($_POST['add_payment'])) {
             mysqli_query($conn, "UPDATE purchases SET status='$new_status' WHERE id='$purchase_id'");
         }
 
-        // Update supplier outstanding balance
-        $sup_bal_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(
-            CASE WHEN IFNULL(pp.total_paid, 0) >= p.total_amount THEN 0
-                 ELSE p.total_amount - IFNULL(pp.total_paid, 0)
-            END
-        ), 0) AS outstanding
-        FROM purchases p
-        LEFT JOIN (
-            SELECT purchase_id, SUM(paid_amount) AS total_paid
-            FROM purchase_payments
-            GROUP BY purchase_id
-        ) pp ON p.id = pp.purchase_id
-        WHERE p.supplier_id = (SELECT supplier_id FROM purchases WHERE id = $purchase_id)"));
-        $outstanding = max(0, (float)$sup_bal_res['outstanding']);
+        // Update supplier outstanding balance using helper
         $sup_id_for_bal = (int)mysqli_fetch_assoc(mysqli_query($conn, "SELECT supplier_id FROM purchases WHERE id = $purchase_id"))['supplier_id'];
-
-        if ($outstanding > 0) {
-            mysqli_query($conn, "UPDATE suppliers SET current_balance = $outstanding, balance_type = 'Payable' WHERE id = $sup_id_for_bal");
-        } else {
-            mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $sup_id_for_bal");
-        }
+        recalcSupplierBalance($conn, $sup_id_for_bal);
 
         header("Location: index.php?view_id=$purchase_id&success=" . urlencode("Payment added successfully."));
         exit;
@@ -109,25 +88,7 @@ if (isset($_GET['confirm_delete'])) {
 
     // Recalculate supplier outstanding balance after deletion
     if ($del_supplier_id > 0) {
-        $bal_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(
-            CASE WHEN IFNULL(pp.total_paid, 0) >= p.total_amount THEN 0
-                 ELSE p.total_amount - IFNULL(pp.total_paid, 0)
-            END
-        ), 0) AS outstanding
-        FROM purchases p
-        LEFT JOIN (
-            SELECT purchase_id, SUM(paid_amount) AS total_paid
-            FROM purchase_payments
-            GROUP BY purchase_id
-        ) pp ON p.id = pp.purchase_id
-        WHERE p.supplier_id = $del_supplier_id"));
-        $outstanding = max(0, (float)$bal_res['outstanding']);
-
-        if ($outstanding > 0) {
-            mysqli_query($conn, "UPDATE suppliers SET current_balance = $outstanding, balance_type = 'Payable' WHERE id = $del_supplier_id");
-        } else {
-            mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $del_supplier_id");
-        }
+        recalcSupplierBalance($conn, $del_supplier_id);
     }
 
     header("Location: index.php?success=" . urlencode("Purchase deleted and stock rolled back."));
@@ -179,25 +140,7 @@ if (isset($_POST['update'])) {
     }
 
     // Recalculate supplier outstanding balance
-    $sup_bal_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(
-        CASE WHEN IFNULL(pp.total_paid, 0) >= p.total_amount THEN 0
-             ELSE p.total_amount - IFNULL(pp.total_paid, 0)
-        END
-    ), 0) AS outstanding
-    FROM purchases p
-    LEFT JOIN (
-        SELECT purchase_id, SUM(paid_amount) AS total_paid
-        FROM purchase_payments
-        GROUP BY purchase_id
-    ) pp ON p.id = pp.purchase_id
-    WHERE p.supplier_id = $supplier_id"));
-    $outstanding = max(0, (float)$sup_bal_res['outstanding']);
-
-    if ($outstanding > 0) {
-        mysqli_query($conn, "UPDATE suppliers SET current_balance = $outstanding, balance_type = 'Payable' WHERE id = $supplier_id");
-    } else {
-        mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $supplier_id");
-    }
+    recalcSupplierBalance($conn, $supplier_id);
 
     header("Location: index.php?success=" . urlencode("Purchase #$id updated successfully."));
     exit;
@@ -365,8 +308,10 @@ $page_title = "Purchase Management";
                                                 <td class="center">
                                                     <div class="actions">
                                                         <a href="?view_id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg">View</a>
-                                                        <?php if ($is_admin): ?>
+                                                        <?php if (checkPermission('purchases', 'edit')): ?>
                                                             <a href="?edit_id=<?= $row['id'] ?>" class="btn btn-sm bg-green-50 text-green-600 hover:bg-green-100 rounded-lg">Edit</a>
+                                                        <?php endif; ?>
+                                                        <?php if (checkPermission('purchases', 'delete')): ?>
                                                             <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['invoice_no'])) ?>', 'index.php')" class="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg">Delete</button>
                                                         <?php endif; ?>
                                                     </div>
@@ -498,6 +443,9 @@ $page_title = "Purchase Management";
                                 <th>Date</th>
                                 <th>Method</th>
                                 <th class="num">Amount</th>
+                                <?php if (columnExists($conn, 'purchase_payments', 'advance_applied')): ?>
+                                    <th class="num">Advance</th>
+                                <?php endif; ?>
                                 <th>Notes</th>
                             </tr>
                         </thead>
@@ -512,6 +460,20 @@ $page_title = "Purchase Management";
                                         </span>
                                     </td>
                                     <td class="num font-semibold"><?= number_format($pmt[$vpAmtCol], 2) ?></td>
+                                    <?php if (columnExists($conn, 'purchase_payments', 'advance_applied')): ?>
+                                        <td class="num">
+                                            <?php
+                                            $adv_applied = (float)($pmt['advance_applied'] ?? 0);
+                                            $adv_created = (float)($pmt['advance_created'] ?? 0);
+                                            if ($adv_applied > 0): ?>
+                                                <span class="text-blue-600 font-semibold">-<?= number_format($adv_applied, 2) ?></span>
+                                            <?php elseif ($adv_created > 0): ?>
+                                                <span class="text-emerald-600 font-semibold">+<?= number_format($adv_created, 2) ?></span>
+                                            <?php else: ?>
+                                                <span class="text-gray-400">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endif; ?>
                                     <td class="text-gray-500 text-sm"><?= htmlspecialchars($pmt['notes'] ?? '-') ?></td>
                                 </tr>
                             <?php endwhile; ?>

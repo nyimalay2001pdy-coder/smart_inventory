@@ -1,12 +1,8 @@
 <?php
 include "../includes/auth_check.php";
+protectPurchases('add');
 include "../config/database.php";
 include "../config/helpers.php";
-
-if (!isAdmin()) {
-    header("Location: index.php");
-    exit;
-}
 
 if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
@@ -62,6 +58,7 @@ if (isset($_POST['save_purchase'])) {
     $purchase_date = $_POST['purchase_date'] ?? date('Y-m-d');
     $payment_method = $_POST['payment_method'] ?? 'Cash';
     $paid_amount = (float)($_POST['paid_amount'] ?? 0);
+    $apply_advance = isset($_POST['apply_advance']) && $_POST['apply_advance'] == '1';
 
     if ($supplier_id <= 0) {
         $error_msg = 'Please select a supplier.';
@@ -69,6 +66,8 @@ if (isset($_POST['save_purchase'])) {
         $error_msg = 'Please add at least one product.';
     } elseif (!in_array($payment_method, ['Cash', 'KBZPay'])) {
         $error_msg = 'Please select a valid payment method.';
+    } elseif ($paid_amount < 0) {
+        $error_msg = 'Paid amount cannot be negative.';
     } else {
         $date_prefix = date('Ymd');
         $inv_result = mysqli_query($conn, "SELECT invoice_no FROM purchases WHERE invoice_no LIKE 'INV-$date_prefix-%' ORDER BY id DESC LIMIT 1");
@@ -85,24 +84,32 @@ if (isset($_POST['save_purchase'])) {
             $total += $item['subtotal'];
         }
 
-        // Previous Supplier Balance
-        $sup_bal = $supplier_balances[$supplier_id] ?? ['balance' => 0, 'type' => 'Clear'];
-        $previous_balance = $sup_bal['balance'];
-        $total_amount_due = $previous_balance + $total;
+        // Get supplier advance balance
+        $sup_row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT advance_balance FROM suppliers WHERE id = $supplier_id"));
+        $available_advance = $sup_row ? (float)$sup_row['advance_balance'] : 0;
 
-        // Validate payment
-        if ($paid_amount < 0) {
-            $error_msg = 'Paid amount cannot be negative.';
-        } elseif ($paid_amount > $total_amount_due) {
-            $error_msg = 'Paid amount (' . number_format($paid_amount, 2) . ' MMK) cannot exceed total amount due (' . number_format($total_amount_due, 2) . ' MMK).';
-        } else {
+        // Apply advance if requested and available
+        $advance_applied = 0;
+        if ($apply_advance && $available_advance > 0 && $total > 0) {
+            $advance_applied = min($available_advance, $total);
+        }
+
+        // Calculate effective amount due after advance
+        $effective_total = $total - $advance_applied;
 
         // Auto-calculate payment status and remaining balance
-        $remaining_balance = $total_amount_due - $paid_amount;
-        if ($remaining_balance <= 0) {
+        // paid_amount = cash amount the user is paying
+        // total_payment = cash + advance_applied
+        $total_payment = $paid_amount + $advance_applied;
+        $remaining_balance = max(0, $effective_total - $paid_amount);
+
+        // Determine advance created (overpayment in cash beyond what's needed)
+        $advance_created = 0;
+        if ($total_payment >= $effective_total) {
             $payment_status = 'Paid';
+            $advance_created = max(0, $total_payment - $effective_total);
             $remaining_balance = 0;
-        } elseif ($paid_amount > 0) {
+        } elseif ($paid_amount > 0 || $advance_applied > 0) {
             $payment_status = 'Partial';
         } else {
             $payment_status = 'Unpaid';
@@ -119,32 +126,45 @@ if (isset($_POST['save_purchase'])) {
         $purchase_id = mysqli_insert_id($conn);
 
         if ($purchase_id) {
-            // Insert payment record
-            if ($paid_amount > 0) {
+            // Insert payment record (if any payment was made)
+            $actual_paid = $paid_amount + $advance_applied;
+            if ($actual_paid > 0) {
                 $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
                 $hasExtra = columnExists($conn, 'purchase_payments', 'remaining_balance');
+                $hasAdvance = columnExists($conn, 'purchase_payments', 'advance_applied');
                 if ($hasExtra) {
                     $cash_amt = ($payment_method === 'Cash') ? $paid_amount : 0;
                     $kbz_amt = ($payment_method === 'KBZPay') ? $paid_amount : 0;
                     if (columnExists($conn, 'purchase_payments', 'cash_amount')) {
-                        mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date)
-                            VALUES('$purchase_id', '$payment_method', '$cash_amt', '$kbz_amt', '$paid_amount', '$remaining_balance', '$payment_status', '$purchase_date')");
+                        $cols = "purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date";
+                        $vals = "'$purchase_id', '$payment_method', '$cash_amt', '$kbz_amt', '$actual_paid', '$remaining_balance', '$payment_status', '$purchase_date'";
+                        if ($hasAdvance) {
+                            $cols .= ", advance_applied, advance_created";
+                            $vals .= ", '$advance_applied', '$advance_created'";
+                        }
+                        mysqli_query($conn, "INSERT INTO purchase_payments($cols) VALUES($vals)");
                     } else {
-                        mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date)
-                            VALUES('$purchase_id', '$payment_method', '$paid_amount', '$remaining_balance', '$payment_status', '$purchase_date')");
+                        $cols = "purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date";
+                        $vals = "'$purchase_id', '$payment_method', '$actual_paid', '$remaining_balance', '$payment_status', '$purchase_date'";
+                        if ($hasAdvance) {
+                            $cols .= ", advance_applied, advance_created";
+                            $vals .= ", '$advance_applied', '$advance_created'";
+                        }
+                        mysqli_query($conn, "INSERT INTO purchase_payments($cols) VALUES($vals)");
                     }
                 } else {
                     mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, payment_date)
-                        VALUES('$purchase_id', '$payment_method', '$paid_amount', '$purchase_date')");
+                        VALUES('$purchase_id', '$payment_method', '$actual_paid', '$purchase_date')");
                 }
             }
 
-            // Update supplier balance
-            if ($remaining_balance > 0) {
-                mysqli_query($conn, "UPDATE suppliers SET current_balance = $remaining_balance, balance_type = 'Payable' WHERE id = $supplier_id");
-            } else {
-                mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $supplier_id");
-            }
+            // Update supplier advance balance
+            $new_advance = $available_advance - $advance_applied + $advance_created;
+            if ($new_advance < 0) $new_advance = 0;
+            mysqli_query($conn, "UPDATE suppliers SET advance_balance = $new_advance WHERE id = $supplier_id");
+
+            // Recalculate supplier outstanding balance from all purchases
+            recalcSupplierBalance($conn, $supplier_id);
 
             foreach ($_SESSION['cart'] as $item) {
                 $pid = (int)$item['product_id'];
@@ -171,7 +191,6 @@ if (isset($_POST['save_purchase'])) {
         }
         } // end else (validation passed)
     }
-}
 
 // ============ FETCH DATA ============
 $suppliers = mysqli_query($conn, "SELECT * FROM suppliers WHERE status='Active'");
@@ -179,11 +198,12 @@ $products = mysqli_query($conn, "SELECT * FROM products WHERE status='Active'");
 $logged_user = $_SESSION['name'] ?? 'User';
 
 $supplier_balances = [];
-$sup_bal_query = mysqli_query($conn, "SELECT id, current_balance, balance_type FROM suppliers WHERE status='Active'");
+$sup_bal_query = mysqli_query($conn, "SELECT id, current_balance, balance_type, advance_balance FROM suppliers WHERE status='Active'");
 while ($sb = mysqli_fetch_assoc($sup_bal_query)) {
     $supplier_balances[$sb['id']] = [
         'balance' => (float)$sb['current_balance'],
-        'type' => $sb['balance_type']
+        'type' => $sb['balance_type'],
+        'advance' => (float)($sb['advance_balance'] ?? 0)
     ];
 }
 
@@ -416,6 +436,28 @@ $page_title = "New Purchase";
                                             </div>
                                         </div>
 
+                                        <!-- Supplier Advance Balance (hidden by default) -->
+                                        <div id="advanceSection" class="hidden mb-5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                                            <h4 class="text-sm font-bold text-blue-700 dark:text-blue-400 mb-3 flex items-center gap-2">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Supplier Advance Balance
+                                            </h4>
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <p class="text-xs text-blue-600 dark:text-blue-400">Available Credit</p>
+                                                    <p class="text-lg font-bold text-blue-700 dark:text-blue-300" id="advanceBalance">0.00 MMK</p>
+                                                </div>
+                                                <label class="flex items-center gap-2 cursor-pointer">
+                                                    <input type="checkbox" id="applyAdvance" name="apply_advance" value="1"
+                                                        class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+                                                        onchange="recalcTotals()">
+                                                    <span class="text-sm font-medium text-blue-700 dark:text-blue-300">Apply to this purchase</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                             <div>
                                                 <label class="form-label">Payment Method <span class="text-red-500">*</span></label>
@@ -462,6 +504,24 @@ $page_title = "New Purchase";
                                                 <div class="flex items-center justify-between bg-indigo-50 rounded-xl px-4 py-3 border border-indigo-100">
                                                     <span class="text-sm font-medium text-indigo-600">Total amount</span>
                                                     <span class="text-2xl font-extrabold text-indigo-700" id="grandTotal"><?= number_format($cart_subtotal, 2) ?></span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Advance Applied (hidden by default) -->
+                                            <div id="advanceAppliedSection" class="hidden">
+                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Advance Applied</label>
+                                                <div class="mt-1 flex items-center justify-between bg-blue-50 rounded-xl px-4 py-3 border border-blue-200">
+                                                    <span class="text-sm font-medium text-blue-600">Supplier credit</span>
+                                                    <span class="text-lg font-extrabold text-blue-700" id="advanceApplied">0.00</span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Remaining After Advance (shown when advance is applied) -->
+                                            <div id="remainingAfterAdvanceSection" class="hidden">
+                                                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Remaining to Pay</label>
+                                                <div class="mt-1 flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5">
+                                                    <span class="text-sm text-gray-500 dark:text-gray-400">After advance</span>
+                                                    <span class="text-lg font-bold text-gray-800 dark:text-gray-200" id="remainingAfterAdvance">0.00</span>
                                                 </div>
                                             </div>
 
@@ -565,9 +625,17 @@ $page_title = "New Purchase";
                         <span class="text-gray-600 dark:text-gray-400">Total Paid</span>
                         <span class="font-semibold text-emerald-600" id="confirmPaid">0.00</span>
                     </div>
+                    <div id="confirmAdvanceRow" class="flex justify-between hidden">
+                        <span class="text-gray-600 dark:text-gray-400">Advance Applied</span>
+                        <span class="font-semibold text-blue-600" id="confirmAdvanceApplied">0.00</span>
+                    </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600 dark:text-gray-400">Remaining Balance</span>
                         <span class="font-semibold" id="confirmBalance">0.00</span>
+                    </div>
+                    <div id="confirmAdvanceCreatedRow" class="flex justify-between hidden">
+                        <span class="text-gray-600 dark:text-gray-400">Advance Created</span>
+                        <span class="font-semibold text-blue-600" id="confirmAdvanceCreated">0.00</span>
                     </div>
                     </div>
                     <div class="border-t border-indigo-200 dark:border-indigo-800 pt-2 flex justify-between">
@@ -731,13 +799,14 @@ $page_title = "New Purchase";
             $first = true;
             foreach ($supplier_balances as $sid => $sdata) {
                 if (!$first) echo ',';
-                echo $sid . ':{balance:' . $sdata['balance'] . ',type:"' . $sdata['type'] . '"}';
+                echo $sid . ':{balance:' . $sdata['balance'] . ',type:"' . $sdata['type'] . '",advance:' . $sdata['advance'] . '}';
                 $first = false;
             }
             ?>
         };
 
         let selectedPrevBalance = 0;
+        let selectedAdvance = 0;
 
         function onSupplierChange() {
             const supplierId = document.getElementById('supplier_id').value;
@@ -745,16 +814,41 @@ $page_title = "New Purchase";
             const prevBalEl = document.getElementById('prevBalance');
             const prevNewTotalEl = document.getElementById('prevNewTotal');
             const prevTotalDueEl = document.getElementById('prevTotalDue');
+            const advanceSection = document.getElementById('advanceSection');
+            const advanceBalEl = document.getElementById('advanceBalance');
+            const applyAdvanceCb = document.getElementById('applyAdvance');
             selectedPrevBalance = 0;
+            selectedAdvance = 0;
 
-            if (supplierId && supplierBalances[supplierId] && supplierBalances[supplierId].balance > 0) {
-                selectedPrevBalance = supplierBalances[supplierId].balance;
-                prevBalEl.textContent = parseFloat(selectedPrevBalance).toLocaleString('en', {minimumFractionDigits: 2});
-                prevNewTotalEl.textContent = '0.00';
-                prevTotalDueEl.textContent = parseFloat(selectedPrevBalance).toLocaleString('en', {minimumFractionDigits: 2});
-                section.classList.remove('hidden');
+            if (supplierId && supplierBalances[supplierId]) {
+                const supData = supplierBalances[supplierId];
+                // Show previous balance if positive
+                if (supData.balance > 0) {
+                    selectedPrevBalance = supData.balance;
+                    prevBalEl.textContent = parseFloat(selectedPrevBalance).toLocaleString('en', {minimumFractionDigits: 2});
+                    prevNewTotalEl.textContent = '0.00';
+                    prevTotalDueEl.textContent = parseFloat(selectedPrevBalance).toLocaleString('en', {minimumFractionDigits: 2});
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                    prevBalEl.textContent = '0.00';
+                    prevNewTotalEl.textContent = '0.00';
+                    prevTotalDueEl.textContent = '0.00';
+                }
+                // Show advance balance if positive
+                if (supData.advance > 0) {
+                    selectedAdvance = supData.advance;
+                    advanceBalEl.textContent = parseFloat(selectedAdvance).toLocaleString('en', {minimumFractionDigits: 2}) + ' MMK';
+                    applyAdvanceCb.checked = true;
+                    advanceSection.classList.remove('hidden');
+                } else {
+                    selectedAdvance = 0;
+                    applyAdvanceCb.checked = false;
+                    advanceSection.classList.add('hidden');
+                }
             } else {
                 section.classList.add('hidden');
+                advanceSection.classList.add('hidden');
                 prevBalEl.textContent = '0.00';
                 prevNewTotalEl.textContent = '0.00';
                 prevTotalDueEl.textContent = '0.00';
@@ -983,8 +1077,31 @@ $page_title = "New Purchase";
                 document.getElementById('prevTotalDue').textContent = totalDue.toLocaleString('en', {minimumFractionDigits: 2});
             }
 
+            // Advance calculation
+            const applyAdvance = document.getElementById('applyAdvance').checked;
+            const advanceAppliedSection = document.getElementById('advanceAppliedSection');
+            const advanceAppliedEl = document.getElementById('advanceApplied');
+            const remainingAfterAdvanceSection = document.getElementById('remainingAfterAdvanceSection');
+            const remainingAfterAdvanceEl = document.getElementById('remainingAfterAdvance');
+
+            let advanceToApply = 0;
+            if (applyAdvance && selectedAdvance > 0 && grand > 0) {
+                advanceToApply = Math.min(selectedAdvance, grand);
+                advanceAppliedEl.textContent = advanceToApply.toLocaleString('en', {minimumFractionDigits: 2});
+                advanceAppliedSection.classList.remove('hidden');
+
+                const remainingAfter = grand - advanceToApply;
+                remainingAfterAdvanceEl.textContent = remainingAfter.toLocaleString('en', {minimumFractionDigits: 2});
+                remainingAfterAdvanceSection.classList.remove('hidden');
+            } else {
+                advanceAppliedSection.classList.add('hidden');
+                remainingAfterAdvanceSection.classList.add('hidden');
+            }
+
             const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
-            const remainingBalance = Math.max(0, totalDue - paidAmount);
+            const effectiveTotal = grand - advanceToApply;
+            const totalPayment = paidAmount + advanceToApply;
+            const remainingBalance = Math.max(0, effectiveTotal - paidAmount);
 
             const statusDisplay = document.getElementById('paymentStatusDisplay');
             const statusInput = document.getElementById('paymentStatusInput');
@@ -992,12 +1109,10 @@ $page_title = "New Purchase";
             const changeDisplay = document.getElementById('changeAmount');
 
             let status = 'Unpaid';
-            if (totalDue > 0) {
-                if (remainingBalance <= 0) {
-                    status = 'Paid';
-                } else if (paidAmount > 0) {
-                    status = 'Partial';
-                }
+            if (totalPayment >= effectiveTotal && effectiveTotal > 0) {
+                status = 'Paid';
+            } else if (paidAmount > 0 || advanceToApply > 0) {
+                status = 'Partial';
             }
 
             statusInput.value = status;
@@ -1013,11 +1128,17 @@ $page_title = "New Purchase";
                 statusDisplay.className += 'text-red-600 bg-red-50';
             }
 
-            // Change amount (only for Cash, when paid > total due)
+            // Change amount / advance created (only for Cash, when paid > effective total)
             const method = document.getElementById('paymentMethod').value;
-            if (method === 'Cash' && paidAmount > totalDue && totalDue > 0) {
-                changeDisplay.textContent = (paidAmount - totalDue).toFixed(2);
+            if (method === 'Cash' && paidAmount > effectiveTotal && effectiveTotal > 0) {
+                changeDisplay.textContent = (paidAmount - effectiveTotal).toFixed(2);
                 changeSection.classList.remove('hidden');
+                changeSection.querySelector('label').textContent = 'Advance Created';
+            } else if (advanceToApply > 0 && paidAmount > 0 && totalPayment > grand) {
+                // Overpayment after advance
+                changeDisplay.textContent = (totalPayment - grand).toFixed(2);
+                changeSection.classList.remove('hidden');
+                changeSection.querySelector('label').textContent = 'Advance Created';
             } else {
                 changeSection.classList.add('hidden');
             }
@@ -1070,8 +1191,15 @@ $page_title = "New Purchase";
             // Gather data
             const items = document.querySelectorAll('.data-table tbody tr:not(:has(td[colspan]))');
             const grand = parseFloat(document.getElementById('grandTotal').textContent.replace(/,/g, '')) || 0;
-            const totalDue = selectedPrevBalance + grand;
-            const remainingBalance = Math.max(0, totalDue - paidAmount);
+            const applyAdvance = document.getElementById('applyAdvance').checked;
+            let advanceToApply = 0;
+            if (applyAdvance && selectedAdvance > 0 && grand > 0) {
+                advanceToApply = Math.min(selectedAdvance, grand);
+            }
+            const effectiveTotal = grand - advanceToApply;
+            const totalPayment = paidAmount + advanceToApply;
+            const remainingBalance = Math.max(0, effectiveTotal - paidAmount);
+            const advanceCreated = Math.max(0, totalPayment - effectiveTotal);
             const status = document.getElementById('paymentStatusInput').value;
             const supplierName = document.getElementById('supplier_id').options[document.getElementById('supplier_id').selectedIndex].text;
             const today = new Date();
@@ -1091,8 +1219,8 @@ $page_title = "New Purchase";
             document.getElementById('confirmProductCount').textContent = items.length;
             document.getElementById('confirmTotalQty').textContent = totalQty;
             document.getElementById('confirmTotal').textContent = grand.toFixed(2);
-            document.getElementById('confirmPaid').textContent = paidAmount.toFixed(2);
-            document.getElementById('confirmMethod').textContent = method;
+            document.getElementById('confirmPaid').textContent = totalPayment.toFixed(2);
+            document.getElementById('confirmMethod').textContent = advanceToApply > 0 && paidAmount === 0 ? 'Advance Only' : method;
             document.getElementById('confirmBalance').textContent = remainingBalance.toFixed(2);
             document.getElementById('confirmStatus').textContent = status;
 
@@ -1107,6 +1235,24 @@ $page_title = "New Purchase";
             } else {
                 prevBalRow.classList.add('hidden');
                 totalDueRow.classList.add('hidden');
+            }
+
+            // Show/hide advance applied row
+            const advRow = document.getElementById('confirmAdvanceRow');
+            if (advanceToApply > 0) {
+                advRow.classList.remove('hidden');
+                document.getElementById('confirmAdvanceApplied').textContent = advanceToApply.toFixed(2);
+            } else {
+                advRow.classList.add('hidden');
+            }
+
+            // Show/hide advance created row
+            const advCreatedRow = document.getElementById('confirmAdvanceCreatedRow');
+            if (advanceCreated > 0) {
+                advCreatedRow.classList.remove('hidden');
+                document.getElementById('confirmAdvanceCreated').textContent = advanceCreated.toFixed(2);
+            } else {
+                advCreatedRow.classList.add('hidden');
             }
 
             // Status badge styling

@@ -1,9 +1,8 @@
 <?php
 include "../includes/auth_check.php";
+protectSales('add');
 include "../config/database.php";
 include "../config/helpers.php";
-
-// All authenticated users can access POS
 
 if (!isset($_SESSION['sale_cart'])) {
     $_SESSION['sale_cart'] = [];

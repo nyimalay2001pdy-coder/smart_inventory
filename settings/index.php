@@ -1,13 +1,8 @@
 <?php
 include "../includes/auth_check.php";
+protectSettings();
 include "../config/database.php";
 $page_title = "Settings";
-
-$is_admin = isAdmin();
-if (!$is_admin) {
-    header("Location: ../dashboard/index.php");
-    exit;
-}
 
 $setting = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM settings WHERE id=1"));
 

@@ -1,6 +1,6 @@
 <?php
 include "../includes/auth_check.php";
-requireAdmin();
+protectCategories('view');
 include "../config/database.php";
 include "../config/helpers.php";
 
@@ -10,6 +10,7 @@ $search = $_GET['search'] ?? '';
 $status_filter = $_GET['status'] ?? '';
 
 if (isset($_GET['confirm_delete'])) {
+    protectCategories('delete');
     $delete_id = (int)$_GET['confirm_delete'];
     $del_check = mysqli_query($conn, "SELECT name FROM categories WHERE id = $delete_id");
     if (mysqli_num_rows($del_check) > 0) {
@@ -59,12 +60,14 @@ if (!$result) {
             <?php include "../includes/header.php"; ?>
             <main class="p-4 lg:p-6">
                 <div class="flex justify-end mb-6">
+                    <?php if (checkPermission('categories', 'add')): ?>
                     <a href="add.php" class="btn btn-primary">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                         Add New Category
                     </a>
+                    <?php endif; ?>
                 </div>
 
                 <form method="GET" class="filter-bar">
@@ -90,7 +93,9 @@ if (!$result) {
                                         <th class="num">Products Count</th>
                                         <th class="center">Status</th>
                                         <th>Created Date</th>
+                                        <?php if (checkPermission('categories', 'edit') || checkPermission('categories', 'delete')): ?>
                                         <th class="center sticky right-0 bg-gray-50 z-10">Action</th>
+                                        <?php endif; ?>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -125,21 +130,27 @@ if (!$result) {
                                                 <td class="text-gray-500 dark:text-gray-400 text-sm">
                                                     <?= date('d M Y', strtotime($row['created_at'])) ?>
                                                 </td>
+                                                <?php if (checkPermission('categories', 'edit') || checkPermission('categories', 'delete')): ?>
                                                 <td class="center sticky right-0 bg-white z-10">
                                                     <div class="actions">
+                                                        <?php if (checkPermission('categories', 'edit')): ?>
                                                         <a href="edit.php?id=<?= $row['id'] ?>" title="Edit" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                         </a>
+                                                        <?php endif; ?>
+                                                        <?php if (checkPermission('categories', 'delete')): ?>
                                                         <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', 'index.php')" title="Delete" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                         </button>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </td>
+                                                <?php endif; ?>
                                             </tr>
                                         <?php endwhile; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="7">
+                                            <td colspan="<?= (checkPermission('categories', 'edit') || checkPermission('categories', 'delete')) ? 7 : 6 ?>">
                                                 <div class="empty-state">
                                                     <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />

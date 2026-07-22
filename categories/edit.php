@@ -1,6 +1,6 @@
 <?php
 include "../includes/auth_check.php";
-requireAdmin();
+protectCategories('edit');
 include "../config/database.php";
 include "../config/helpers.php";
 

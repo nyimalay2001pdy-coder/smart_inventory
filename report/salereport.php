@@ -1,6 +1,6 @@
 <?php
 include "../includes/auth_check.php";
-// All authenticated users can access sale reports
+protectReports();
 include "../config/database.php";
 include "../config/helpers.php";
 

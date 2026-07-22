@@ -1,6 +1,6 @@
 <?php
 include "../includes/auth_check.php";
-requireAdmin();
+protectSuppliers('view');
 include "../config/database.php";
 include "../config/helpers.php";
 
@@ -40,6 +40,7 @@ $recent_purchases = fetchAll($conn, "SELECT * FROM purchases WHERE supplier_id =
 $recent_payments = fetchAll($conn, "SELECT pp.*, pu.invoice_no FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ? ORDER BY pp.payment_date DESC LIMIT 5", [$id], "i");
 
 $cur_bal = (float)($supplier['current_balance'] ?? 0);
+$advance_bal = (float)($supplier['advance_balance'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -91,7 +92,7 @@ $cur_bal = (float)($supplier['current_balance'] ?? 0);
                     <?php
                     $cur_type = 'Clear';
                     if ($cur_bal > 0) $cur_type = 'Payable';
-                    elseif ($cur_bal < 0) $cur_type = 'Advance';
+                    elseif ($advance_bal > 0) $cur_type = 'Advance';
                     ?>
                     <div class="card mb-6">
                         <div class="card-body py-4">
@@ -105,7 +106,7 @@ $cur_bal = (float)($supplier['current_balance'] ?? 0);
                                     <div>
                                         <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Balance</p>
                                         <p class="text-2xl font-extrabold <?= $cur_type === 'Payable' ? 'text-amber-600 dark:text-amber-400' : ($cur_type === 'Advance' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400') ?>">
-                                            <?= $cur_bal == 0 ? '0' : number_format($cur_bal, 2) ?> MMK
+                                            <?= $cur_bal == 0 && $advance_bal == 0 ? '0' : number_format($cur_type === 'Advance' ? $advance_bal : $cur_bal, 2) ?> MMK
                                         </p>
                                     </div>
                                 </div>
@@ -171,9 +172,24 @@ $cur_bal = (float)($supplier['current_balance'] ?? 0);
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Balance</p>
-                                    <p class="text-lg font-bold <?= $cur_type === 'Payable' ? 'text-amber-600 dark:text-amber-400' : ($cur_type === 'Advance' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400') ?>">
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Outstanding Balance</p>
+                                    <p class="text-lg font-bold <?= $cur_bal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' ?>">
                                         <?= number_format($cur_bal, 2) ?> MMK
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Advance Balance</p>
+                                    <p class="text-lg font-bold <?= $advance_bal > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-200' ?>">
+                                        <?= number_format($advance_bal, 2) ?> MMK
                                     </p>
                                 </div>
                             </div>
@@ -201,21 +217,6 @@ $cur_bal = (float)($supplier['current_balance'] ?? 0);
                                 <div>
                                     <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Payments</p>
                                     <p class="text-lg font-bold text-gray-800 dark:text-gray-200"><?= number_format($total_payments, 2) ?> MMK</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 <?= $outstanding > 0 ? 'bg-amber-100 dark:bg-amber-900/30' : ($outstanding < 0 ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-800/30') ?> rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 <?= $outstanding > 0 ? 'text-amber-600 dark:text-amber-400' : ($outstanding < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400') ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Outstanding Balance</p>
-                                    <p class="text-lg font-bold <?= $outstanding > 0 ? 'text-amber-600 dark:text-amber-400' : ($outstanding < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-200') ?>">
-                                        <?= number_format($outstanding, 2) ?> MMK
-                                    </p>
                                 </div>
                             </div>
                         </div>

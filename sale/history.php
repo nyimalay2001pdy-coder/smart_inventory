@@ -1,11 +1,12 @@
 <?php
 include "../includes/auth_check.php";
+protectSales('view');
 include "../config/database.php";
 include "../config/helpers.php";
-// All authenticated users can access sale history
 
 // ============ DELETE SALE ============
-if (isset($_GET['delete_id']) && isAdmin()) {
+if (isset($_GET['delete_id'])) {
+    protectSales('delete');
     $id = (int)$_GET['delete_id'];
     $details = mysqli_query($conn, "SELECT * FROM sale_details WHERE sale_id='$id'");
     while ($row = mysqli_fetch_assoc($details)) {

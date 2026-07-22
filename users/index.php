@@ -1,6 +1,6 @@
 <?php
 include "../includes/auth_check.php";
-requireAdmin();
+protectUsers('view');
 include "../config/database.php";
 
 $search = $_GET['search'] ?? '';

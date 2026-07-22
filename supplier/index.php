@@ -1,6 +1,6 @@
 <?php
 include "../includes/auth_check.php";
-requireAdmin();
+protectSuppliers('view');
 include "../config/database.php";
 $page_title = "Suppliers";
 
@@ -12,8 +12,7 @@ $page_title = "Suppliers";
 
 
 if (isset($_GET['confirm_delete'])) {
-
-
+    protectSuppliers('delete');
     $id = (int)$_GET['confirm_delete'];
 
     // Check if supplier has purchases
@@ -270,22 +269,26 @@ $result = mysqli_query($conn, $sql);
                                     <td class="center">
                                         <?php
                                         $bal = (float)($row['current_balance'] ?? 0);
-                                        if ($bal == 0) {
-                                        ?>
-                                            <span class="badge badge-success"><span class="badge-dot"></span> Clear (0 MMK)</span>
-                                        <?php } elseif ($bal > 0) { ?>
+                                        $adv = (float)($row['advance_balance'] ?? 0);
+                                        if ($bal > 0) { ?>
                                             <span class="badge badge-warning"><span class="badge-dot"></span> Payable (<?= number_format($bal, 0) ?> MMK)</span>
+                                        <?php } elseif ($adv > 0) { ?>
+                                            <span class="badge badge-info"><span class="badge-dot"></span> Advance (<?= number_format($adv, 0) ?> MMK)</span>
                                         <?php } else { ?>
-                                            <span class="badge badge-info"><span class="badge-dot"></span> Advance (<?= number_format(abs($bal), 0) ?> MMK)</span>
+                                            <span class="badge badge-success"><span class="badge-dot"></span> Clear</span>
                                         <?php } ?>
                                     </td>
                                     <td class="center">
                                         <div class="actions flex gap-1">
                                             <a href="view.php?id=<?= $row['id'] ?>" class="btn btn-sm bg-indigo-100 text-indigo-600 hover:bg-indigo-200 rounded-lg">View</a>
+                                            <?php if (checkPermission('suppliers', 'edit')): ?>
                                             <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg">Edit</a>
+                                            <?php endif; ?>
+                                            <?php if (checkPermission('suppliers', 'delete')): ?>
                                             <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['supplier_name'])) ?>', 'index.php')" title="Delete" class="btn btn-sm bg-red-100 text-red-600 hover:bg-red-200 rounded-lg">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                             </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
