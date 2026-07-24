@@ -1,7 +1,50 @@
 /* ============================================
    SMART INVENTORY MANAGEMENT SYSTEM
-   Modern Design System — v2.0
+   Modern Design System — v3.0
+   Updated Color Palette & Styling Guidelines
    ============================================ */
+
+/* ── CSS Custom Properties ── */
+:root {
+    /* Primary Palette */
+    --color-sidebar-bg: #0F172A;
+    --color-sidebar-active: #1E293B;
+    --color-sidebar-accent: #6366F1;
+    --color-dashboard-bg: #F8FAFC;
+    --color-card-bg: #FFFFFF;
+    --color-card-border: #E2E8F0;
+    --color-card-shadow: rgba(0, 0, 0, 0.05);
+    
+    /* Text Colors */
+    --color-text-primary: #1E293B;
+    --color-text-muted: #64748B;
+    --color-text-label: #475569;
+    
+    /* Metric Card Colors */
+    --color-products-icon: #2563EB;
+    --color-products-bg: #EFF6FF;
+    --color-units-icon: #4F46E5;
+    --color-units-bg: #EEF2FF;
+    --color-cost-icon: #D97706;
+    --color-cost-bg: #FFFBEB;
+    --color-retail-icon: #059669;
+    --color-retail-bg: #ECFDF5;
+    
+    /* Status Colors */
+    --color-warning-bg: #FEF3C7;
+    --color-warning-text: #92400E;
+    --color-warning-icon: #F59E0B;
+    
+    /* Table Colors */
+    --color-table-header-bg: #F1F5F9;
+    --color-table-header-text: #475569;
+    
+    /* Button Colors */
+    --color-btn-primary: #6366F1;
+    --color-btn-primary-hover: #4F46E5;
+    --color-btn-outline-bg: #CBD5E1;
+    --color-btn-outline-hover: #F8FAFC;
+}
 
 /* ── Reset & Base ── */
 *, *::before, *::after {
@@ -20,8 +63,8 @@ body {
     font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     font-size: 0.875rem;
     line-height: 1.6;
-    color: #1e293b;
-    background-color: #f8fafc;
+    color: var(--color-text-primary);
+    background-color: var(--color-dashboard-bg);
 }
 
 .dark body {
@@ -60,10 +103,27 @@ body {
 }
 
 /* ============================================
-   SIDEBAR
+   SIDEBAR — Deep Slate Theme
    ============================================ */
 .sidebar-transition {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Override sidebar background to Deep Slate #0F172A */
+#sidebar,
+aside {
+    background-color: var(--color-sidebar-bg) !important;
+    border-right-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Sidebar active item with indigo accent */
+.sidebar-group-btn.active,
+.sidebar-group-btn[class*="bg-indigo"],
+nav a[class*="bg-indigo"],
+nav a[class*="bg-blue"] {
+    background-color: var(--color-sidebar-active) !important;
+    border-left: 3px solid var(--color-sidebar-accent);
+    box-shadow: inset 4px 0 12px rgba(99, 102, 241, 0.15);
 }
 
 .sidebar-group-items {
@@ -87,10 +147,10 @@ body {
    CARD SYSTEM — Modern Elevated Design
    ============================================ */
 .card {
-    background-color: #ffffff;
+    background-color: var(--color-card-bg);
     border-radius: 1rem;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--color-card-border);
+    box-shadow: 0 1px 3px var(--color-card-shadow), 0 1px 2px rgba(0, 0, 0, 0.02);
     transition: box-shadow 0.25s ease, transform 0.2s ease, border-color 0.25s ease;
 }
 
@@ -163,16 +223,17 @@ body {
 }
 
 /* ============================================
-   STAT CARDS — Colorful Dashboard Cards
+   STAT CARDS — Color-Coded Metric Cards
    ============================================ */
 .stat-card {
-    background-color: #ffffff;
+    background-color: var(--color-card-bg);
     border-radius: 1rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-card-border);
     padding: 1.25rem 1.5rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+    box-shadow: 0 1px 3px var(--color-card-shadow);
 }
 
 .stat-card::before {
@@ -321,23 +382,23 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    background: linear-gradient(135deg, var(--color-btn-primary) 0%, #818cf8 100%);
     color: white;
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    background: linear-gradient(135deg, var(--color-btn-primary-hover) 0%, var(--color-btn-primary) 100%);
     box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
     transform: translateY(-1px);
 }
 
 .btn-secondary {
-    background-color: #f1f5f9;
-    color: #475569;
-    border: 1px solid #e2e8f0;
+    background-color: var(--color-btn-outline-bg);
+    color: var(--color-text-label);
+    border: 1px solid var(--color-card-border);
 }
 .btn-secondary:hover:not(:disabled) {
-    background-color: #e2e8f0;
+    background-color: var(--color-btn-outline-hover);
     border-color: #cbd5e1;
 }
 
@@ -364,11 +425,11 @@ body {
 
 .btn-outline {
     background-color: transparent;
-    color: #475569;
-    border: 1.5px solid #e2e8f0;
+    color: var(--color-text-label);
+    border: 1.5px solid var(--color-card-border);
 }
 .btn-outline:hover:not(:disabled) {
-    background-color: #f8fafc;
+    background-color: var(--color-btn-outline-hover);
     border-color: #cbd5e1;
     color: #334155;
 }
@@ -419,7 +480,7 @@ body {
 }
 
 /* ============================================
-   DATA TABLE — Modern Clean Design
+   DATA TABLE — Modern Blue Theme
    ============================================ */
 .data-table {
     width: 100%;
@@ -428,11 +489,11 @@ body {
 }
 
 .data-table thead {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
 .dark .data-table thead {
-    background: linear-gradient(135deg, #0f1a2e 0%, #151d2e 100%);
+    background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
 }
 
 .data-table th {
@@ -440,55 +501,67 @@ body {
     text-align: left;
     font-size: 0.6875rem;
     font-weight: 700;
-    color: #64748b;
+    color: #ffffff;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    border-bottom: 2px solid #e2e8f0;
+    border-bottom: 2px solid #1d4ed8;
     white-space: nowrap;
     height: 3rem;
 }
 
+.data-table th:first-child {
+    border-top-left-radius: 0.75rem;
+}
+
+.data-table th:last-child {
+    border-top-right-radius: 0.75rem;
+}
+
 .dark .data-table th {
-    color: #64748b;
-    border-bottom-color: #1e2d44;
+    color: #ffffff;
+    border-bottom-color: #1e3a8a;
 }
 
 .data-table td {
     padding: 0.875rem 1.25rem;
     font-size: 0.8125rem;
-    color: #334155;
-    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    border-bottom: 1px solid #e2e8f0;
     height: 3.5rem;
     vertical-align: middle;
+    background-color: #ffffff;
 }
 
 .dark .data-table td {
-    color: #94a3b8;
-    border-bottom-color: #1a2540;
+    color: #cbd5e1;
+    border-bottom-color: #1e2d44;
+    background-color: #151d2e;
 }
 
+/* Zebra striping */
+.data-table tbody tr:nth-child(even) td {
+    background-color: #eff6ff;
+}
+
+.dark .data-table tbody tr:nth-child(even) td {
+    background-color: rgba(30, 64, 175, 0.08);
+}
+
+/* Row hover */
 .data-table tbody tr {
     transition: all 0.15s ease;
 }
 
-.data-table tbody tr:hover {
-    background: linear-gradient(90deg, #f0f4ff 0%, #f8fafc 100%);
+.data-table tbody tr:hover td {
+    background-color: #dbeafe;
 }
 
-.dark .data-table tbody tr:hover {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, rgba(30, 45, 68, 0.5) 100%);
+.dark .data-table tbody tr:hover td {
+    background-color: rgba(59, 130, 246, 0.12);
 }
 
 .data-table tbody tr:last-child td {
     border-bottom: none;
-}
-
-.data-table tbody tr:first-child td:first-child {
-    border-top-left-radius: 0.75rem;
-}
-
-.data-table tbody tr:first-child td:last-child {
-    border-top-right-radius: 0.75rem;
 }
 
 .data-table tbody tr:last-child td:first-child {
@@ -580,10 +653,10 @@ body {
 }
 
 .badge-warning {
-    background-color: #fef3c7;
-    color: #92400e;
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
 }
-.badge-warning .badge-dot { background-color: #f59e0b; }
+.badge-warning .badge-dot { background-color: var(--color-warning-icon); }
 
 .dark .badge-warning {
     background-color: rgba(245, 158, 11, 0.12);
@@ -624,10 +697,10 @@ body {
 }
 
 .badge-amber {
-    background-color: #fef3c7;
-    color: #92400e;
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
 }
-.badge-amber .badge-dot { background-color: #f59e0b; }
+.badge-amber .badge-dot { background-color: var(--color-warning-icon); }
 
 .dark .badge-amber {
     background-color: rgba(245, 158, 11, 0.12);
@@ -645,20 +718,44 @@ body {
     color: #38bdf8;
 }
 
+/* Gray badge for Inactive status */
+.badge-gray {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+.badge-gray .badge-dot { background-color: #94a3b8; }
+
+.dark .badge-gray {
+    background-color: rgba(100, 116, 139, 0.12);
+    color: #94a3b8;
+}
+
+/* Orange badge for Partial status */
+.badge-orange {
+    background-color: #fff7ed;
+    color: #9a3412;
+}
+.badge-orange .badge-dot { background-color: #f97316; }
+
+.dark .badge-orange {
+    background-color: rgba(249, 115, 22, 0.12);
+    color: #fb923c;
+}
+
 /* ============================================
    FORM ELEMENTS — Modern Inputs
    ============================================ */
 .form-input {
     width: 100%;
-    border: 1.5px solid #e2e8f0;
+    border: 1.5px solid var(--color-card-border);
     border-radius: 0.75rem;
     padding: 0.6875rem 1rem;
     font-size: 0.8125rem;
     font-weight: 400;
     outline: none;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    background-color: #ffffff;
-    color: #1e293b;
+    background-color: var(--color-card-bg);
+    color: var(--color-text-primary);
     line-height: 1.5;
 }
 
@@ -667,7 +764,7 @@ body {
 }
 
 .form-input:focus {
-    border-color: #6366f1;
+    border-color: var(--color-sidebar-accent);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
     background-color: #ffffff;
 }
@@ -720,7 +817,7 @@ textarea.form-input {
     margin-bottom: 0.5rem;
     font-size: 0.8125rem;
     font-weight: 600;
-    color: #334155;
+    color: var(--color-text-primary);
 }
 
 .dark .form-label {
@@ -736,7 +833,7 @@ textarea.form-input {
 
 .form-hint {
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: var(--color-text-muted);
     margin-top: 0.375rem;
 }
 
@@ -771,7 +868,7 @@ textarea.form-input {
 }
 
 .modal-content {
-    background: #ffffff;
+    background: var(--color-card-bg);
     border-radius: 1.25rem;
     width: 100%;
     max-width: 28rem;
@@ -779,7 +876,7 @@ textarea.form-input {
     overflow-y: auto;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.06);
     animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-card-border);
 }
 
 .dark .modal-content {
@@ -808,7 +905,7 @@ textarea.form-input {
 .page-title {
     font-size: 1.5rem;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--color-text-primary);
     line-height: 1.25;
     letter-spacing: -0.025em;
 }
@@ -819,7 +916,7 @@ textarea.form-input {
 
 .page-subtitle {
     font-size: 0.875rem;
-    color: #64748b;
+    color: var(--color-text-muted);
     margin-top: 0.25rem;
 }
 
@@ -831,8 +928,8 @@ textarea.form-input {
    FILTER BAR
    ============================================ */
 .filter-bar {
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
+    background-color: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
     border-radius: 1rem;
     padding: 1.25rem;
     display: flex;
@@ -878,7 +975,7 @@ textarea.form-input {
 .empty-state h3 {
     font-size: 1rem;
     font-weight: 600;
-    color: #64748b;
+    color: var(--color-text-muted);
     margin-bottom: 0.375rem;
 }
 
@@ -962,7 +1059,7 @@ textarea.form-input {
    UTILITY CLASSES
    ============================================ */
 .text-muted {
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 .dark .text-muted {
@@ -1262,4 +1359,98 @@ textarea.form-input {
 .summary-sticky {
     position: sticky;
     top: 6rem;
+}
+
+/* ============================================
+   NEW: Dashboard-Specific Metric Card Styles
+   ============================================ */
+
+/* Products Card — Soft Blue */
+.stat-card .bg-blue-50,
+.stat-card .bg-indigo-50 {
+    background-color: var(--color-products-bg) !important;
+}
+
+.stat-card .text-blue-600,
+.stat-card .text-indigo-600 {
+    color: var(--color-products-icon) !important;
+}
+
+/* Units Card — Soft Slate/Indigo */
+.stat-card-units .icon-container {
+    background-color: var(--color-units-bg);
+}
+
+.stat-card-units .icon-text {
+    color: var(--color-units-icon);
+}
+
+/* Cost Value Card — Soft Amber */
+.stat-card-cost .icon-container {
+    background-color: var(--color-cost-bg);
+}
+
+.stat-card-cost .icon-text {
+    color: var(--color-cost-icon);
+}
+
+/* Retail Value Card — Soft Emerald */
+.stat-card-retail .icon-container {
+    background-color: var(--color-retail-bg);
+}
+
+.stat-card-retail .icon-text {
+    color: var(--color-retail-icon);
+}
+
+/* ============================================
+   NEW: Low Stock Alert Banner
+   ============================================ */
+.low-stock-banner {
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.low-stock-banner .icon {
+    color: var(--color-warning-icon);
+}
+
+/* ============================================
+   NEW: Table Header Styling
+   ============================================ */
+.table-header-styled {
+    background-color: var(--color-table-header-bg);
+}
+
+.table-header-styled th {
+    color: var(--color-table-header-text);
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================
+   NEW: Export/Primary Button Override
+   ============================================ */
+.btn-export {
+    background-color: var(--color-btn-primary);
+    color: white;
+    border: none;
+}
+
+.btn-export:hover {
+    background-color: var(--color-btn-primary-hover);
+}
+
+/* ============================================
+   GREETING ANIMATION
+   ============================================ */
+.greeting-fade {
+    animation: fadeIn 0.5s ease-out both;
 }

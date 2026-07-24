@@ -177,7 +177,9 @@ if ($action === 'edit' && isset($_GET['id'])) {
                 <?php else: ?>
 
                     <div class="flex justify-end items-center mb-6">
-                        <a href="?action=add" class="bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition shadow-sm">＋ Add Unit</a>
+                        <?php if (checkPermission('units', 'add')): ?>
+                        <a href="?action=add" class="bg-indigo-600 text-white px-6 py-3 rounded-xl">+ Add Unit</a>
+                        <?php endif; ?>
                     </div>
 
                     <?php if (!$units_exists): ?>
@@ -206,59 +208,57 @@ if ($action === 'edit' && isset($_GET['id'])) {
                     </div>
                     <?php endif; ?>
 
-                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                    <div class="bg-white rounded-2xl shadow p-6">
                         <div class="table-wrap">
                             <table class="data-table w-full">
                                 <thead>
                                     <tr>
-                                        <th class="w-12">#</th>
+                                        <th>#</th>
                                         <th>Unit Name</th>
                                         <th>Symbol</th>
                                         <th class="num">Products</th>
                                         <th class="center">Status</th>
                                         <th>Created</th>
-                                        <th class="center sticky right-0 bg-gray-50 dark:bg-slate-800 z-10">Action</th>
+                                        <?php if (checkPermission('units', 'edit') || checkPermission('units', 'delete')): ?>
+                                        <th class="center">Action</th>
+                                        <?php endif; ?>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php if (empty($units)): ?>
-                                        <tr><td colspan="7" class="px-6 py-12 text-center text-gray-400">No units found</td></tr>
+                                        <tr><td colspan="<?= (checkPermission('units', 'edit') || checkPermission('units', 'delete')) ? 7 : 6 ?>" class="px-6 py-12 text-center text-gray-400">No units found</td></tr>
                                     <?php else: ?>
                                         <?php $count = 1;
                                         foreach ($units as $u): ?>
-                                            <tr class="border-b hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-                                                <td class="px-4 py-3 text-gray-500 dark:text-gray-400"><?= $count++ ?></td>
-                                                <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($u['unit_name']) ?></td>
-                                                <td class="px-4 py-3 font-mono text-sm text-gray-600 dark:text-gray-300"><?= htmlspecialchars($u['unit_symbol']) ?></td>
-                                                <td class="px-4 py-3 num">
+                                            <tr>
+                                                <td><?= $count++ ?></td>
+                                                <td class="font-semibold"><?= htmlspecialchars($u['unit_name']) ?></td>
+                                                <td class="font-mono text-sm"><?= htmlspecialchars($u['unit_symbol']) ?></td>
+                                                <td class="num">
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"><?= $u['product_count'] ?> products</span>
                                                 </td>
-                                                <td class="px-4 py-3 center">
+                                                <td class="center">
                                                     <?php if ($u['status'] === 'Active'): ?>
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
+                                                        <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
                                                     <?php else: ?>
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>
+                                                        <span class="badge badge-danger"><span class="badge-dot"></span> Inactive</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"><?= date('d M Y', strtotime($u['created_at'])) ?></td>
-                                                <td class="px-4 py-3 center sticky right-0 bg-white dark:bg-slate-800 z-10">
-                                                    <div class="actions">
+                                                <td><?= date('d M Y', strtotime($u['created_at'])) ?></td>
+                                                <?php if (checkPermission('units', 'edit') || checkPermission('units', 'delete')): ?>
+                                                <td class="center">
+                                                    <div class="actions flex gap-1">
                                                         <?php if (checkPermission('units', 'edit')): ?>
-                                                        <a href="?action=edit&id=<?= $u['unit_id'] ?>" title="Edit" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                            </svg>
-                                                        </a>
+                                                        <a href="?action=edit&id=<?= $u['unit_id'] ?>" class="btn btn-sm bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg">Edit</a>
                                                         <?php endif; ?>
                                                         <?php if (checkPermission('units', 'delete')): ?>
-                                                        <button onclick="openDeleteModal(<?= $u['unit_id'] ?>, '<?= htmlspecialchars(addslashes($u['unit_name'])) ?>', 'index.php')" title="Delete" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
+                                                        <button onclick="openDeleteModal(<?= $u['unit_id'] ?>, '<?= htmlspecialchars(addslashes($u['unit_name'])) ?>', 'index.php')" title="Delete" class="btn btn-sm bg-red-100 text-red-600 hover:bg-red-200 rounded-lg">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                         </button>
                                                         <?php endif; ?>
                                                     </div>
                                                 </td>
+                                                <?php endif; ?>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php endif; ?>

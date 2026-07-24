@@ -13,35 +13,75 @@ if ($page_title !== 'Dashboard') {
 
 $notif_count = 0;
 $low_stock_products = [];
+$out_of_stock_products = [];
 $price_update_products = [];
+$supplier_payment_due = [];
+
 if (isset($conn)) {
-    // Low stock notifications
-    $ls_count_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE current_stock <= reorder_level AND status='Active'");
+    // Low stock notifications (all roles)
+    $ls_count_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE current_stock > 0 AND current_stock <= reorder_level AND status='Active'");
     $ls_count = 0;
     if ($ls_count_result) {
         $ls_count = (int)mysqli_fetch_assoc($ls_count_result)['count'];
     }
     if ($ls_count > 0) {
-        $ls_result = mysqli_query($conn, "SELECT id, product_name, current_stock, reorder_level FROM products WHERE current_stock <= reorder_level AND status='Active' ORDER BY current_stock ASC LIMIT 10");
+        $ls_result = mysqli_query($conn, "SELECT id, product_name, current_stock, reorder_level FROM products WHERE current_stock > 0 AND current_stock <= reorder_level AND status='Active' ORDER BY current_stock ASC LIMIT 10");
         while ($row = mysqli_fetch_assoc($ls_result)) {
             $low_stock_products[] = $row;
         }
     }
-    $notif_count += $ls_count;
 
-    // Price update required notifications
-    $pu_count_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE price_update_required = 1 AND status='Active'");
-    $pu_count = 0;
-    if ($pu_count_result) {
-        $pu_count = (int)mysqli_fetch_assoc($pu_count_result)['count'];
+    // Out of stock notifications (all roles)
+    $os_count_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE current_stock = 0 AND status='Active'");
+    $os_count = 0;
+    if ($os_count_result) {
+        $os_count = (int)mysqli_fetch_assoc($os_count_result)['count'];
     }
-    if ($pu_count > 0) {
-        $pu_result = mysqli_query($conn, "SELECT id, product_name, purchase_price, selling_price FROM products WHERE price_update_required = 1 AND status='Active' ORDER BY product_name ASC LIMIT 10");
-        while ($row = mysqli_fetch_assoc($pu_result)) {
-            $price_update_products[] = $row;
+    if ($os_count > 0) {
+        $os_result = mysqli_query($conn, "SELECT id, product_name, current_stock, reorder_level FROM products WHERE current_stock = 0 AND status='Active' ORDER BY product_name ASC LIMIT 10");
+        while ($row = mysqli_fetch_assoc($os_result)) {
+            $out_of_stock_products[] = $row;
         }
     }
-    $notif_count += $pu_count;
+
+    // Price update required notifications (admin only)
+    $pu_count = 0;
+    if ($role === 'admin') {
+        $pu_count_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM products WHERE price_update_required = 1 AND status='Active'");
+        if ($pu_count_result) {
+            $pu_count = (int)mysqli_fetch_assoc($pu_count_result)['count'];
+        }
+        if ($pu_count > 0) {
+            $pu_result = mysqli_query($conn, "SELECT id, product_name, purchase_price, selling_price FROM products WHERE price_update_required = 1 AND status='Active' ORDER BY product_name ASC LIMIT 10");
+            while ($row = mysqli_fetch_assoc($pu_result)) {
+                $price_update_products[] = $row;
+            }
+        }
+    }
+
+    // Supplier payment due notifications (admin and staff)
+    $spd_count = 0;
+    if (in_array($role, ['admin', 'staff'])) {
+        $spd_count_result = mysqli_query($conn, "SELECT COUNT(*) AS count FROM suppliers WHERE outstanding_balance > 0 AND status = 'Active'");
+        if ($spd_count_result) {
+            $spd_count = (int)mysqli_fetch_assoc($spd_count_result)['count'];
+        }
+        if ($spd_count > 0) {
+            $spd_result = mysqli_query($conn, "SELECT id, supplier_name, outstanding_balance FROM suppliers WHERE outstanding_balance > 0 AND status = 'Active' ORDER BY outstanding_balance DESC LIMIT 10");
+            while ($row = mysqli_fetch_assoc($spd_result)) {
+                $supplier_payment_due[] = $row;
+            }
+        }
+    }
+
+    // Calculate total notification count based on role
+    $notif_count = $ls_count + $os_count;
+    if ($role === 'admin') {
+        $notif_count += $pu_count;
+    }
+    if (in_array($role, ['admin', 'staff'])) {
+        $notif_count += $spd_count;
+    }
 }
 ?>
 <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border-b border-gray-200/60 dark:border-slate-700/60 shadow-sm">
@@ -124,6 +164,40 @@ if (isset($conn)) {
                         </div>
                     </div>
                     <div class="max-h-[28rem] overflow-y-auto divide-y divide-gray-50 dark:divide-slate-700/50">
+                        <?php if (count($out_of_stock_products) > 0): ?>
+                            <div class="px-4 py-2 bg-red-50/60 dark:bg-red-500/5">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-red-400 flex-shrink-0"></span>
+                                    Out of Stock
+                                    <span class="ml-auto bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-full text-[10px] font-bold"><?= count($out_of_stock_products) ?></span>
+                                </p>
+                            </div>
+                            <?php foreach ($out_of_stock_products as $item): ?>
+                                <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors duration-150 group">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0 mt-0.5 ring-1 ring-red-200 dark:ring-red-500/20">
+                                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 truncate"><?= htmlspecialchars($item['product_name']) ?></p>
+                                            <div class="flex items-center gap-3 mt-1">
+                                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 dark:text-red-400">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                                    Out of Stock
+                                                </span>
+                                            </div>
+                                            <a href="../purchase/add.php" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-red-500 hover:bg-red-600 text-white transition-all duration-150 shadow-sm hover:shadow">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                Restock Now
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
                         <?php if (count($low_stock_products) > 0): ?>
                             <div class="px-4 py-2 bg-orange-50/60 dark:bg-orange-500/5">
                                 <p class="text-[11px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
@@ -155,6 +229,40 @@ if (isset($conn)) {
                                             <a href="../purchase/add.php" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-orange-500 hover:bg-orange-600 text-white transition-all duration-150 shadow-sm hover:shadow">
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                                 Restock
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <?php if (count($supplier_payment_due) > 0): ?>
+                            <div class="px-4 py-2 bg-purple-50/60 dark:bg-purple-500/5">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0"></span>
+                                    Supplier Payment Due
+                                    <span class="ml-auto bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full text-[10px] font-bold"><?= count($supplier_payment_due) ?></span>
+                                </p>
+                            </div>
+                            <?php foreach ($supplier_payment_due as $item): ?>
+                                <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors duration-150 group">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center flex-shrink-0 mt-0.5 ring-1 ring-purple-200 dark:ring-purple-500/20">
+                                            <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 truncate"><?= htmlspecialchars($item['supplier_name']) ?></p>
+                                            <div class="flex items-center gap-3 mt-1">
+                                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-purple-600 dark:text-purple-400">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    <?= number_format($item['outstanding_balance'], 0) ?> MMK due
+                                                </span>
+                                            </div>
+                                            <a href="../supplier/ledger.php?id=<?= $item['id'] ?>" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-purple-500 hover:bg-purple-600 text-white transition-all duration-150 shadow-sm hover:shadow">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                                View Ledger
                                             </a>
                                         </div>
                                     </div>

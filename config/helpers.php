@@ -1,4 +1,7 @@
 <?php
+// Include supplier ledger functions
+require_once __DIR__ . '/supplier_ledger.php';
+
 function sanitize($conn, $value) {
     return mysqli_real_escape_string($conn, trim($value));
 }
@@ -81,37 +84,99 @@ function columnExists($conn, $table, $column) {
 }
 
 /**
- * Recalculate a supplier's current_balance (unpaid purchase amounts) from all their purchases.
- * This is the authoritative balance calculation — always use this instead of setting current_balance directly.
+ * Recalculate a supplier's outstanding_balance and advance_credit from all their purchases and payments.
+ * This is the SINGLE SOURCE OF TRUTH — always use this instead of setting balance fields directly.
+ *
+ * Balance logic:
+ * - outstanding_balance: total_purchases - total_payments (only if positive, else 0)
+ * - advance_credit: total_payments - total_purchases (only if positive, else 0)
+ * - current_balance = outstanding_balance - advance_credit (for backward compat)
  */
 function recalcSupplierBalance($conn, $supplier_id) {
+    if ($supplier_id <= 0) return;
+
     $amtCol = getPaymentAmountCol($conn, 'purchase_payments');
 
-    // Calculate total outstanding across all purchases for this supplier
-    $bal_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(
-        CASE WHEN IFNULL(pp.total_paid, 0) >= p.total_amount THEN 0
-             ELSE p.total_amount - IFNULL(pp.total_paid, 0)
-        END
-    ), 0) AS outstanding
-    FROM purchases p
-    LEFT JOIN (
-        SELECT purchase_id, SUM($amtCol) AS total_paid
-        FROM purchase_payments
-        GROUP BY purchase_id
-    ) pp ON p.id = pp.purchase_id
-    WHERE p.supplier_id = $supplier_id"));
-    $outstanding = max(0, (float)$bal_res['outstanding']);
+    // Total purchases amount
+    $purch_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchases WHERE supplier_id = $supplier_id"));
+    $total_purchases = max(0, (float)$purch_res['total']);
 
-    if ($outstanding > 0) {
-        mysqli_query($conn, "UPDATE suppliers SET current_balance = $outstanding, balance_type = 'Payable' WHERE id = $supplier_id");
+    // Total payments from purchase_payments (paid_amount + advance_applied)
+    $pay_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(pp.$amtCol + pp.advance_applied), 0) AS total FROM purchase_payments pp INNER JOIN purchases p ON pp.purchase_id = p.id WHERE p.supplier_id = $supplier_id"));
+    $total_purchase_payments = max(0, (float)$pay_res['total']);
+
+    // Total direct payments from supplier_payments table (if exists)
+    $total_direct_payments = 0;
+    if (columnExists($conn, 'supplier_payments', 'supplier_id') && columnExists($conn, 'supplier_payments', 'paid_amount')) {
+        $dp_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(paid_amount), 0) AS total FROM supplier_payments WHERE supplier_id = $supplier_id"));
+        $total_direct_payments = max(0, (float)$dp_res['total']);
+    }
+
+    // Total payments = purchase payments + direct payments
+    $total_payments = $total_purchase_payments + $total_direct_payments;
+
+    // Outstanding Balance vs Advance Credit (never mixed)
+    if ($total_purchases > $total_payments) {
+        $outstanding_balance = round($total_purchases - $total_payments, 2);
+        $advance_credit = 0;
     } else {
-        // Check if advance_balance > 0 to determine correct type
-        $sup = mysqli_fetch_assoc(mysqli_query($conn, "SELECT advance_balance FROM suppliers WHERE id = $supplier_id"));
-        $adv = $sup ? (float)$sup['advance_balance'] : 0;
-        if ($adv > 0) {
-            mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Advance' WHERE id = $supplier_id");
-        } else {
-            mysqli_query($conn, "UPDATE suppliers SET current_balance = 0.00, balance_type = 'Clear' WHERE id = $supplier_id");
+        $outstanding_balance = 0;
+        $advance_credit = round($total_payments - $total_purchases, 2);
+    }
+
+    // Backward compat fields
+    $current_balance = $outstanding_balance - $advance_credit;
+    if ($outstanding_balance > 0.01) {
+        $new_type = 'Payable';
+    } elseif ($advance_credit > 0.01) {
+        $new_type = 'Advance';
+    } else {
+        $new_type = 'Clear';
+        $outstanding_balance = 0;
+        $advance_credit = 0;
+        $current_balance = 0;
+    }
+
+    mysqli_query($conn, "UPDATE suppliers SET
+        current_balance = $current_balance,
+        advance_balance = $advance_credit,
+        outstanding_balance = $outstanding_balance,
+        advance_credit = $advance_credit,
+        balance_type = '$new_type'
+        WHERE id = $supplier_id");
+}
+
+/**
+ * Get supplier balance from the single source of truth (suppliers table).
+ * Use this function everywhere to read supplier balance.
+ */
+function getSupplierBalance($conn, $supplier_id) {
+    $supplier = fetchOne($conn, "SELECT outstanding_balance, advance_credit, current_balance, balance_type FROM suppliers WHERE id = ?", [$supplier_id], "i");
+    if (!$supplier) {
+        return [
+            'outstanding_balance' => 0,
+            'advance_credit' => 0,
+            'current_balance' => 0,
+            'balance_type' => 'Clear'
+        ];
+    }
+    return [
+        'outstanding_balance' => (float)$supplier['outstanding_balance'],
+        'advance_credit' => (float)$supplier['advance_credit'],
+        'current_balance' => (float)$supplier['current_balance'],
+        'balance_type' => $supplier['balance_type'] ?? 'Clear'
+    ];
+}
+
+/**
+ * Recalculate balances for ALL suppliers.
+ * Call this on pages that list suppliers to ensure all balances are up-to-date.
+ */
+function recalcAllSupplierBalances($conn) {
+    $suppliers = mysqli_query($conn, "SELECT id FROM suppliers WHERE status = 'Active'");
+    if ($suppliers) {
+        while ($row = mysqli_fetch_assoc($suppliers)) {
+            recalcSupplierBalance($conn, $row['id']);
         }
     }
 }

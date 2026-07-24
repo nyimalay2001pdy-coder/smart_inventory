@@ -51,9 +51,9 @@ if (!$category) {
                                 <label class="text-sm font-semibold text-gray-500">Status</label>
                                 <p class="mt-1">
                                     <?php if ($category['status'] === 'Active'): ?>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
+                                        <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
                                     <?php else: ?>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>
+                                        <span class="badge badge-gray"><span class="badge-dot"></span> Inactive</span>
                                     <?php endif; ?>
                                 </p>
                             </div>

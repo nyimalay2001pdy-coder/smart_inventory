@@ -180,61 +180,53 @@ $page_title = "Sales Reports";
 
                     <!-- Quick Stats Row -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="exportArea">
-                        <!-- Today -->
-                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 fade-in delay-1">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                        <!-- Today's Sales -->
+                        <div class="stat-card bg-emerald-50 dark:bg-emerald-900/30 rounded-xl p-5">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-10 h-10 text-emerald-600 dark:text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white leading-none"><?= number_format($today_stats['count']) ?></p>
+                                    <p class="text-xs text-emerald-600 dark:text-emerald-400 mt-1"><?= number_format($today_stats['revenue']) ?> Ks</p>
                                 </div>
-                                <span class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Today</span>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Today's Sales</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1"><?= number_format($today_stats['count']) ?></p>
-                            <p class="text-sm font-semibold text-emerald-600 mt-0.5"><?= number_format($today_stats['revenue']) ?> Ks</p>
                         </div>
-                        <!-- This Week -->
-                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 fade-in delay-2">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
+                        <!-- Weekly Sales -->
+                        <div class="stat-card bg-blue-50 dark:bg-blue-900/30 rounded-xl p-5">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-10 h-10 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white leading-none"><?= number_format($week_stats['count']) ?></p>
+                                    <p class="text-xs text-blue-600 dark:text-blue-400 mt-1"><?= number_format($week_stats['revenue']) ?> Ks</p>
                                 </div>
-                                <span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">7 Days</span>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Weekly Sales</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1"><?= number_format($week_stats['count']) ?></p>
-                            <p class="text-sm font-semibold text-blue-600 mt-0.5"><?= number_format($week_stats['revenue']) ?> Ks</p>
                         </div>
-                        <!-- This Month -->
-                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 fade-in delay-3">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
+                        <!-- Monthly Sales -->
+                        <div class="stat-card bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-5">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-10 h-10 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white leading-none"><?= number_format($month_stats['count']) ?></p>
+                                    <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-1"><?= number_format($month_stats['revenue']) ?> Ks</p>
                                 </div>
-                                <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Month</span>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Monthly Sales</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1"><?= number_format($month_stats['count']) ?></p>
-                            <p class="text-sm font-semibold text-indigo-600 mt-0.5"><?= number_format($month_stats['revenue']) ?> Ks</p>
                         </div>
-                        <!-- Revenue -->
-                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 fade-in delay-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                        <!-- Period Revenue -->
+                        <div class="stat-card bg-amber-50 dark:bg-amber-900/30 rounded-xl p-5">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-10 h-10 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white leading-none"><?= number_format($revenue_stats['total_revenue']) ?> <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Ks</span></p>
+                                    <p class="text-xs text-amber-600 dark:text-amber-400 mt-1"><?= $revenue_stats['total_sales'] ?> sales</p>
                                 </div>
-                                <span class="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Range</span>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Period Revenue</p>
-                            <p class="text-2xl font-bold text-amber-600 mt-1"><?= number_format($revenue_stats['total_revenue']) ?> Ks</p>
-                            <p class="text-xs text-gray-400 mt-0.5"><?= $revenue_stats['total_sales'] ?> sales</p>
                         </div>
                     </div>
 

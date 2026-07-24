@@ -171,11 +171,11 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                     <!-- Info -->
                                     <div class="flex-1 min-w-0">
                                         <div class="flex flex-wrap items-center gap-2 mb-2">
-                                            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold"><?= htmlspecialchars($view_product['category_name'] ?? '—') ?></span>
+                                            <span class="badge badge-info"><span class="badge-dot"></span> <?= htmlspecialchars($view_product['category_name'] ?? '—') ?></span>
                                             <?php if ($view_product['status'] === 'Active'): ?>
-                                                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
+                                                <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
                                             <?php else: ?>
-                                                <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-semibold">Inactive</span>
+                                                <span class="badge badge-gray"><span class="badge-dot"></span> Inactive</span>
                                             <?php endif; ?>
                                             <span class="<?= $vstockClass ?> px-3 py-1 rounded-full text-xs font-semibold"><?= $vstockLabel ?></span>
                                         </div>
@@ -352,7 +352,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                             <!-- Action Buttons -->
                             <div class="flex justify-end gap-3 pb-6">
                                 <a href="index.php" class="px-6 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 transition">Back to Products</a>
-                                <?php if ($is_admin): ?>
+                                <?php if (checkPermission('products', 'edit')): ?>
                                     <a href="?action=edit&id=<?= $view_product['id'] ?>" class="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition shadow-sm">Edit Product</a>
                                 <?php endif; ?>
                             </div>
@@ -587,15 +587,15 @@ WHERE 1=1
                     $total_quantity = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(current_stock) AS total FROM products"));
                     ?>
 
-                    <div class="flex justify-end mb-6">
-                        <?php if ($is_admin) { ?>
-                            <a href="?action=add" class="bg-indigo-600 text-white px-6 py-3 rounded-xl">＋ Add Product</a>
-                        <?php } ?>
+                    <div class="flex justify-end items-center mb-6">
+                        <?php if (checkPermission('products', 'add')): ?>
+                            <a href="?action=add" class="bg-indigo-600 text-white px-6 py-3 rounded-xl">+ Add Product</a>
+                        <?php endif; ?>
                     </div>
 
                     <form method="GET" class="bg-white p-5 rounded-2xl shadow mb-6 flex gap-4">
-                        <input type="text" name="search" value="<?= $_GET['search'] ?? '' ?>" class="border rounded-xl px-5 py-3 flex-1" placeholder="Search product name, SKU...">
-                        <select name="category" class="border rounded-xl px-5 py-3">
+                        <input type="text" name="search" value="<?= $_GET['search'] ?? '' ?>" class="flex-1 border rounded-xl px-4 py-3" placeholder="Search product name, SKU...">
+                        <select name="category" class="border rounded-xl px-4 py-3">
                             <option value="">All Categories</option>
                             <?php
                             $cat = mysqli_query($conn, "SELECT * FROM categories");
@@ -604,44 +604,44 @@ WHERE 1=1
                                 <option value="<?= $c['id'] ?>" <?= (isset($_GET['category']) && $_GET['category'] == $c['id']) ? 'selected' : '' ?>><?= $c['name'] ?></option>
                             <?php } ?>
                         </select>
-                        <select name="status" class="border rounded-xl px-5 py-3">
+                        <select name="status" class="border rounded-xl px-4 py-3">
                             <option value="">All Status</option>
                             <option value="Active" <?= (($_GET['status'] ?? '') == 'Active') ? 'selected' : '' ?>>Active</option>
                             <option value="Inactive" <?= (($_GET['status'] ?? '') == 'Inactive') ? 'selected' : '' ?>>Inactive</option>
                         </select>
-                        <button class="bg-indigo-600 text-white px-7 rounded-xl">Search</button>
-                        <a href="index.php" class="border px-6 rounded-xl flex items-center">Reset</a>
+                        <button class="bg-indigo-600 text-white px-6 py-3 rounded-xl">Search</button>
+                        <a href="index.php" class="border px-6 py-3 rounded-xl">Reset</a>
                     </form>
 
                     <div class="grid grid-cols-4 gap-6 mt-8">
-                        <div class="bg-white p-6 rounded-2xl shadow">
+                        <div class="stat-card stat-card-blue">
                             <p class="text-gray-500 dark:text-gray-400">Total Products</p>
                             <h2 class="text-3xl font-bold mt-2"><?= $total_product['total']; ?></h2>
                             <p class="text-sm text-gray-400">All product items</p>
                         </div>
-                        <div class="bg-white p-6 rounded-2xl shadow">
+                        <div class="stat-card stat-card-emerald">
                             <p class="text-gray-500 dark:text-gray-400">Active Products</p>
                             <h2 class="text-3xl font-bold text-green-600 mt-2"><?= $active_product['total']; ?></h2>
                             <p class="text-sm text-gray-400">Currently active</p>
                         </div>
-                        <div class="bg-white p-6 rounded-2xl shadow">
+                        <div class="stat-card stat-card-red">
                             <p class="text-gray-500 dark:text-gray-400">Inactive Products</p>
                             <h2 class="text-3xl font-bold text-red-500 mt-2"><?= $inactive_product['total']; ?></h2>
                             <p class="text-sm text-gray-400">Currently inactive</p>
                         </div>
-                        <div class="bg-white p-6 rounded-2xl shadow">
+                        <div class="stat-card stat-card-amber">
                             <p class="text-gray-500 dark:text-gray-400">Total Quantity</p>
                             <h2 class="text-3xl font-bold text-blue-600 mt-2"><?= $total_quantity['total'] ?? 0; ?></h2>
                             <p class="text-sm text-gray-400">In stock</p>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl shadow mt-8 overflow-hidden">
+                    <div class="bg-white rounded-2xl shadow p-6 mt-6">
                         <div class="table-wrap">
                             <table class="data-table w-full">
                                 <thead>
                                     <tr>
-                                        <th class="w-12">#</th>
+                                        <th>#</th>
                                         <th class="center w-16">Image</th>
                                         <th>Product Name</th>
                                         <th>SKU</th>
@@ -649,7 +649,7 @@ WHERE 1=1
                                         <th class="num">Selling Price</th>
                                         <th class="num">Stock</th>
                                         <th class="center">Status</th>
-                                        <th class="center sticky right-0 bg-gray-50 z-10">Action</th>
+                                        <th class="center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -658,70 +658,59 @@ WHERE 1=1
                                         $qty = (int)$row['current_stock'];
                                         $minStock = (int)$row['reorder_level'];
                                         if ($qty == 0) {
-                                            $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Out of Stock</span>';
+                                            $stockBadge = '<span class="badge badge-danger"><span class="badge-dot"></span> Out of Stock</span>';
                                         } elseif ($qty <= $minStock) {
-                                            $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Low Stock</span>';
+                                            $stockBadge = '<span class="badge badge-warning"><span class="badge-dot"></span> Low Stock</span>';
                                         } else {
-                                            $stockBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">In Stock</span>';
+                                            $stockBadge = '<span class="badge badge-success"><span class="badge-dot"></span> In Stock</span>';
                                         }
                                     ?>
-                                        <tr class="border-b hover:bg-gray-50 transition-colors">
-                                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400"><?= $count++ ?></td>
-                                            <td class="px-4 py-3 center">
+                                        <tr>
+                                            <td><?= $count++ ?></td>
+                                            <td class="center">
                                                 <?php if ($row['image']): ?>
                                                     <img src="../img/<?= htmlspecialchars($row['image']) ?>" class="w-10 h-10 rounded-lg object-cover" alt="Product">
                                                 <?php else: ?>
                                                     <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">N/A</div>
                                                 <?php endif; ?>
                                             </td>
-                                            <td class="px-4 py-3">
-                                                <div class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['product_name']) ?></div>
+                                            <td>
+                                                <div class="font-semibold"><?= htmlspecialchars($row['product_name']) ?></div>
                                                 <p class="text-xs text-gray-400"><?= htmlspecialchars($row['unit_symbol'] ?? '') ?></p>
                                                 <?php if (!empty($row['price_update_required'])): ?>
-                                                    <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                                                    <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
                                                         <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                                                         Price Update Required
                                                     </span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400 font-mono text-xs"><?= htmlspecialchars($row['sku']) ?></td>
-                                            <td class="px-4 py-3">
+                                            <td class="font-mono text-xs"><?= htmlspecialchars($row['sku']) ?></td>
+                                            <td>
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"><?= htmlspecialchars($row['name']) ?></span>
                                             </td>
-                                            <td class="px-4 py-3 num font-bold text-green-600"><?= number_format($row['selling_price']) ?> Ks</td>
-                                            <td class="px-4 py-3 num">
+                                            <td class="num font-bold text-green-600"><?= number_format($row['selling_price']) ?> Ks</td>
+                                            <td class="num">
                                                 <div class="flex flex-col items-center gap-1">
                                                     <?= $stockBadge ?>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400"><?= $qty ?> <?= htmlspecialchars($row['unit_symbol'] ?? '') ?></span>
+                                                    <span class="text-xs text-gray-500"><?= $qty ?> <?= htmlspecialchars($row['unit_symbol'] ?? '') ?></span>
                                                 </div>
                                             </td>
-                                            <td class="px-4 py-3 center">
+                                            <td class="center">
                                                 <?php if ($row['status'] === 'Active'): ?>
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
+                                                    <span class="badge badge-success"><span class="badge-dot"></span> Active</span>
                                                 <?php else: ?>
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>
+                                                    <span class="badge badge-danger"><span class="badge-dot"></span> Inactive</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td class="px-4 py-3 center sticky right-0 bg-white z-10">
-                                                <div class="actions">
-                                                    <a href="?action=view&id=<?= $row['id'] ?>" title="View" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                    </a>
+                                            <td class="center">
+                                                <div class="actions flex gap-1">
+                                                    <a href="?action=view&id=<?= $row['id'] ?>" class="btn btn-sm bg-indigo-100 text-indigo-600 hover:bg-indigo-200 rounded-lg">View</a>
                                                     <?php if (checkPermission('products', 'edit')): ?>
-                                                        <a href="?action=edit&id=<?= $row['id'] ?>" title="Edit" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                            </svg>
-                                                        </a>
+                                                        <a href="?action=edit&id=<?= $row['id'] ?>" class="btn btn-sm bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg">Edit</a>
                                                     <?php endif; ?>
                                                     <?php if (checkPermission('products', 'delete')): ?>
-                                                        <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['product_name'])) ?>', 'index.php')" title="Delete" class="btn btn-sm inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
+                                                        <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['product_name'])) ?>', 'index.php')" title="Delete" class="btn btn-sm bg-red-100 text-red-600 hover:bg-red-200 rounded-lg">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                         </button>
                                                     <?php endif; ?>
                                                 </div>

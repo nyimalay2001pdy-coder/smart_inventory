@@ -14,6 +14,8 @@ $address = '';
 $status = 'Active';
 $current_balance = 0.00;
 $balance_type = 'Clear';
+$outstanding_balance = 0.00;
+$advance_credit_val = 0.00;
 $errors = [];
 
 // Handle POST request
@@ -42,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Unset token only after successful validation & insertion
             unset($_SESSION['supplier_save_token']);
 
-            $sql = "INSERT INTO suppliers (supplier_name, contact_person, phone, email, address, status, current_balance, balance_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            if (executeQuery($conn, $sql, [$supplier_name, $contact_person, $phone, $email, $address, $status, $current_balance, $balance_type], "ssssssds")) {
+            $sql = "INSERT INTO suppliers (supplier_name, contact_person, phone, email, address, status, current_balance, balance_type, outstanding_balance, advance_credit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            if (executeQuery($conn, $sql, [$supplier_name, $contact_person, $phone, $email, $address, $status, $current_balance, $balance_type, $outstanding_balance, $advance_credit_val], "ssssssdddd")) {
                 header("Location: index.php?success=" . urlencode("Supplier has been saved successfully."));
                 exit;
             } else {

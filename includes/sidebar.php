@@ -99,7 +99,7 @@ HTML;
             </div>
 
             <!-- Purchases Group -->
-            <?php $purch_active = isGroupActive(['purchase', 'stock-in']); ?>
+            <?php $purch_active = isGroupActive(['purchase', 'stock-in', 'supplier']); ?>
             <div class="sidebar-group">
                 <button onclick="toggleGroup(this)" data-group="grp-purchase" class="sidebar-group-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 <?= $purch_active ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' ?>">
                     <span class="flex items-center gap-3">
@@ -239,7 +239,7 @@ HTML;
 
             <!-- Purchases Group (Staff) -->
             <?php if (checkPermission('purchases', 'view')): ?>
-                <?php $purch_active = isGroupActive(['purchase', 'stock-in']); ?>
+                <?php $purch_active = isGroupActive(['purchase', 'stock-in', 'supplier']); ?>
                 <div class="sidebar-group">
                     <button onclick="toggleGroup(this)" data-group="grp-purchase" class="sidebar-group-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 <?= $purch_active ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' ?>">
                         <span class="flex items-center gap-3">

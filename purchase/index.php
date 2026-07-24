@@ -10,63 +10,6 @@ $status_filter = $_GET['status'] ?? '';
 $show_edit_id = isset($_GET['edit_id']) ? (int)$_GET['edit_id'] : null;
 $show_view_id = isset($_GET['view_id']) ? (int)$_GET['view_id'] : null;
 
-// ============ ADD PAYMENT ============
-if (isset($_POST['add_payment'])) {
-    $purchase_id = (int)$_POST['purchase_id'];
-    $payment_method = $_POST['payment_method'] ?? 'Cash';
-    $payment_amount = (float)($_POST['payment_amount'] ?? 0);
-    $payment_date = $_POST['payment_date'] ?? date('Y-m-d');
-    $notes = $_POST['notes'] ?? '';
-
-    if ($purchase_id > 0 && $payment_amount > 0) {
-        $purchase = mysqli_fetch_assoc(mysqli_query($conn, "SELECT total_amount FROM purchases WHERE id='$purchase_id'"));
-        $grand_total = (float)$purchase['total_amount'];
-
-        // Calculate remaining balance and new status
-        $amtCol = getPaymentAmountCol($conn, 'purchase_payments');
-        $total_paid_result = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM($amtCol), 0) AS total_paid FROM purchase_payments WHERE purchase_id='$purchase_id'"));
-        $existing_paid = (float)$total_paid_result['total_paid'];
-        $new_total_paid = $existing_paid + $payment_amount;
-        $remaining = max(0, $grand_total - $new_total_paid);
-        
-        if ($new_total_paid >= $grand_total) {
-            $new_status = 'Paid';
-        } elseif ($new_total_paid > 0) {
-            $new_status = 'Partial';
-        } else {
-            $new_status = 'Unpaid';
-        }
-
-        $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
-        $hasExtra = columnExists($conn, 'purchase_payments', 'remaining_balance');
-        if ($hasExtra) {
-            $cash_amount = ($payment_method === 'Cash') ? $payment_amount : 0;
-            $kbzpay_amount = ($payment_method === 'KBZPay') ? $payment_amount : 0;
-            if (columnExists($conn, 'purchase_payments', 'cash_amount')) {
-                mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date, notes)
-                    VALUES('$purchase_id', '$payment_method', '$cash_amount', '$kbzpay_amount', '$payment_amount', '$remaining', '$new_status', '$payment_date', '$notes')");
-            } else {
-                mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date, notes)
-                    VALUES('$purchase_id', '$payment_method', '$payment_amount', '$remaining', '$new_status', '$payment_date', '$notes')");
-            }
-        } else {
-            mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, payment_date, notes)
-                VALUES('$purchase_id', '$payment_method', '$payment_amount', '$payment_date', '$notes')");
-        }
-
-        if (columnExists($conn, 'purchases', 'status')) {
-            mysqli_query($conn, "UPDATE purchases SET status='$new_status' WHERE id='$purchase_id'");
-        }
-
-        // Update supplier outstanding balance using helper
-        $sup_id_for_bal = (int)mysqli_fetch_assoc(mysqli_query($conn, "SELECT supplier_id FROM purchases WHERE id = $purchase_id"))['supplier_id'];
-        recalcSupplierBalance($conn, $sup_id_for_bal);
-
-        header("Location: index.php?view_id=$purchase_id&success=" . urlencode("Payment added successfully."));
-        exit;
-    }
-}
-
 // ============ DELETE ============
 if (isset($_GET['confirm_delete'])) {
     $id = (int)$_GET['confirm_delete'];
@@ -350,178 +293,219 @@ $page_title = "Purchase Management";
         $vp_balance = (float)$view_purchase['total_amount'] - $vp_total_paid;
         ?>
         <div id="viewModal" class="modal-overlay">
-            <div class="bg-white rounded-2xl p-6 lg:p-8 w-full max-w-3xl relative mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-                <button onclick="window.location.href='index.php'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:text-gray-300 text-2xl leading-none">&times;</button>
-
-                <div class="flex justify-between items-start mb-6">
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Purchase Invoice</h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
-                    </div>
-                    <?php
-                    $vp_ta = (float)$view_purchase['total_amount'];
-                    if ($vp_ta > 0 && $vp_total_paid >= $vp_ta) $vp_status = 'Paid';
-                    elseif ($vp_total_paid > 0) $vp_status = 'Partial';
-                    else $vp_status = 'Unpaid';
-                    $vStatusClass = match($vp_status) {
-                        'Paid' => 'badge-success',
-                        'Partial' => 'badge-warning',
-                        default => 'badge-danger'
-                    };
-                    ?>
-                    <span class="badge <?= $vStatusClass ?>">
-                        <span class="badge-dot"></span><?= $vp_status ?>
-                    </span>
-                </div>
-
-                <hr class="mb-6">
-
-                <div class="grid grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Supplier</h4>
-                        <p class="font-medium"><?= htmlspecialchars($view_purchase['supplier_name']) ?></p>
-                        <?php if ($view_purchase['phone']): ?><p class="text-sm text-gray-500 dark:text-gray-400"><?= htmlspecialchars($view_purchase['phone']) ?></p><?php endif; ?>
-                        <?php if ($view_purchase['address']): ?><p class="text-sm text-gray-500 dark:text-gray-400"><?= htmlspecialchars($view_purchase['address']) ?></p><?php endif; ?>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Details</h4>
-                        <p class="text-sm">Date: <span class="font-medium"><?= $view_purchase['purchase_date'] ?></span></p>
-                        <p class="text-sm">Created: <span class="font-medium"><?= $view_purchase['created_at'] ?></span></p>
-                    </div>
-                </div>
-
-                <!-- Payment Summary -->
-                <div class="bg-gray-50 rounded-xl p-4 mb-6">
-                    <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Payment Summary</h4>
-                    <div class="grid grid-cols-3 gap-4">
-                        <div class="text-center">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Grand Total</p>
-                            <p class="text-lg font-bold text-indigo-600"><?= number_format($view_purchase['total_amount'], 2) ?></p>
+            <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl relative mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <!-- Invoice Header -->
+                <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-t-2xl p-6 text-white">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold">Purchase Invoice</h2>
+                            <p class="text-indigo-100 mt-1">#<?= htmlspecialchars($view_purchase['invoice_no'] ?? 'ID: ' . $view_purchase['id']) ?></p>
+                            <p class="text-indigo-200 text-sm mt-1"><?= date('d M Y', strtotime($view_purchase['purchase_date'])) ?></p>
                         </div>
-                        <div class="text-center">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Paid</p>
-                            <p class="text-lg font-bold text-emerald-600"><?= number_format($vp_total_paid, 2) ?></p>
+                        <div class="flex flex-wrap gap-2">
+                            <?php
+                            $vp_ta = (float)$view_purchase['total_amount'];
+                            if ($vp_ta > 0 && $vp_total_paid >= $vp_ta) $vp_status = 'Paid';
+                            elseif ($vp_total_paid > 0) $vp_status = 'Partial';
+                            else $vp_status = 'Unpaid';
+                            $statusBadgeClass = match($vp_status) {
+                                'Paid' => 'bg-emerald-500',
+                                'Partial' => 'bg-amber-500',
+                                default => 'bg-red-500'
+                            };
+                            ?>
+                            <span class="px-3 py-1 rounded-full text-sm font-semibold <?= $statusBadgeClass ?>"><?= $vp_status ?></span>
                         </div>
-                        <div class="text-center">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Remaining Balance</p>
-                            <p class="text-lg font-bold <?= $vp_balance > 0 ? 'text-red-600' : 'text-emerald-600' ?>"><?= number_format($vp_balance, 2) ?></p>
-                        </div>
+                    </div>
+                    <!-- Action Buttons -->
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        <button onclick="window.print()" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            Print
+                        </button>
+                        <?php if ($vp_balance > 0): ?>
+                        <a href="../supplier/ledger.php?id=<?= $view_purchase['supplier_id'] ?>" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 rounded-lg text-sm font-medium transition flex items-center gap-1.5 text-white">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Make Payment
+                        </a>
+                        <?php endif; ?>
+                        <a href="index.php" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                            Back
+                        </a>
                     </div>
                 </div>
 
-                <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Items</h4>
-                <table class="data-table w-full mb-6">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Product</th>
-                            <th class="num">Qty</th>
-                            <th class="num">Price</th>
-                            <th class="num">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $vi = 1; while ($row = mysqli_fetch_assoc($view_details)): ?>
-                            <tr>
-                                <td><?= $vi++ ?></td>
-                                <td class="font-medium"><?= htmlspecialchars($row['product_name']) ?></td>
-                                <td class="num"><?= $row['quantity'] ?></td>
-                                <td class="num"><?= number_format($row['purchase_price'], 2) ?></td>
-                                <td class="num"><?= number_format($row['subtotal'], 2) ?></td>
-                            </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
+                <div class="p-6">
+                    <!-- Supplier & Purchase Info -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">
+                            <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                Supplier Information
+                            </h4>
+                            <p class="font-semibold text-gray-900 dark:text-gray-100"><?= htmlspecialchars($view_purchase['supplier_name']) ?></p>
+                            <?php if ($view_purchase['phone']): ?>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Phone: <?= htmlspecialchars($view_purchase['phone']) ?></p>
+                            <?php endif; ?>
+                            <?php if ($view_purchase['address']): ?>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Address: <?= htmlspecialchars($view_purchase['address']) ?></p>
+                            <?php endif; ?>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">
+                            <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Purchase Details
+                            </h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Date: <span class="font-semibold text-gray-900 dark:text-gray-100"><?= date('d M Y', strtotime($view_purchase['purchase_date'])) ?></span></p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Created: <span class="font-semibold text-gray-900 dark:text-gray-100"><?= date('d M Y, h:i A', strtotime($view_purchase['created_at'])) ?></span></p>
+                        </div>
+                    </div>
 
-                <!-- Payment History -->
-                <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Payment History</h4>
-                <?php if (mysqli_num_rows($view_payments) > 0): ?>
-                    <table class="data-table w-full mb-6">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Date</th>
-                                <th>Method</th>
-                                <th class="num">Amount</th>
-                                <?php if (columnExists($conn, 'purchase_payments', 'advance_applied')): ?>
-                                    <th class="num">Advance</th>
-                                <?php endif; ?>
-                                <th>Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php $pi = 1; while ($pmt = mysqli_fetch_assoc($view_payments)): ?>
-                                <tr>
-                                    <td><?= $pi++ ?></td>
-                                    <td><?= $pmt['payment_date'] ?></td>
-                                    <td>
-                                        <span class="badge <?= $pmt['payment_method'] === 'Cash' ? 'badge-success' : 'badge-info' ?>">
-                                            <?= $pmt['payment_method'] ?>
-                                        </span>
-                                    </td>
-                                    <td class="num font-semibold"><?= number_format($pmt[$vpAmtCol], 2) ?></td>
-                                    <?php if (columnExists($conn, 'purchase_payments', 'advance_applied')): ?>
-                                        <td class="num">
-                                            <?php
-                                            $adv_applied = (float)($pmt['advance_applied'] ?? 0);
-                                            $adv_created = (float)($pmt['advance_created'] ?? 0);
-                                            if ($adv_applied > 0): ?>
-                                                <span class="text-blue-600 font-semibold">-<?= number_format($adv_applied, 2) ?></span>
-                                            <?php elseif ($adv_created > 0): ?>
-                                                <span class="text-emerald-600 font-semibold">+<?= number_format($adv_created, 2) ?></span>
-                                            <?php else: ?>
-                                                <span class="text-gray-400">-</span>
+                    <!-- Payment Summary Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-center hover:shadow-md transition-shadow">
+                            <div class="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <p class="text-xs text-blue-600 dark:text-blue-400 font-medium">Grand Total</p>
+                            <p class="text-xl font-bold text-blue-700 dark:text-blue-300 mt-1"><?= number_format($view_purchase['total_amount'], 2) ?> Ks</p>
+                        </div>
+                        <div class="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 text-center hover:shadow-md transition-shadow">
+                            <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-800 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <p class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Total Paid</p>
+                            <p class="text-xl font-bold text-emerald-700 dark:text-emerald-300 mt-1"><?= number_format($vp_total_paid, 2) ?> Ks</p>
+                        </div>
+                        <div class="bg-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-50 dark:bg-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-900/30 border border-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-200 dark:border-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-800 rounded-xl p-4 text-center hover:shadow-md transition-shadow">
+                            <div class="w-10 h-10 bg-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-100 dark:bg-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-800 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <svg class="w-5 h-5 text-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-600 dark:text-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <p class="text-xs text-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-600 dark:text-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-400 font-medium">Remaining Balance</p>
+                            <p class="text-xl font-bold text-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-700 dark:text-<?= $vp_balance > 0 ? 'red' : 'emerald' ?>-300 mt-1"><?= number_format($vp_balance, 2) ?> Ks</p>
+                        </div>
+                    </div>
+
+                    <!-- Purchased Items Table -->
+                    <div class="mb-6">
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            Purchased Items
+                        </h4>
+                        <div class="table-wrap rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
+                            <table class="data-table w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="bg-gray-100 dark:bg-slate-700">#</th>
+                                        <th class="bg-gray-100 dark:bg-slate-700">Product</th>
+                                        <th class="bg-gray-100 dark:bg-slate-700 num">Qty</th>
+                                        <th class="bg-gray-100 dark:bg-slate-700 num">Price</th>
+                                        <th class="bg-gray-100 dark:bg-slate-700 num">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $vi = 1; while ($row = mysqli_fetch_assoc($view_details)): ?>
+                                        <tr class="hover:bg-indigo-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                                            <td class="text-gray-500"><?= $vi++ ?></td>
+                                            <td class="font-medium text-gray-900 dark:text-gray-100"><?= htmlspecialchars($row['product_name']) ?></td>
+                                            <td class="num text-gray-700 dark:text-gray-300"><?= $row['quantity'] ?></td>
+                                            <td class="num text-gray-700 dark:text-gray-300"><?= number_format($row['purchase_price'], 2) ?></td>
+                                            <td class="num font-semibold text-gray-900 dark:text-gray-100"><?= number_format($row['subtotal'], 2) ?></td>
+                                        </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-gray-50 dark:bg-slate-700/50">
+                                        <td colspan="4" class="text-right font-bold text-gray-700 dark:text-gray-300">Total:</td>
+                                        <td class="num font-bold text-indigo-600 dark:text-indigo-400"><?= number_format($view_purchase['total_amount'], 2) ?></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Payment History -->
+                    <div class="mb-6">
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            Payment History
+                        </h4>
+                        <?php if (mysqli_num_rows($view_payments) > 0): ?>
+                            <div class="table-wrap rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
+                                <table class="data-table w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="bg-gray-100 dark:bg-slate-700">#</th>
+                                            <th class="bg-gray-100 dark:bg-slate-700">Date</th>
+                                            <th class="bg-gray-100 dark:bg-slate-700">Method</th>
+                                            <th class="bg-gray-100 dark:bg-slate-700 num">Amount</th>
+                                            <?php if (columnExists($conn, 'purchase_payments', 'advance_applied')): ?>
+                                                <th class="bg-gray-100 dark:bg-slate-700 num">Advance</th>
                                             <?php endif; ?>
-                                        </td>
-                                    <?php endif; ?>
-                                    <td class="text-gray-500 text-sm"><?= htmlspecialchars($pmt['notes'] ?? '-') ?></td>
-                                </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p class="text-sm text-gray-400 mb-6">No payments recorded.</p>
-                <?php endif; ?>
-
-                <!-- Add Payment Button (only if balance remaining) -->
-                <?php if ($vp_balance > 0 && $is_admin): ?>
-                    <div class="border-t pt-4">
-                        <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Add Payment</h4>
-                        <form method="POST" class="space-y-3">
-                            <input type="hidden" name="purchase_id" value="<?= $view_purchase['id'] ?>">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div>
-                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Method</label>
-                                    <select name="payment_method" class="form-input text-sm" required>
-                                        <option value="Cash">Cash</option>
-                                        <option value="KBZPay">KBZPay</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Amount (Max: <?= number_format($vp_balance, 2) ?>)</label>
-                                    <input type="number" name="payment_amount" min="0.01" max="<?= $vp_balance ?>" step="0.01" value="<?= $vp_balance ?>" class="form-input text-sm" required>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Date</label>
-                                    <input type="date" name="payment_date" value="<?= date('Y-m-d') ?>" class="form-input text-sm" required>
-                                </div>
+                                            <th class="bg-gray-100 dark:bg-slate-700">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php $pi = 1; while ($pmt = mysqli_fetch_assoc($view_payments)): ?>
+                                            <tr class="hover:bg-indigo-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                                                <td class="text-gray-500"><?= $pi++ ?></td>
+                                                <td class="text-gray-700 dark:text-gray-300"><?= date('d M Y', strtotime($pmt['payment_date'])) ?></td>
+                                                <td>
+                                                    <span class="badge <?= $pmt['payment_method'] === 'Cash' ? 'badge-success' : 'badge-info' ?>">
+                                                        <?= $pmt['payment_method'] ?>
+                                                    </span>
+                                                </td>
+                                                <td class="num font-semibold text-emerald-600 dark:text-emerald-400"><?= number_format($pmt[$vpAmtCol], 2) ?></td>
+                                                <?php if (columnExists($conn, 'purchase_payments', 'advance_applied')): ?>
+                                                    <td class="num">
+                                                        <?php
+                                                        $adv_applied = (float)($pmt['advance_applied'] ?? 0);
+                                                        $adv_created = (float)($pmt['advance_created'] ?? 0);
+                                                        if ($adv_applied > 0): ?>
+                                                            <span class="text-blue-600 dark:text-blue-400 font-semibold">-<?= number_format($adv_applied, 2) ?></span>
+                                                        <?php elseif ($adv_created > 0): ?>
+                                                            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">+<?= number_format($adv_created, 2) ?></span>
+                                                        <?php else: ?>
+                                                            <span class="text-gray-400">-</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                <?php endif; ?>
+                                                <td class="text-gray-500 dark:text-gray-400 text-sm"><?= htmlspecialchars($pmt['notes'] ?? '-') ?></td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    </tbody>
+                                </table>
                             </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Notes (Optional)</label>
-                                <input type="text" name="notes" class="form-input text-sm" placeholder="Payment notes...">
+                        <?php else: ?>
+                            <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-8 text-center border border-dashed border-gray-300 dark:border-slate-600">
+                                <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                <p class="text-gray-500 dark:text-gray-400 font-medium">No payments recorded yet</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Payments will appear here once recorded.</p>
                             </div>
-                            <button type="submit" name="add_payment" class="btn btn-primary gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                Add Payment
-                            </button>
-                        </form>
+                        <?php endif; ?>
                     </div>
-                <?php endif; ?>
 
-                <div class="text-right border-t pt-4 mt-4">
-                    <a href="index.php" class="btn btn-secondary">Close</a>
+                    <!-- Footer Summary -->
+                    <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 border-t border-gray-200 dark:border-slate-600">
+                        <div class="flex flex-wrap justify-between items-center gap-4">
+                            <div class="flex gap-6">
+                                <div>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">Total Amount:</span>
+                                    <span class="ml-2 font-bold text-gray-900 dark:text-gray-100"><?= number_format($view_purchase['total_amount'], 2) ?> Ks</span>
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">Paid:</span>
+                                    <span class="ml-2 font-bold text-emerald-600 dark:text-emerald-400"><?= number_format($vp_total_paid, 2) ?> Ks</span>
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">Remaining:</span>
+                                    <span class="ml-2 font-bold <?= $vp_balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>"><?= number_format($vp_balance, 2) ?> Ks</span>
+                                </div>
+                            </div>
+                            <a href="index.php" class="btn btn-secondary">Close</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

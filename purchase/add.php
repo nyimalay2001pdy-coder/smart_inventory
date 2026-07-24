@@ -84,9 +84,9 @@ if (isset($_POST['save_purchase'])) {
             $total += $item['subtotal'];
         }
 
-        // Get supplier advance balance
-        $sup_row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT advance_balance FROM suppliers WHERE id = $supplier_id"));
-        $available_advance = $sup_row ? (float)$sup_row['advance_balance'] : 0;
+        // Get supplier advance credit
+        $sup_row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT advance_credit FROM suppliers WHERE id = $supplier_id"));
+        $available_advance = $sup_row ? (float)$sup_row['advance_credit'] : 0;
 
         // Apply advance if requested and available
         $advance_applied = 0;
@@ -126,8 +126,12 @@ if (isset($_POST['save_purchase'])) {
         $purchase_id = mysqli_insert_id($conn);
 
         if ($purchase_id) {
+            // Ensure supplier_ledger table exists
+            createSupplierLedgerTable($conn);
+
             // Insert payment record (if any payment was made)
             $actual_paid = $paid_amount + $advance_applied;
+            $payment_id = null;
             if ($actual_paid > 0) {
                 $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
                 $hasExtra = columnExists($conn, 'purchase_payments', 'remaining_balance');
@@ -152,18 +156,29 @@ if (isset($_POST['save_purchase'])) {
                         }
                         mysqli_query($conn, "INSERT INTO purchase_payments($cols) VALUES($vals)");
                     }
+                    $payment_id = mysqli_insert_id($conn);
                 } else {
                     mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, payment_date)
                         VALUES('$purchase_id', '$payment_method', '$actual_paid', '$purchase_date')");
+                    $payment_id = mysqli_insert_id($conn);
+                }
+
+                // Add payment ledger entry
+                if ($payment_id && $payment_id > 0) {
+                    addPurchasePaymentLedgerEntry($conn, $supplier_id, $purchase_id, $payment_id, $invoice_no, $actual_paid, $payment_method, $purchase_date);
                 }
             }
 
-            // Update supplier advance balance
-            $new_advance = $available_advance - $advance_applied + $advance_created;
-            if ($new_advance < 0) $new_advance = 0;
-            mysqli_query($conn, "UPDATE suppliers SET advance_balance = $new_advance WHERE id = $supplier_id");
+            // Add purchase ledger entry
+            addPurchaseLedgerEntry($conn, $supplier_id, $purchase_id, $invoice_no, $total, $advance_applied, $purchase_date);
 
-            // Recalculate supplier outstanding balance from all purchases
+            // Add advance created ledger entry if overpayment
+            if ($advance_created > 0) {
+                addAdvanceCreatedLedgerEntry($conn, $supplier_id, 'purchase_payment', $payment_id, $invoice_no, $advance_created, $purchase_date);
+            }
+
+            // Recalculate supplier outstanding balance from all purchases and payments
+            // This is the SINGLE SOURCE OF TRUTH - do not manually update balance fields
             recalcSupplierBalance($conn, $supplier_id);
 
             foreach ($_SESSION['cart'] as $item) {
@@ -198,12 +213,11 @@ $products = mysqli_query($conn, "SELECT * FROM products WHERE status='Active'");
 $logged_user = $_SESSION['name'] ?? 'User';
 
 $supplier_balances = [];
-$sup_bal_query = mysqli_query($conn, "SELECT id, current_balance, balance_type, advance_balance FROM suppliers WHERE status='Active'");
+$sup_bal_query = mysqli_query($conn, "SELECT id, outstanding_balance, advance_credit FROM suppliers WHERE status='Active'");
 while ($sb = mysqli_fetch_assoc($sup_bal_query)) {
     $supplier_balances[$sb['id']] = [
-        'balance' => (float)$sb['current_balance'],
-        'type' => $sb['balance_type'],
-        'advance' => (float)($sb['advance_balance'] ?? 0)
+        'balance' => (float)$sb['outstanding_balance'],
+        'advance' => (float)($sb['advance_credit'] ?? 0)
     ];
 }
 
@@ -799,7 +813,7 @@ $page_title = "New Purchase";
             $first = true;
             foreach ($supplier_balances as $sid => $sdata) {
                 if (!$first) echo ',';
-                echo $sid . ':{balance:' . $sdata['balance'] . ',type:"' . $sdata['type'] . '",advance:' . $sdata['advance'] . '}';
+                echo $sid . ':{balance:' . $sdata['balance'] . ',advance:' . $sdata['advance'] . '}';
                 $first = false;
             }
             ?>

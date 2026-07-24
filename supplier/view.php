@@ -22,13 +22,15 @@ $total_purchases = 0;
 $r = fetchOne($conn, "SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchases WHERE supplier_id = ?", [$id], "i");
 if ($r) $total_purchases = (float)$r['total'];
 
-// Total Payments
+// Total Payments (including advance_applied)
 $total_payments = 0;
-$r = fetchOne($conn, "SELECT COALESCE(SUM(pp.{$amtCol}), 0) AS total FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ?", [$id], "i");
+$r = fetchOne($conn, "SELECT COALESCE(SUM(pp.{$amtCol} + pp.advance_applied), 0) AS total FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ?", [$id], "i");
 if ($r) $total_payments = (float)$r['total'];
 
-// Outstanding Balance (computed: purchases - payments)
-$outstanding = $total_purchases - $total_payments;
+// Total Advance Created (overpayments)
+$total_advance_created = 0;
+$r = fetchOne($conn, "SELECT COALESCE(SUM(pp.advance_created), 0) AS total FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ?", [$id], "i");
+if ($r) $total_advance_created = (float)$r['total'];
 
 // Last Purchase Date
 $last_purchase = fetchOne($conn, "SELECT purchase_date FROM purchases WHERE supplier_id = ? ORDER BY purchase_date DESC LIMIT 1", [$id], "i");
@@ -39,8 +41,14 @@ $recent_purchases = fetchAll($conn, "SELECT * FROM purchases WHERE supplier_id =
 // Recent Payments (latest 5)
 $recent_payments = fetchAll($conn, "SELECT pp.*, pu.invoice_no FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ? ORDER BY pp.payment_date DESC LIMIT 5", [$id], "i");
 
-$cur_bal = (float)($supplier['current_balance'] ?? 0);
-$advance_bal = (float)($supplier['advance_balance'] ?? 0);
+// Ensure balance is up-to-date before displaying
+recalcSupplierBalance($conn, $id);
+// Re-fetch supplier to get updated balance
+$supplier = fetchOne($conn, "SELECT * FROM suppliers WHERE id = ?", [$id], "i");
+
+// Use single source of truth from suppliers table
+$outstanding_balance = (float)($supplier['outstanding_balance'] ?? 0);
+$advance_credit = (float)($supplier['advance_credit'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -88,32 +96,56 @@ $advance_bal = (float)($supplier['advance_balance'] ?? 0);
                         </div>
                     </div>
 
-                    <!-- Current Balance Banner -->
-                    <?php
-                    $cur_type = 'Clear';
-                    if ($cur_bal > 0) $cur_type = 'Payable';
-                    elseif ($advance_bal > 0) $cur_type = 'Advance';
-                    ?>
+                    <!-- Outstanding Balance Banner -->
                     <div class="card mb-6">
                         <div class="card-body py-4">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 <?= $cur_type === 'Payable' ? 'bg-amber-100 dark:bg-amber-900/30' : ($cur_type === 'Advance' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30') ?>">
-                                        <svg class="w-5 h-5 <?= $cur_type === 'Payable' ? 'text-amber-600 dark:text-amber-400' : ($cur_type === 'Advance' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400') ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 <?= $outstanding_balance > 0 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30' ?>">
+                                        <svg class="w-5 h-5 <?= $outstanding_balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </div>
                                     <div>
-                                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Balance</p>
-                                        <p class="text-2xl font-extrabold <?= $cur_type === 'Payable' ? 'text-amber-600 dark:text-amber-400' : ($cur_type === 'Advance' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400') ?>">
-                                            <?= $cur_bal == 0 && $advance_bal == 0 ? '0' : number_format($cur_type === 'Advance' ? $advance_bal : $cur_bal, 2) ?> MMK
+                                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Outstanding Balance</p>
+                                        <p class="text-2xl font-extrabold <?= $outstanding_balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>">
+                                            <?= number_format($outstanding_balance, 2) ?> MMK
                                         </p>
                                     </div>
                                 </div>
-                                <span class="badge <?= $cur_type === 'Payable' ? 'badge-warning' : ($cur_type === 'Advance' ? 'badge-info' : 'badge-success') ?> text-sm">
-                                    <span class="badge-dot"></span>
-                                    <?= htmlspecialchars($cur_type) ?>
-                                </span>
+                                <?php if ($outstanding_balance > 0): ?>
+                                    <span class="badge badge-danger text-sm">
+                                        <span class="badge-dot"></span>
+                                        Payable
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advance Credit Banner -->
+                    <div class="card mb-6">
+                        <div class="card-body py-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 <?= $advance_credit > 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-gray-100 dark:bg-gray-800' ?>">
+                                        <svg class="w-5 h-5 <?= $advance_credit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Advance Credit</p>
+                                        <p class="text-2xl font-extrabold <?= $advance_credit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400' ?>">
+                                            <?= number_format($advance_credit, 2) ?> MMK
+                                        </p>
+                                    </div>
+                                </div>
+                                <?php if ($advance_credit > 0): ?>
+                                    <span class="badge badge-success text-sm">
+                                        <span class="badge-dot"></span>
+                                        Credit
+                                    </span>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -166,15 +198,15 @@ $advance_bal = (float)($supplier['advance_balance'] ?? 0);
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div class="stat-card">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
                                 <div>
                                     <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Outstanding Balance</p>
-                                    <p class="text-lg font-bold <?= $cur_bal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' ?>">
-                                        <?= number_format($cur_bal, 2) ?> MMK
+                                    <p class="text-lg font-bold <?= $outstanding_balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>">
+                                        <?= number_format($outstanding_balance, 2) ?> MMK
                                     </p>
                                 </div>
                             </div>
@@ -184,21 +216,6 @@ $advance_bal = (float)($supplier['advance_balance'] ?? 0);
                                 <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
                                     <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Advance Balance</p>
-                                    <p class="text-lg font-bold <?= $advance_bal > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-200' ?>">
-                                        <?= number_format($advance_bal, 2) ?> MMK
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                     </svg>
                                 </div>
                                 <div>
@@ -217,6 +234,21 @@ $advance_bal = (float)($supplier['advance_balance'] ?? 0);
                                 <div>
                                     <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Payments</p>
                                     <p class="text-lg font-bold text-gray-800 dark:text-gray-200"><?= number_format($total_payments, 2) ?> MMK</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Advance Credit</p>
+                                    <p class="text-lg font-bold <?= $advance_credit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-800 dark:text-gray-200' ?>">
+                                        <?= number_format($advance_credit, 2) ?> MMK
+                                    </p>
                                 </div>
                             </div>
                         </div>

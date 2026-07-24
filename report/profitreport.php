@@ -64,6 +64,7 @@ $daily_profit = mysqli_query($conn, "
 ");
 
 $page_title = "Profit Reports";
+$gross_profit = $profit_summary['revenue'] - $profit_summary['cost'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -77,6 +78,7 @@ $page_title = "Profit Reports";
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
+        * { font-family: 'Inter', system-ui, sans-serif; }
         .stat-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(229, 231, 235, 0.8); }
         .stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); border-color: rgba(99, 102, 241, 0.2); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -100,6 +102,10 @@ $page_title = "Profit Reports";
         .data-table tbody td { padding: 14px 16px !important; font-size: 13px !important; }
         .data-table tbody tr { transition: all 0.15s ease; }
         .data-table tbody tr:hover { background: #f8faff !important; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
     </style>
 </head>
 
@@ -139,65 +145,60 @@ $page_title = "Profit Reports";
                     $margin = $profit_summary['revenue'] > 0 ? ($profit_summary['profit'] / $profit_summary['revenue']) * 100 : 0;
                     ?>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="exportArea">
-                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 fade-in delay-1">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                        <!-- Total Revenue -->
+                        <div class="stat-card bg-emerald-50 dark:bg-emerald-900/30 rounded-xl p-5">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-10 h-10 text-emerald-600 dark:text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white leading-none"><?= number_format($profit_summary['revenue']) ?> <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Ks</span></p>
                                 </div>
-                                <span class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Revenue</span>
                             </div>
-                            <p class="text-xs text-gray-500 font-medium">Total Revenue</p>
-                            <p class="text-2xl font-bold text-emerald-600 mt-1"><?= number_format($profit_summary['revenue']) ?> Ks</p>
                         </div>
-                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 fade-in delay-2">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
+                        <!-- Total Cost -->
+                        <div class="stat-card bg-orange-50 dark:bg-orange-900/30 rounded-xl p-5">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-10 h-10 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white leading-none"><?= number_format($profit_summary['cost']) ?> <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Ks</span></p>
                                 </div>
-                                <span class="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Cost</span>
                             </div>
-                            <p class="text-xs text-gray-500 font-medium">Total Cost</p>
-                            <p class="text-2xl font-bold text-red-600 mt-1"><?= number_format($profit_summary['cost']) ?> Ks</p>
                         </div>
-                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 fade-in delay-3">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                    </svg>
+                        <!-- Gross Profit -->
+                        <div class="stat-card bg-blue-50 dark:bg-blue-900/30 rounded-xl p-5">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-10 h-10 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-bold text-gray-900 dark:text-white leading-none"><?= number_format($gross_profit) ?> <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Ks</span></p>
                                 </div>
-                                <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Profit</span>
                             </div>
-                            <p class="text-xs text-gray-500 font-medium">Net Profit</p>
-                            <p class="text-2xl font-bold <?= $profit_summary['profit'] < 0 ? 'text-red-600' : 'text-indigo-600' ?> mt-1"><?= number_format($profit_summary['profit']) ?> Ks</p>
                         </div>
-                        <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 fade-in delay-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
+                        <!-- Net Profit -->
+                        <div class="stat-card bg-purple-50 dark:bg-purple-900/30 rounded-xl p-5">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-10 h-10 text-purple-600 dark:text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-bold <?= $profit_summary['profit'] < 0 ? 'text-red-600' : 'text-gray-900 dark:text-white' ?> leading-none"><?= number_format($profit_summary['profit']) ?> <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Ks</span></p>
+                                    <p class="text-xs <?= $margin >= 20 ? 'text-emerald-600 dark:text-emerald-400' : ($margin >= 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400') ?> mt-1"><?= number_format($margin, 1) ?>% margin</p>
                                 </div>
-                                <span class="text-[11px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">Margin</span>
                             </div>
-                            <p class="text-xs text-gray-500 font-medium">Profit Margin</p>
-                            <p class="text-2xl font-bold <?= $margin >= 20 ? 'text-emerald-600' : ($margin >= 10 ? 'text-amber-600' : 'text-red-600') ?> mt-1"><?= number_format($margin, 1) ?>%</p>
                         </div>
                     </div>
 
                     <!-- Daily Profit Chart -->
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
-                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
-                                </div>
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
                                 Daily Profit Trend
                             </h2>
                         </div>
@@ -211,12 +212,10 @@ $page_title = "Profit Reports";
                     <!-- Profit by Product -->
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm">
-                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                    </svg>
-                                </div>
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                </svg>
                                 Profit by Product
                             </h2>
                         </div>
@@ -274,12 +273,10 @@ $page_title = "Profit Reports";
                     <!-- Profit by Category -->
                     <div class="card mb-6">
                         <div class="card-header">
-                            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center shadow-sm">
-                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                    </svg>
-                                </div>
+                            <h2 class="text-base font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
                                 Profit by Category
                             </h2>
                         </div>

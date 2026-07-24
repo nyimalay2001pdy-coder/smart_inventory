@@ -2,7 +2,11 @@
 include "../includes/auth_check.php";
 protectSuppliers('view');
 include "../config/database.php";
+include "../config/helpers.php";
 $page_title = "Suppliers";
+
+// Ensure all supplier balances are up-to-date before displaying
+recalcAllSupplierBalances($conn);
 
 
 
@@ -245,7 +249,8 @@ $result = mysqli_query($conn, $sql);
                                 <th>Contact Person</th>
                                 <th>Phone</th>
                                 <th class="center">Status</th>
-                                <th class="center">Current Balance</th>
+                                <th class="center">Outstanding</th>
+                                <th class="center">Advance Credit</th>
                                 <th class="center">Action</th>
                             </tr>
                         </thead>
@@ -268,14 +273,20 @@ $result = mysqli_query($conn, $sql);
                                     </td>
                                     <td class="center">
                                         <?php
-                                        $bal = (float)($row['current_balance'] ?? 0);
-                                        $adv = (float)($row['advance_balance'] ?? 0);
-                                        if ($bal > 0) { ?>
-                                            <span class="badge badge-warning"><span class="badge-dot"></span> Payable (<?= number_format($bal, 0) ?> MMK)</span>
-                                        <?php } elseif ($adv > 0) { ?>
-                                            <span class="badge badge-info"><span class="badge-dot"></span> Advance (<?= number_format($adv, 0) ?> MMK)</span>
+                                        $outstanding = (float)($row['outstanding_balance'] ?? 0);
+                                        if ($outstanding > 0) { ?>
+                                            <span class="badge badge-danger"><span class="badge-dot"></span> <?= number_format($outstanding, 0) ?> MMK</span>
                                         <?php } else { ?>
-                                            <span class="badge badge-success"><span class="badge-dot"></span> Clear</span>
+                                            <span class="badge badge-success"><span class="badge-dot"></span> 0 MMK</span>
+                                        <?php } ?>
+                                    </td>
+                                    <td class="center">
+                                        <?php
+                                        $adv_credit = (float)($row['advance_credit'] ?? 0);
+                                        if ($adv_credit > 0) { ?>
+                                            <span class="badge badge-success"><span class="badge-dot"></span> <?= number_format($adv_credit, 0) ?> MMK</span>
+                                        <?php } else { ?>
+                                            <span class="text-sm text-gray-500 dark:text-gray-400">0 MMK</span>
                                         <?php } ?>
                                     </td>
                                     <td class="center">
