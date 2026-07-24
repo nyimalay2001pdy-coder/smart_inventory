@@ -58,7 +58,6 @@ if (isset($_POST['save_purchase'])) {
     $purchase_date = $_POST['purchase_date'] ?? date('Y-m-d');
     $payment_method = $_POST['payment_method'] ?? 'Cash';
     $paid_amount = (float)($_POST['paid_amount'] ?? 0);
-    $apply_advance = isset($_POST['apply_advance']) && $_POST['apply_advance'] == '1';
 
     if ($supplier_id <= 0) {
         $error_msg = 'Please select a supplier.';
@@ -69,118 +68,126 @@ if (isset($_POST['save_purchase'])) {
     } elseif ($paid_amount < 0) {
         $error_msg = 'Paid amount cannot be negative.';
     } else {
-        $date_prefix = date('Ymd');
-        $inv_result = mysqli_query($conn, "SELECT invoice_no FROM purchases WHERE invoice_no LIKE 'INV-$date_prefix-%' ORDER BY id DESC LIMIT 1");
-        if ($inv_result && $row = mysqli_fetch_assoc($inv_result)) {
-            $last_num = (int)substr($row['invoice_no'], -4);
-            $next_num = $last_num + 1;
-        } else {
-            $next_num = 1;
-        }
-        $invoice_no = 'INV-' . $date_prefix . '-' . str_pad($next_num, 4, '0', STR_PAD_LEFT);
+        $conn->begin_transaction();
+        try {
+            $date_prefix = date('Ymd');
+            $inv_result = mysqli_query($conn, "SELECT invoice_no FROM purchases WHERE invoice_no LIKE 'INV-$date_prefix-%' ORDER BY id DESC LIMIT 1");
+            if ($inv_result && $row = mysqli_fetch_assoc($inv_result)) {
+                $last_num = (int)substr($row['invoice_no'], -4);
+                $next_num = $last_num + 1;
+            } else {
+                $next_num = 1;
+            }
+            $invoice_no = 'INV-' . $date_prefix . '-' . str_pad($next_num, 4, '0', STR_PAD_LEFT);
 
-        $total = 0;
-        foreach ($_SESSION['cart'] as $item) {
-            $total += $item['subtotal'];
-        }
+            $total = 0;
+            foreach ($_SESSION['cart'] as $item) {
+                $total += $item['subtotal'];
+            }
 
-        // Get supplier advance credit
-        $sup_row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT advance_credit FROM suppliers WHERE id = $supplier_id"));
-        $available_advance = $sup_row ? (float)$sup_row['advance_credit'] : 0;
+            // ── Auto-apply supplier advance credit ──
+            $sup_row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT advance_credit FROM suppliers WHERE id = $supplier_id"));
+            $available_advance = $sup_row ? (float)$sup_row['advance_credit'] : 0;
 
-        // Apply advance if requested and available
-        $advance_applied = 0;
-        if ($apply_advance && $available_advance > 0 && $total > 0) {
-            $advance_applied = min($available_advance, $total);
-        }
+            $advance_applied = 0;
+            if ($available_advance > 0.01 && $total > 0.01) {
+                $advance_applied = min($available_advance, $total);
+            }
 
-        // Calculate effective amount due after advance
-        $effective_total = $total - $advance_applied;
+            // ── Calculate balances ──
+            $effective_total = max(0, $total - $advance_applied);
+            $total_paid = $paid_amount + $advance_applied;
+            $remaining_balance = max(0, round($effective_total - $paid_amount, 2));
 
-        // Auto-calculate payment status and remaining balance
-        // paid_amount = cash amount the user is paying
-        // total_payment = cash + advance_applied
-        $total_payment = $paid_amount + $advance_applied;
-        $remaining_balance = max(0, $effective_total - $paid_amount);
+            // ── Determine payment status and overpayment ──
+            $advance_created = 0;
+            if ($total_paid >= $effective_total - 0.01) {
+                $payment_status = 'Paid';
+                $advance_created = max(0, round($total_paid - $effective_total, 2));
+                $remaining_balance = 0;
+            } elseif ($total_paid > 0.01) {
+                $payment_status = 'Partial';
+            } else {
+                $payment_status = 'Unpaid';
+            }
 
-        // Determine advance created (overpayment in cash beyond what's needed)
-        $advance_created = 0;
-        if ($total_payment >= $effective_total) {
-            $payment_status = 'Paid';
-            $advance_created = max(0, $total_payment - $effective_total);
-            $remaining_balance = 0;
-        } elseif ($paid_amount > 0 || $advance_applied > 0) {
-            $payment_status = 'Partial';
-        } else {
-            $payment_status = 'Unpaid';
-        }
+            $user_id = (int)($_SESSION['user_id'] ?? 0);
+            ensurePurchasePaymentColumns($conn);
 
-        $user_id = (int)($_SESSION['user_id'] ?? 0);
-        if (columnExists($conn, 'purchases', 'status')) {
-            mysqli_query($conn, "INSERT INTO purchases(invoice_no, supplier_id, user_id, purchase_date, total_amount, status)
-                VALUES('$invoice_no', '$supplier_id', $user_id, '$purchase_date', '$total', 'completed')");
-        } else {
-            mysqli_query($conn, "INSERT INTO purchases(invoice_no, supplier_id, user_id, purchase_date, total_amount)
-                VALUES('$invoice_no', '$supplier_id', $user_id, '$purchase_date', '$total')");
-        }
-        $purchase_id = mysqli_insert_id($conn);
+            // ── Insert purchase record ──
+            $ins_cols = "invoice_no, supplier_id, user_id, purchase_date, total_amount, total_paid, remaining_balance, payment_status";
+            $ins_vals = "'$invoice_no', '$supplier_id', $user_id, '$purchase_date', '$total', $total_paid, $remaining_balance, '$payment_status'";
+            if (columnExists($conn, 'purchases', 'status')) {
+                $ins_cols .= ", status";
+                $ins_vals .= ", 'completed'";
+            }
+            mysqli_query($conn, "INSERT INTO purchases($ins_cols) VALUES($ins_vals)");
+            $purchase_id = mysqli_insert_id($conn);
 
-        if ($purchase_id) {
-            // Ensure supplier_ledger table exists
+            if (!$purchase_id) {
+                throw new Exception('Failed to create purchase record.');
+            }
+
             createSupplierLedgerTable($conn);
 
-            // Insert payment record (if any payment was made)
-            $actual_paid = $paid_amount + $advance_applied;
+            // ── Insert purchase_payments record (cash + advance) ──
             $payment_id = null;
-            if ($actual_paid > 0) {
-                $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
-                $hasExtra = columnExists($conn, 'purchase_payments', 'remaining_balance');
-                $hasAdvance = columnExists($conn, 'purchase_payments', 'advance_applied');
-                if ($hasExtra) {
-                    $cash_amt = ($payment_method === 'Cash') ? $paid_amount : 0;
-                    $kbz_amt = ($payment_method === 'KBZPay') ? $paid_amount : 0;
-                    if (columnExists($conn, 'purchase_payments', 'cash_amount')) {
-                        $cols = "purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date";
-                        $vals = "'$purchase_id', '$payment_method', '$cash_amt', '$kbz_amt', '$actual_paid', '$remaining_balance', '$payment_status', '$purchase_date'";
-                        if ($hasAdvance) {
-                            $cols .= ", advance_applied, advance_created";
-                            $vals .= ", '$advance_applied', '$advance_created'";
-                        }
-                        mysqli_query($conn, "INSERT INTO purchase_payments($cols) VALUES($vals)");
-                    } else {
-                        $cols = "purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date";
-                        $vals = "'$purchase_id', '$payment_method', '$actual_paid', '$remaining_balance', '$payment_status', '$purchase_date'";
-                        if ($hasAdvance) {
-                            $cols .= ", advance_applied, advance_created";
-                            $vals .= ", '$advance_applied', '$advance_created'";
-                        }
-                        mysqli_query($conn, "INSERT INTO purchase_payments($cols) VALUES($vals)");
-                    }
-                    $payment_id = mysqli_insert_id($conn);
-                } else {
-                    mysqli_query($conn, "INSERT INTO purchase_payments(purchase_id, payment_method, $insAmtCol, payment_date)
-                        VALUES('$purchase_id', '$payment_method', '$actual_paid', '$purchase_date')");
-                    $payment_id = mysqli_insert_id($conn);
-                }
+            $insAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
+            $hasCash = columnExists($conn, 'purchase_payments', 'cash_amount');
+            $hasNotes = columnExists($conn, 'purchase_payments', 'notes');
+            $hasAdvance = columnExists($conn, 'purchase_payments', 'advance_applied');
 
-                // Add payment ledger entry
-                if ($payment_id && $payment_id > 0) {
-                    addPurchasePaymentLedgerEntry($conn, $supplier_id, $purchase_id, $payment_id, $invoice_no, $actual_paid, $payment_method, $purchase_date);
+            $cash_amt = ($payment_method === 'Cash') ? $paid_amount : 0;
+            $kbz_amt = ($payment_method === 'KBZPay') ? $paid_amount : 0;
+
+            if ($paid_amount > 0.01 || $advance_applied > 0.01) {
+                if ($hasCash && $hasNotes) {
+                    $cols = "purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date, notes";
+                    $vals = "'$purchase_id', '$payment_method', $cash_amt, $kbz_amt, $paid_amount, $remaining_balance, '$payment_status', '$purchase_date', ''";
+                    if ($hasAdvance) {
+                        $cols .= ", advance_applied, advance_created";
+                        $vals .= ", $advance_applied, $advance_created";
+                    }
+                } elseif ($hasCash) {
+                    $cols = "purchase_id, payment_method, cash_amount, kbzpay_amount, $insAmtCol, remaining_balance, payment_status, payment_date";
+                    $vals = "'$purchase_id', '$payment_method', $cash_amt, $kbz_amt, $paid_amount, $remaining_balance, '$payment_status', '$purchase_date'";
+                    if ($hasAdvance) {
+                        $cols .= ", advance_applied, advance_created";
+                        $vals .= ", $advance_applied, $advance_created";
+                    }
+                } else {
+                    $cols = "purchase_id, payment_method, $insAmtCol, remaining_balance, payment_status, payment_date";
+                    $vals = "'$purchase_id', '$payment_method', $paid_amount, $remaining_balance, '$payment_status', '$purchase_date'";
+                    if ($hasAdvance) {
+                        $cols .= ", advance_applied, advance_created";
+                        $vals .= ", $advance_applied, $advance_created";
+                    }
+                }
+                mysqli_query($conn, "INSERT INTO purchase_payments($cols) VALUES($vals)");
+                $payment_id = mysqli_insert_id($conn);
+
+                if ($payment_id > 0 && $paid_amount > 0.01) {
+                    addPurchasePaymentLedgerEntry($conn, $supplier_id, $purchase_id, $payment_id, $invoice_no, $paid_amount, $payment_method, $purchase_date);
                 }
             }
 
-            // Add purchase ledger entry
+            // ── Purchase ledger entry ──
             addPurchaseLedgerEntry($conn, $supplier_id, $purchase_id, $invoice_no, $total, $advance_applied, $purchase_date);
 
-            // Add advance created ledger entry if overpayment
-            if ($advance_created > 0) {
+            // ── Advance applied ledger entry ──
+            if ($advance_applied > 0.01) {
+                addSupplierLedgerEntry(
+                    $conn, $supplier_id, 'Advance Applied', 'purchase', $purchase_id, $invoice_no,
+                    0, $advance_applied, "Advance of " . number_format($advance_applied, 2) . " applied to {$invoice_no}", $purchase_date
+                );
+            }
+
+            // ── Advance created ledger entry (overpayment) ──
+            if ($advance_created > 0.01) {
                 addAdvanceCreatedLedgerEntry($conn, $supplier_id, 'purchase_payment', $payment_id, $invoice_no, $advance_created, $purchase_date);
             }
 
-            // Recalculate supplier outstanding balance from all purchases and payments
-            // This is the SINGLE SOURCE OF TRUTH - do not manually update balance fields
-            recalcSupplierBalance($conn, $supplier_id);
-
+            // ── Insert product details ──
             foreach ($_SESSION['cart'] as $item) {
                 $pid = (int)$item['product_id'];
                 $qty = (int)$item['quantity'];
@@ -190,22 +197,26 @@ if (isset($_POST['save_purchase'])) {
                 mysqli_query($conn, "INSERT INTO purchase_details(purchase_id, product_id, quantity, purchase_price, subtotal)
                     VALUES('$purchase_id', '$pid', '$qty', '$price', '$subtotal')");
 
-                // Check if purchase price >= selling price and mark for update
                 $check = mysqli_fetch_assoc(mysqli_query($conn, "SELECT selling_price FROM products WHERE id='$pid'"));
                 $sp = $check ? (float)$check['selling_price'] : 0;
                 $needs_update = ($sp > 0 && $price >= $sp) ? 1 : 0;
-
                 mysqli_query($conn, "UPDATE products SET current_stock = current_stock + $qty, purchase_price = '$price', price_update_required = GREATEST(price_update_required, $needs_update) WHERE id='$pid'");
             }
 
+            // ── Update supplier balance ──
+            recalcSupplierBalance($conn, $supplier_id);
+
+            $conn->commit();
             unset($_SESSION['cart']);
             header("Location: index.php?view_id=$purchase_id&success=" . urlencode("Purchase #$invoice_no created successfully."));
             exit;
-        } else {
-            $error_msg = 'Failed to create purchase. Please try again.';
+
+        } catch (Exception $e) {
+            $conn->rollback();
+            $error_msg = 'Failed to create purchase: ' . $e->getMessage();
         }
-        } // end else (validation passed)
     }
+}
 
 // ============ FETCH DATA ============
 $suppliers = mysqli_query($conn, "SELECT * FROM suppliers WHERE status='Active'");

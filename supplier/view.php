@@ -22,9 +22,9 @@ $total_purchases = 0;
 $r = fetchOne($conn, "SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchases WHERE supplier_id = ?", [$id], "i");
 if ($r) $total_purchases = (float)$r['total'];
 
-// Total Payments (including advance_applied)
+// Total Payments (paid_amount only — advance_applied is NOT cash)
 $total_payments = 0;
-$r = fetchOne($conn, "SELECT COALESCE(SUM(pp.{$amtCol} + pp.advance_applied), 0) AS total FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ?", [$id], "i");
+$r = fetchOne($conn, "SELECT COALESCE(SUM(pp.{$amtCol}), 0) AS total FROM purchase_payments pp INNER JOIN purchases pu ON pp.purchase_id = pu.id WHERE pu.supplier_id = ?", [$id], "i");
 if ($r) $total_payments = (float)$r['total'];
 
 // Total Advance Created (overpayments)

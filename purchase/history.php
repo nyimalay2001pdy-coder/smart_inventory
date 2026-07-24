@@ -10,6 +10,11 @@ if (!isAdmin() && !isStaff()) {
 // ============ DELETE PURCHASE ============
 if (isset($_GET['confirm_delete']) && isAdmin()) {
     $id = (int)$_GET['confirm_delete'];
+
+    // Get supplier_id before deletion
+    $del_sup = mysqli_fetch_assoc(mysqli_query($conn, "SELECT supplier_id FROM purchases WHERE id='$id'"));
+    $del_supplier_id = $del_sup ? (int)$del_sup['supplier_id'] : 0;
+
     $details = mysqli_query($conn, "SELECT * FROM purchase_details WHERE purchase_id='$id'");
     while ($row = mysqli_fetch_assoc($details)) {
         $pid = $row['product_id'];
@@ -19,6 +24,12 @@ if (isset($_GET['confirm_delete']) && isAdmin()) {
     mysqli_query($conn, "DELETE FROM purchase_payments WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchase_details WHERE purchase_id='$id'");
     mysqli_query($conn, "DELETE FROM purchases WHERE id='$id'");
+
+    // Recalculate supplier balance after deletion
+    if ($del_supplier_id > 0) {
+        recalcSupplierBalance($conn, $del_supplier_id);
+    }
+
     header("Location: history.php?success=deleted");
     exit;
 }

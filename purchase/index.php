@@ -7,6 +7,9 @@ include "../config/helpers.php";
 $is_admin = isAdmin();
 $search = $_GET['search'] ?? '';
 $status_filter = $_GET['status'] ?? '';
+
+// Ensure purchases table has payment tracking columns
+ensurePurchasePaymentColumns($conn);
 $show_edit_id = isset($_GET['edit_id']) ? (int)$_GET['edit_id'] : null;
 $show_view_id = isset($_GET['view_id']) ? (int)$_GET['view_id'] : null;
 
@@ -67,20 +70,8 @@ if (isset($_POST['update'])) {
 
     mysqli_query($conn, "UPDATE purchases SET supplier_id='$supplier_id', total_amount='$new_total' WHERE id='$id'");
 
-    // Recalculate payment status
-    $editAmtCol = getPaymentAmountCol($conn, 'purchase_payments');
-    $total_paid_result = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM($editAmtCol), 0) AS total_paid FROM purchase_payments WHERE purchase_id='$id'"));
-    $total_paid = (float)$total_paid_result['total_paid'];
-    if ($new_total > 0) {
-        if ($total_paid >= $new_total) $new_status = 'Paid';
-        elseif ($total_paid > 0) $new_status = 'Partial';
-        else $new_status = 'Unpaid';
-    } else {
-        $new_status = 'Unpaid';
-    }
-    if (columnExists($conn, 'purchases', 'status')) {
-        mysqli_query($conn, "UPDATE purchases SET status='$new_status' WHERE id='$id'");
-    }
+    // Recalculate purchase payment tracking columns (total_paid, remaining_balance, payment_status)
+    updatePurchasePaymentStatus($conn, $id);
 
     // Recalculate supplier outstanding balance
     recalcSupplierBalance($conn, $supplier_id);

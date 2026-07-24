@@ -84,6 +84,62 @@ function columnExists($conn, $table, $column) {
 }
 
 /**
+ * Ensure the purchases table has the payment tracking columns.
+ * Safe to call multiple times — only adds missing columns.
+ */
+function ensurePurchasePaymentColumns($conn) {
+    if (!columnExists($conn, 'purchases', 'total_paid')) {
+        mysqli_query($conn, "ALTER TABLE purchases ADD COLUMN total_paid DECIMAL(15,2) DEFAULT 0 AFTER total_amount");
+    }
+    if (!columnExists($conn, 'purchases', 'remaining_balance')) {
+        mysqli_query($conn, "ALTER TABLE purchases ADD COLUMN remaining_balance DECIMAL(15,2) DEFAULT 0 AFTER total_paid");
+    }
+    if (!columnExists($conn, 'purchases', 'payment_status')) {
+        mysqli_query($conn, "ALTER TABLE purchases ADD COLUMN payment_status ENUM('Unpaid','Partial','Paid') DEFAULT 'Unpaid' AFTER remaining_balance");
+    }
+}
+
+/**
+ * Update a single purchase's total_paid, remaining_balance, and payment_status
+ * from its purchase_payments records. Single source of truth.
+ *
+ * total_paid = paid_amount (cash) + advance_applied (supplier credit used)
+ */
+function updatePurchasePaymentStatus($conn, $purchase_id) {
+    if ($purchase_id <= 0) return;
+
+    $amtCol = getPaymentAmountCol($conn, 'purchase_payments');
+    $has_advance = columnExists($conn, 'purchase_payments', 'advance_applied');
+
+    $purchase = mysqli_fetch_assoc(mysqli_query($conn, "SELECT total_amount FROM purchases WHERE id = $purchase_id"));
+    if (!$purchase) return;
+
+    $total_amount = (float)$purchase['total_amount'];
+
+    // total_paid = cash paid + advance credit applied
+    $sum_expr = $has_advance ? "SUM($amtCol + COALESCE(advance_applied, 0))" : "SUM($amtCol)";
+    $pay_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE($sum_expr, 0) AS total_paid FROM purchase_payments WHERE purchase_id = $purchase_id"));
+    $total_paid = max(0, (float)$pay_res['total_paid']);
+
+    $remaining_balance = max(0, round($total_amount - $total_paid, 2));
+
+    if ($total_amount > 0 && $total_paid >= $total_amount - 0.01) {
+        $payment_status = 'Paid';
+        $remaining_balance = 0;
+    } elseif ($total_paid > 0.01) {
+        $payment_status = 'Partial';
+    } else {
+        $payment_status = 'Unpaid';
+    }
+
+    mysqli_query($conn, "UPDATE purchases SET
+        total_paid = $total_paid,
+        remaining_balance = $remaining_balance,
+        payment_status = '$payment_status'
+        WHERE id = $purchase_id");
+}
+
+/**
  * Recalculate a supplier's outstanding_balance and advance_credit from all their purchases and payments.
  * This is the SINGLE SOURCE OF TRUTH — always use this instead of setting balance fields directly.
  *
@@ -101,8 +157,8 @@ function recalcSupplierBalance($conn, $supplier_id) {
     $purch_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchases WHERE supplier_id = $supplier_id"));
     $total_purchases = max(0, (float)$purch_res['total']);
 
-    // Total payments from purchase_payments (paid_amount + advance_applied)
-    $pay_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(pp.$amtCol + pp.advance_applied), 0) AS total FROM purchase_payments pp INNER JOIN purchases p ON pp.purchase_id = p.id WHERE p.supplier_id = $supplier_id"));
+    // Total payments from purchase_payments (paid_amount only — advance_applied is NOT cash)
+    $pay_res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(pp.$amtCol), 0) AS total FROM purchase_payments pp INNER JOIN purchases p ON pp.purchase_id = p.id WHERE p.supplier_id = $supplier_id"));
     $total_purchase_payments = max(0, (float)$pay_res['total']);
 
     // Total direct payments from supplier_payments table (if exists)
@@ -125,7 +181,7 @@ function recalcSupplierBalance($conn, $supplier_id) {
     }
 
     // Backward compat fields
-    $current_balance = $outstanding_balance - $advance_credit;
+    $current_balance = max(0, $outstanding_balance - $advance_credit);
     if ($outstanding_balance > 0.01) {
         $new_type = 'Payable';
     } elseif ($advance_credit > 0.01) {

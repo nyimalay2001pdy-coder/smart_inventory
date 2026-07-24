@@ -247,7 +247,9 @@ if ($role === 'cashier') {
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
-                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
                                         </div>
                                         <h3 class="text-sm font-bold text-gray-800 dark:text-slate-200">Revenue Overview</h3>
                                     </div>
@@ -277,7 +279,9 @@ if ($role === 'cashier') {
                             <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
                                 <div class="flex items-center gap-2">
                                     <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
-                                        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
                                     </div>
                                     <h3 class="text-sm font-bold text-gray-800 dark:text-slate-200">Top Selling Products</h3>
                                 </div>
@@ -303,7 +307,9 @@ if ($role === 'cashier') {
                                     </div>
                                 <?php else: ?>
                                     <div class="flex flex-col items-center justify-center py-12 text-gray-400">
-                                        <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                        <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                        </svg>
                                         <p class="text-sm font-medium">No sales data yet</p>
                                     </div>
                                 <?php endif; ?>
@@ -316,7 +322,9 @@ if ($role === 'cashier') {
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         <div class="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 flex items-center justify-center">
-                                            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                                            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                            </svg>
                                         </div>
                                         <h3 class="text-sm font-bold text-gray-800 dark:text-slate-200">Recent Forecast Results</h3>
                                     </div>
@@ -347,17 +355,23 @@ if ($role === 'cashier') {
                                                         <td class="py-3 px-3 text-center">
                                                             <?php if ($rf['demand_level'] === 'High'): ?>
                                                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                                                    </svg>
                                                                     Restock
                                                                 </span>
                                                             <?php elseif ($rf['demand_level'] === 'Medium'): ?>
                                                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
-                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
                                                                     Monitor
                                                                 </span>
                                                             <?php else: ?>
                                                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400">
-                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                                    </svg>
                                                                     Enough
                                                                 </span>
                                                             <?php endif; ?>
@@ -369,7 +383,9 @@ if ($role === 'cashier') {
                                     </div>
                                 <?php else: ?>
                                     <div class="flex flex-col items-center justify-center py-12 text-gray-400">
-                                        <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                        <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
                                         <p class="text-sm font-medium">No forecast data yet</p>
                                     </div>
                                 <?php endif; ?>
@@ -382,7 +398,9 @@ if ($role === 'cashier') {
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         <div class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
-                                            <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                                            <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                            </svg>
                                         </div>
                                         <h3 class="text-sm font-bold text-gray-800 dark:text-slate-200">Low Stock Products</h3>
                                     </div>
@@ -429,7 +447,9 @@ if ($role === 'cashier') {
                                     </div>
                                 <?php else: ?>
                                     <div class="flex flex-col items-center justify-center py-12 text-gray-400">
-                                        <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7"/></svg>
+                                        <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
+                                        </svg>
                                         <p class="text-sm font-medium">All products are well-stocked</p>
                                     </div>
                                 <?php endif; ?>
@@ -446,8 +466,8 @@ if ($role === 'cashier') {
                             const textColor = isDark ? '#94a3b8' : '#6b7280';
 
                             const dailyData = <?= json_encode(array_map(function ($r) {
-                                return ['label' => date('d M', strtotime($r['d'])), 'value' => (float)$r['revenue']];
-                            }, $sales_chart_rows)) ?>;
+                                                    return ['label' => date('d M', strtotime($r['d'])), 'value' => (float)$r['revenue']];
+                                                }, $sales_chart_rows)) ?>;
 
                             let chart = null;
 
@@ -476,7 +496,9 @@ if ($role === 'cashier') {
                                         responsive: true,
                                         maintainAspectRatio: false,
                                         plugins: {
-                                            legend: { display: false },
+                                            legend: {
+                                                display: false
+                                            },
                                             tooltip: {
                                                 backgroundColor: isDark ? '#1e293b' : '#fff',
                                                 titleColor: isDark ? '#e2e8f0' : '#1f2937',
@@ -486,19 +508,33 @@ if ($role === 'cashier') {
                                                 padding: 12,
                                                 displayColors: false,
                                                 callbacks: {
-                                                    label: function(ctx) { return 'Ks ' + ctx.parsed.y.toLocaleString(); }
+                                                    label: function(ctx) {
+                                                        return 'Ks ' + ctx.parsed.y.toLocaleString();
+                                                    }
                                                 }
                                             }
                                         },
                                         scales: {
                                             y: {
                                                 beginAtZero: true,
-                                                grid: { color: gridColor },
-                                                ticks: { color: textColor, callback: function(v) { return v >= 1000 ? (v / 1000) + 'K' : v; } }
+                                                grid: {
+                                                    color: gridColor
+                                                },
+                                                ticks: {
+                                                    color: textColor,
+                                                    callback: function(v) {
+                                                        return v >= 1000 ? (v / 1000) + 'K' : v;
+                                                    }
+                                                }
                                             },
                                             x: {
-                                                grid: { display: false },
-                                                ticks: { color: textColor, maxRotation: 0 }
+                                                grid: {
+                                                    display: false
+                                                },
+                                                ticks: {
+                                                    color: textColor,
+                                                    maxRotation: 0
+                                                }
                                             }
                                         }
                                     }
@@ -553,7 +589,10 @@ if ($role === 'cashier') {
                                     const start = new Date(from);
                                     const end = new Date(to);
                                     while (start <= end) {
-                                        days.push(start.toLocaleDateString('en', { day: '2-digit', month: 'short' }));
+                                        days.push(start.toLocaleDateString('en', {
+                                            day: '2-digit',
+                                            month: 'short'
+                                        }));
                                         start.setDate(start.getDate() + 1);
                                     }
                                     const customData = days.map(() => Math.floor(Math.random() * 300000) + 50000);
@@ -568,10 +607,10 @@ if ($role === 'cashier') {
 
                     <!-- Stat Cards -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5 mb-6">
-                        <a href="../product/index.php" class="stat-card stat-card-link fade-in stagger-1">
+                        <a href="../product/index.php" class="stat-card stat-card-link fade-in stagger-1 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/30 dark:to-blue-800/20 border-blue-200 dark:border-blue-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                     </svg>
                                 </div>
@@ -581,10 +620,10 @@ if ($role === 'cashier') {
                                 </div>
                             </div>
                         </a>
-                        <div class="stat-card fade-in stagger-2">
+                        <div class="stat-card fade-in stagger-2 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/20 border-purple-200 dark:border-purple-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-blue-50 dark:bg-blue-500/10 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                 </div>
@@ -594,10 +633,10 @@ if ($role === 'cashier') {
                                 </div>
                             </div>
                         </div>
-                        <div class="stat-card fade-in stagger-3">
+                        <div class="stat-card fade-in stagger-3 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/30 dark:to-orange-800/20 border-orange-200 dark:border-orange-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-red-50 dark:bg-red-500/10 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                     </svg>
                                 </div>
@@ -611,10 +650,10 @@ if ($role === 'cashier') {
 
                     <!-- Second Row -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5 mb-6">
-                        <div class="stat-card fade-in stagger-4">
+                        <div class="stat-card fade-in stagger-4 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-green-50 dark:bg-green-500/10 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                     </svg>
                                 </div>
@@ -625,9 +664,9 @@ if ($role === 'cashier') {
                                 </div>
                             </div>
                         </div>
-                        <a href="../forecast/index.php" class="stat-card stat-card-link fade-in stagger-5">
+                        <a href="../forecast/index.php" class="stat-card stat-card-link fade-in stagger-5 bg-gradient-to-br from-cyan-50 to-cyan-100/50 dark:from-cyan-900/30 dark:to-cyan-800/20 border-cyan-200 dark:border-cyan-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-cyan-50 dark:bg-cyan-500/10 rounded-xl flex items-center justify-center">
+                                <div class="w-12 h-12 bg-cyan-100 dark:bg-cyan-500/20 rounded-xl flex items-center justify-center">
                                     <svg class="w-6 h-6 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                     </svg>
@@ -642,10 +681,10 @@ if ($role === 'cashier') {
                             </div>
                         </a>
                         <?php if ($low_stock_count > 0): ?>
-                            <div class="stat-card fade-in stagger-6">
+                            <div class="stat-card fade-in stagger-6 bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/30 dark:to-red-800/20 border-red-200 dark:border-red-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                                 <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 bg-amber-50 dark:bg-amber-500/10 rounded-xl flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div class="w-12 h-12 bg-red-100 dark:bg-red-500/20 rounded-xl flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                         </svg>
                                     </div>
@@ -826,10 +865,10 @@ if ($role === 'cashier') {
 
                     <!-- Stat Cards -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-5 mb-6">
-                        <div class="stat-card fade-in stagger-1">
+                        <div class="stat-card fade-in stagger-1 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/30 dark:to-blue-800/20 border-blue-200 dark:border-blue-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
                                 </div>
@@ -839,10 +878,10 @@ if ($role === 'cashier') {
                                 </div>
                             </div>
                         </div>
-                        <div class="stat-card fade-in stagger-2">
+                        <div class="stat-card fade-in stagger-2 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-green-50 dark:bg-green-500/10 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
@@ -852,10 +891,10 @@ if ($role === 'cashier') {
                                 </div>
                             </div>
                         </div>
-                        <a href="../sale/pos.php" class="stat-card stat-card-link fade-in stagger-3">
+                        <a href="../sale/pos.php" class="stat-card stat-card-link fade-in stagger-3 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/20 border-purple-200 dark:border-purple-700/40 hover:scale-[1.02] shadow-md hover:shadow-lg">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-amber-50 dark:bg-amber-500/10 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
                                     </svg>
                                 </div>

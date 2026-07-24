@@ -78,8 +78,9 @@ if (!$supplier) {
 $current_advance = (float)($supplier['advance_credit'] ?? $supplier['advance_balance'] ?? 0);
 $current_outstanding = (float)($supplier['outstanding_balance'] ?? 0);
 
-// Ensure supplier_ledger table exists
+// Ensure supplier_ledger table exists and purchases has payment columns
 createSupplierLedgerTable($conn);
+ensurePurchasePaymentColumns($conn);
 
 // ── Get table structure for debugging ──
 $table_check = [];
@@ -210,7 +211,10 @@ try {
                 $debug_log[] = "STEP1_ADVANCE_ERROR: " . $conn->error;
                 throw new Exception("Failed to insert advance payment: " . $conn->error);
             }
-            
+
+            // Update the purchase's payment tracking columns
+            updatePurchasePaymentStatus($conn, $up['id']);
+
             // Add ledger entry for advance applied
             addSupplierLedgerEntry(
                 $conn, $supplier_id, 'Advance Applied', 'purchase', $up['id'], $up['invoice_no'],
@@ -279,7 +283,10 @@ try {
                 $debug_log[] = "STEP2_PAYMENT_ERROR: " . $conn->error;
                 throw new Exception("Failed to insert payment: " . $conn->error);
             }
-            
+
+            // Update the purchase's payment tracking columns
+            updatePurchasePaymentStatus($conn, $up['id']);
+
             $payment_id = $conn->insert_id;
             $debug_log[] = "STEP2_payment_id: $payment_id";
             
@@ -311,8 +318,9 @@ try {
         );
     }
 
-    // Step 4: Save the direct payment record
-    if (columnExists($conn, 'supplier_payments', 'supplier_id')) {
+    // Step 4: Only record the overpayment (advance_created) in supplier_payments
+    // The allocated portion is already tracked in purchase_payments — no double-counting
+    if ($advance_created > 0.01 && columnExists($conn, 'supplier_payments', 'supplier_id')) {
         $escaped_notes = $conn->real_escape_string($notes);
         $has_notes = columnExists($conn, 'supplier_payments', 'notes');
         
@@ -320,11 +328,11 @@ try {
             $notes_sql_val = empty($notes) ? "''" : "'$escaped_notes'";
             $sql_direct = "INSERT INTO supplier_payments 
                 (supplier_id, payment_method, cash_amount, kbzpay_amount, paid_amount, ref_no, payment_date, notes)
-                VALUES ($supplier_id, '$payment_method', $cash_amount, $kbzpay_amount, $paid_amount, '$payment_ref_no', '$payment_datetime', $notes_sql_val)";
+                VALUES ($supplier_id, '$payment_method', 0, 0, $advance_created, '$payment_ref_no', '$payment_datetime', $notes_sql_val)";
         } else {
             $sql_direct = "INSERT INTO supplier_payments 
                 (supplier_id, payment_method, cash_amount, kbzpay_amount, paid_amount, ref_no, payment_date)
-                VALUES ($supplier_id, '$payment_method', $cash_amount, $kbzpay_amount, $paid_amount, '$payment_ref_no', '$payment_datetime')";
+                VALUES ($supplier_id, '$payment_method', 0, 0, $advance_created, '$payment_ref_no', '$payment_datetime')";
         }
         
         $debug_log[] = "STEP4_DIRECT_SQL: $sql_direct";
